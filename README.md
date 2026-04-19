@@ -19,6 +19,12 @@ Phase 0 foundation is in place:
 - Alembic scaffold for migrations
 - pre-commit hooks for formatting and repo hygiene
 
+Phase 1 template and case foundations are in progress:
+
+- versioned template registry with one seeded MVP template
+- case creation from template selection
+- persisted empty field states and schema-state API
+
 ## Quick start
 
 1. Copy `.env.example` to `.env`.

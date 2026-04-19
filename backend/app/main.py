@@ -9,17 +9,23 @@ from app.api.router import api_router
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.core.request_id import RequestIdMiddleware
-
-settings = get_settings()
+from app.db import get_session_maker, init_db
+from app.templates.service import ensure_seed_templates
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    settings = get_settings()
     settings.local_storage_path.mkdir(parents=True, exist_ok=True)
+    await init_db()
+    session_maker = get_session_maker()
+    async with session_maker() as session:
+        await ensure_seed_templates(session)
     yield
 
 
 def create_app() -> FastAPI:
+    settings = get_settings()
     configure_logging()
     application = FastAPI(title=settings.project_name, lifespan=lifespan)
     application.add_middleware(RequestIdMiddleware)

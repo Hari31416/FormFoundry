@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     project_name: str = "FormFoundry"
     environment: str = "local"
     api_prefix: str = "/api/v1"
+    database_url_override: str | None = Field(default=None, alias="DATABASE_URL")
     backend_host: str = "0.0.0.0"
     backend_port: int = 8000
     frontend_port: int = 5173
@@ -61,6 +62,8 @@ class Settings(BaseSettings):
 
     @property
     def database_url(self) -> str:
+        if self.database_url_override:
+            return self.database_url_override
         return (
             f"postgresql+asyncpg://{self.postgres_user}:{self.decoded_postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
@@ -68,6 +71,16 @@ class Settings(BaseSettings):
 
     @property
     def sync_database_url(self) -> str:
+        if self.database_url_override:
+            if self.database_url_override.startswith("sqlite+aiosqlite"):
+                return self.database_url_override.replace(
+                    "sqlite+aiosqlite", "sqlite", 1
+                )
+            if self.database_url_override.startswith("postgresql+asyncpg"):
+                return self.database_url_override.replace(
+                    "postgresql+asyncpg", "postgresql", 1
+                )
+            return self.database_url_override
         return (
             f"postgresql://{self.postgres_user}:{self.decoded_postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
