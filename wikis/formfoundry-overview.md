@@ -49,3 +49,9 @@ FormFoundry is a generalized form-filling and artifact-generation platform. It t
 - next-question selection driven by field state priority and template metadata
 - conversation turns persisted separately from evidence records
 - SSE endpoint for streaming the current assistant question
+
+## Phase 6 additions
+
+- validation issue persistence for requiredness, format, enum, and cross-field rules
+- review endpoint that assembles case state, evidence, and validation issues
+- edit, confirm, and approve flows guarded by blocking validations

@@ -49,6 +49,12 @@ Phase 5 conversation orchestration is in progress:
 - conversation answers ingested as evidence
 - SSE question streaming for the chat experience
 
+Phase 6 validation and review are in progress:
+
+- deterministic validation issues for field and cross-field checks
+- review payloads that combine evidence, field state, and issues
+- edit, confirm, and approval endpoints with a blocking gate
+
 ## Quick start
 
 1. Copy `.env.example` to `.env`.
