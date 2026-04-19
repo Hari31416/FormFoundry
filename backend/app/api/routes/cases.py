@@ -2,15 +2,16 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cases.models import CaseCreateRequest, CaseDetail, SchemaStateResponse
-from app.cases.service import create_case, get_case_detail, get_schema_state
+from app.cases.service import create_case, get_case_detail, get_filtered_schema_state
 from app.db import get_db_session
 
 router = APIRouter()
 DBSession = Annotated[AsyncSession, Depends(get_db_session)]
+StatusFilter = Annotated[list[str] | None, Query(alias="status")]
 
 
 @router.post("", response_model=CaseDetail, status_code=status.HTTP_201_CREATED)
@@ -27,6 +28,8 @@ async def get_case_route(case_id: str, session: DBSession) -> CaseDetail:
 
 @router.get("/{case_id}/schema-state", response_model=SchemaStateResponse)
 async def get_schema_state_route(
-    case_id: str, session: DBSession
+    case_id: str,
+    session: DBSession,
+    status_filter: StatusFilter = None,
 ) -> SchemaStateResponse:
-    return await get_schema_state(session, case_id)
+    return await get_filtered_schema_state(session, case_id, status_filter)

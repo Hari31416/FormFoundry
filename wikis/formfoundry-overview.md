@@ -37,3 +37,9 @@ FormFoundry is a generalized form-filling and artifact-generation platform. It t
 - extraction job execution with status transitions
 - text chunking and heuristic candidate generation
 - candidate persistence with evidence attribution and case-level inspection APIs
+
+## Phase 4 additions
+
+- deterministic resolver updates field states from stored candidates
+- automatic case status and nested schema-state regeneration
+- audit records for each field-level resolution decision

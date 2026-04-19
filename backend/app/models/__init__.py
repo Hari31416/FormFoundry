@@ -2,6 +2,7 @@ from app.cases.models import ArtifactRecord, CaseFileRecord, FieldStateRecord
 from app.extraction.models import FieldCandidateRecord
 from app.intake.models import EvidenceRecord
 from app.jobs.models import JobRecord
+from app.resolution.models import ResolutionAuditRecord
 from app.templates.models import TemplateDefinitionRecord
 
 __all__ = [
@@ -11,5 +12,6 @@ __all__ = [
     "FieldCandidateRecord",
     "FieldStateRecord",
     "JobRecord",
+    "ResolutionAuditRecord",
     "TemplateDefinitionRecord",
 ]

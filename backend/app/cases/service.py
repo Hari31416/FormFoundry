@@ -149,12 +149,26 @@ async def get_case_detail(session: AsyncSession, case_id: str) -> CaseDetail:
 
 
 async def get_schema_state(session: AsyncSession, case_id: str) -> SchemaStateResponse:
+    return await get_filtered_schema_state(session, case_id, statuses=None)
+
+
+async def get_filtered_schema_state(
+    session: AsyncSession, case_id: str, statuses: list[str] | None
+) -> SchemaStateResponse:
     detail = await get_case_detail(session, case_id)
+    field_states = detail.field_states
+    if statuses:
+        allowed = set(statuses)
+        field_states = [
+            field_state
+            for field_state in detail.field_states
+            if field_state.status in allowed
+        ]
     return SchemaStateResponse(
         case_id=detail.case_id,
         template_id=detail.template_id,
         template_version=detail.template_version,
         current_schema_state=detail.current_schema_state,
-        field_states=detail.field_states,
+        field_states=field_states,
         field_groups=detail.template.field_groups,
     )

@@ -37,6 +37,12 @@ Phase 3 extraction is in progress:
 - heuristic candidate extraction with provenance
 - job tracking and candidate listing endpoints
 
+Phase 4 resolution is in progress:
+
+- deterministic field resolution over stored candidates
+- conflict detection and schema-state regeneration
+- resolver audit entries and queryable unresolved fields
+
 ## Quick start
 
 1. Copy `.env.example` to `.env`.

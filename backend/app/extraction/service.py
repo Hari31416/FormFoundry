@@ -14,6 +14,7 @@ from app.extraction.ocr.adapter import extract_text_from_image_bytes
 from app.extraction.parsers.pdf import extract_text_from_pdf_bytes
 from app.intake.models import EvidenceRecord, EvidenceSourceType
 from app.jobs.models import JobRecord, JobStatus
+from app.resolution.service import resolve_case_fields
 
 
 @dataclass(slots=True)
@@ -313,6 +314,8 @@ async def run_extraction_job(
                 )
 
     session.add_all(candidates)
+    await session.flush()
+    await resolve_case_fields(session, case_id)
     job_record.status = JobStatus.COMPLETED
     await session.commit()
     return [serialize_candidate(record) for record in candidates]
