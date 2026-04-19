@@ -8,6 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cases.models import CaseFileRecord
+from app.core.config import get_settings
+from app.extraction.service import run_extraction_job
 from app.intake.models import (
     EvidenceIntakeResponse,
     EvidencePayload,
@@ -15,7 +17,7 @@ from app.intake.models import (
     EvidenceSourceType,
     TextEvidenceRequest,
 )
-from app.jobs.queue import enqueue_job
+from app.jobs.queue import enqueue_job, get_job_payload
 from app.storage.minio import get_storage_service
 
 
@@ -75,8 +77,18 @@ async def create_text_evidence(
         triggering_event="evidence.text.created",
         metadata={"evidence_id": record.evidence_id},
     )
+    if get_settings().auto_run_jobs:
+        await run_extraction_job(
+            session,
+            case_id=case_id,
+            job_id=job.job_id,
+            evidence_ids=[record.evidence_id],
+        )
     await session.commit()
-    return EvidenceIntakeResponse(evidence=serialize_evidence(record), job=job)
+    refreshed_job = await get_job_payload(session, job.job_id)
+    return EvidenceIntakeResponse(
+        evidence=serialize_evidence(record), job=refreshed_job or job
+    )
 
 
 async def create_upload_evidence(
@@ -126,8 +138,18 @@ async def create_upload_evidence(
         triggering_event="evidence.upload.created",
         metadata={"evidence_id": record.evidence_id},
     )
+    if get_settings().auto_run_jobs:
+        await run_extraction_job(
+            session,
+            case_id=case_id,
+            job_id=job.job_id,
+            evidence_ids=[record.evidence_id],
+        )
     await session.commit()
-    return EvidenceIntakeResponse(evidence=serialize_evidence(record), job=job)
+    refreshed_job = await get_job_payload(session, job.job_id)
+    return EvidenceIntakeResponse(
+        evidence=serialize_evidence(record), job=refreshed_job or job
+    )
 
 
 async def list_case_evidence(

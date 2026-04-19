@@ -31,6 +31,12 @@ Phase 2 intake and evidence ingestion are in progress:
 - local or Minio-backed evidence storage
 - queued extraction jobs recorded for downstream processing
 
+Phase 3 extraction is in progress:
+
+- parsers for digital PDFs and image OCR fallback
+- heuristic candidate extraction with provenance
+- job tracking and candidate listing endpoints
+
 ## Quick start
 
 1. Copy `.env.example` to `.env`.

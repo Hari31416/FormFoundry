@@ -31,3 +31,9 @@ FormFoundry is a generalized form-filling and artifact-generation platform. It t
 - evidence model for uploaded files and freeform notes
 - pluggable storage adapter with local filesystem and Minio support
 - extraction job queue records created at intake time
+
+## Phase 3 additions
+
+- extraction job execution with status transitions
+- text chunking and heuristic candidate generation
+- candidate persistence with evidence attribution and case-level inspection APIs

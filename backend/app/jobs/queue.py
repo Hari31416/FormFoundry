@@ -48,3 +48,10 @@ async def list_case_jobs(session: AsyncSession, case_id: str) -> list[JobPayload
         .all()
     )
     return [serialize_job(record) for record in records]
+
+
+async def get_job_payload(session: AsyncSession, job_id: str) -> JobPayload | None:
+    record = await session.get(JobRecord, job_id)
+    if record is None:
+        return None
+    return serialize_job(record)
