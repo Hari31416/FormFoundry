@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
-from urllib.parse import unquote
+from urllib.parse import quote_plus, unquote
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -29,12 +29,12 @@ class Settings(BaseSettings):
     postgres_port: int = 5432
     postgres_db: str = "formfoundry"
     postgres_user: str = "formfoundry"
-    postgres_password: str = "formfoundry%40123"
+    postgres_password: str = "formfoundry"
 
     redis_host: str = "localhost"
     redis_port: int = 6379
     redis_db: int = 0
-    redis_password: str = "redis%40123"
+    redis_password: str = "redis"
 
     minio_endpoint: str = "localhost:9000"
     minio_access_key: str = "formfoundry"
@@ -64,8 +64,9 @@ class Settings(BaseSettings):
     def database_url(self) -> str:
         if self.database_url_override:
             return self.database_url_override
+        password = quote_plus(self.decoded_postgres_password)
         return (
-            f"postgresql+asyncpg://{self.postgres_user}:{self.decoded_postgres_password}"
+            f"postgresql+asyncpg://{self.postgres_user}:{password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 
@@ -81,8 +82,9 @@ class Settings(BaseSettings):
                     "postgresql+asyncpg", "postgresql", 1
                 )
             return self.database_url_override
+        password = quote_plus(self.decoded_postgres_password)
         return (
-            f"postgresql://{self.postgres_user}:{self.decoded_postgres_password}"
+            f"postgresql://{self.postgres_user}:{password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
 

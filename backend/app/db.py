@@ -10,7 +10,6 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from app import models as app_models  # noqa: F401
 from app.core.config import get_settings
 from app.models.base import Base
 
@@ -27,6 +26,20 @@ def get_session_maker() -> async_sessionmaker[AsyncSession]:
 
 
 async def init_db() -> None:
+    # Import all models to ensure they are registered with Base.metadata
+    from app.cases.models import (  # noqa: F401
+        ArtifactRecord,
+        CaseFileRecord,
+        FieldStateRecord,
+    )
+    from app.conversation.models import ConversationTurnRecord  # noqa: F401
+    from app.extraction.models import FieldCandidateRecord  # noqa: F401
+    from app.intake.models import EvidenceRecord  # noqa: F401
+    from app.jobs.models import JobRecord  # noqa: F401
+    from app.resolution.models import ResolutionAuditRecord  # noqa: F401
+    from app.templates.models import TemplateDefinitionRecord  # noqa: F401
+    from app.validation.models import ValidationIssueRecord  # noqa: F401
+
     async with get_engine().begin() as connection:
         await connection.run_sync(Base.metadata.create_all)
 
