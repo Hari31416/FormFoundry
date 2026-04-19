@@ -1,0 +1,61 @@
+:root {
+  color-scheme: dark;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(255, 172, 95, 0.28), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(70, 126, 255, 0.3), transparent 38%),
+    linear-gradient(135deg, #0e131f 0%, #172033 55%, #0f1622 100%);
+  color: #f3efe6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: transparent;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 3rem;
+}
+
+.hero {
+  max-width: 760px;
+  padding: 3rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 13, 22, 0.62);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.35);
+}
+
+.eyebrow {
+  margin: 0 0 1rem;
+  font-family: "Iowan Old Style", "Palatino Linotype", serif;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #f7b267;
+}
+
+h1 {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", serif;
+  font-size: clamp(2.8rem, 7vw, 5rem);
+  line-height: 0.95;
+}
+
+.lede {
+  margin: 1.5rem 0 0;
+  font-size: 1.1rem;
+  line-height: 1.7;
+  color: rgba(243, 239, 230, 0.82);
+}
