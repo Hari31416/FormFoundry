@@ -55,3 +55,9 @@ FormFoundry is a generalized form-filling and artifact-generation platform. It t
 - validation issue persistence for requiredness, format, enum, and cross-field rules
 - review endpoint that assembles case state, evidence, and validation issues
 - edit, confirm, and approve flows guarded by blocking validations
+
+## Phase 7 additions
+
+- generated fillable PDF artifact from approved schema data
+- artifact persistence and download surface
+- renderer metadata captured with each artifact record

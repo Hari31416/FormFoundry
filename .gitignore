@@ -15,5 +15,4 @@ frontend/*.tsbuildinfo
 frontend/vite.config.d.ts
 frontend/vite.config.js
 .run/
-storage/
 data/

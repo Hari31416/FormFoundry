@@ -55,6 +55,12 @@ Phase 6 validation and review are in progress:
 - review payloads that combine evidence, field state, and issues
 - edit, confirm, and approval endpoints with a blocking gate
 
+Phase 7 artifact generation is in progress:
+
+- fillable PDF rendering from approved case data
+- artifact listing and download endpoints
+- renderer metadata stored alongside generated outputs
+
 ## Quick start
 
 1. Copy `.env.example` to `.env`.

@@ -95,6 +95,18 @@ class SchemaStateResponse(BaseModel):
     field_groups: list[TemplateFieldGroup]
 
 
+class ArtifactPayload(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    artifact_id: str
+    case_id: str
+    artifact_type: str
+    status: str
+    storage_uri: str | None = None
+    renderer_version: str
+    artifact_metadata: dict[str, Any] = Field(default_factory=dict, alias="metadata")
+
+
 class ArtifactRecord(Base):
     __tablename__ = "artifacts"
 
