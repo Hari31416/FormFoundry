@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.routes.cases import router as cases_router
+from app.api.routes.conversation import router as conversation_router
 from app.api.routes.extraction import router as extraction_router
 from app.api.routes.health import router as health_router
 from app.api.routes.intake import router as intake_router
@@ -12,3 +13,4 @@ api_router.include_router(templates_router, prefix="/templates", tags=["template
 api_router.include_router(cases_router, prefix="/cases", tags=["cases"])
 api_router.include_router(intake_router, tags=["intake"])
 api_router.include_router(extraction_router, tags=["extraction"])
+api_router.include_router(conversation_router, tags=["conversation"])

@@ -46,6 +46,56 @@ async def ensure_case_exists(session: AsyncSession, case_id: str) -> CaseFileRec
     return case_record
 
 
+async def create_chat_answer_evidence(
+    session: AsyncSession,
+    case_id: str,
+    *,
+    text: str,
+    created_by: str,
+    metadata: dict[str, str] | None = None,
+) -> EvidenceIntakeResponse:
+    await ensure_case_exists(session, case_id)
+    storage = get_storage_service()
+    object_key = f"cases/{case_id}/conversation/{uuid4()}-{created_by}-answer.txt"
+    stored = await storage.store_bytes(
+        object_key=object_key,
+        payload=text.encode("utf-8"),
+        content_type="text/plain",
+    )
+    record = EvidenceRecord(
+        case_id=case_id,
+        source_type=EvidenceSourceType.CHAT_ANSWER,
+        source_subtype="conversation_turn",
+        storage_uri=stored.storage_uri,
+        raw_text=text,
+        parsed_payload={"length": len(text)},
+        evidence_metadata={**(metadata or {}), "content_type": stored.content_type},
+        source_refs=[],
+        created_by=created_by,
+    )
+    session.add(record)
+    await session.flush()
+    job = await enqueue_job(
+        session,
+        case_id=case_id,
+        job_type="extract_case_evidence",
+        triggering_event="conversation.answer.created",
+        metadata={"evidence_id": record.evidence_id},
+    )
+    if get_settings().auto_run_jobs:
+        await run_extraction_job(
+            session,
+            case_id=case_id,
+            job_id=job.job_id,
+            evidence_ids=[record.evidence_id],
+        )
+    await session.commit()
+    refreshed_job = await get_job_payload(session, job.job_id)
+    return EvidenceIntakeResponse(
+        evidence=serialize_evidence(record), job=refreshed_job or job
+    )
+
+
 async def create_text_evidence(
     session: AsyncSession, case_id: str, payload: TextEvidenceRequest
 ) -> EvidenceIntakeResponse:

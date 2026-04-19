@@ -43,6 +43,12 @@ Phase 4 resolution is in progress:
 - conflict detection and schema-state regeneration
 - resolver audit entries and queryable unresolved fields
 
+Phase 5 conversation orchestration is in progress:
+
+- template-driven next-question selection
+- conversation answers ingested as evidence
+- SSE question streaming for the chat experience
+
 ## Quick start
 
 1. Copy `.env.example` to `.env`.
