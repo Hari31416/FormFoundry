@@ -25,6 +25,12 @@ Phase 1 template and case foundations are in progress:
 - case creation from template selection
 - persisted empty field states and schema-state API
 
+Phase 2 intake and evidence ingestion are in progress:
+
+- text and file intake APIs under the case workflow
+- local or Minio-backed evidence storage
+- queued extraction jobs recorded for downstream processing
+
 ## Quick start
 
 1. Copy `.env.example` to `.env`.

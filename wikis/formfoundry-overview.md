@@ -25,3 +25,9 @@ FormFoundry is a generalized form-filling and artifact-generation platform. It t
 - template registry API with version-aware fetches
 - case creation API that persists empty field state for every template field
 - schema-state endpoint that returns both nested data and field-group metadata
+
+## Phase 2 additions
+
+- evidence model for uploaded files and freeform notes
+- pluggable storage adapter with local filesystem and Minio support
+- extraction job queue records created at intake time
