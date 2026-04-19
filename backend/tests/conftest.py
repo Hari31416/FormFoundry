@@ -17,7 +17,7 @@ def client(tmp_path: Path) -> TestClient:
     database_path = tmp_path / "formfoundry-test.db"
     os.environ["DATABASE_URL"] = f"sqlite+aiosqlite:///{database_path}"
     os.environ["ENVIRONMENT"] = "test"
-    os.environ["LOCAL_STORAGE_PATH"] = str(tmp_path / "storage")
+    os.environ["LOCAL_STORAGE_PATH"] = str(tmp_path / ".storage")
     get_settings.cache_clear()
 
     with TestClient(create_app()) as test_client:

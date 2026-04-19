@@ -14,6 +14,7 @@ from app.cases.models import ArtifactPayload, ArtifactRecord, CaseFileRecord, Ca
 from app.core.config import get_settings
 from app.jobs.queue import enqueue_job
 from app.storage.minio import get_storage_service
+from app.templates.models import TemplateDefinitionRecord
 
 
 def serialize_artifact(record: ArtifactRecord) -> ArtifactPayload:
@@ -65,6 +66,32 @@ def ensure_pdf_template(template_path: Path, field_names: list[str]) -> None:
     pdf.save()
 
 
+def build_renderer_map(template_record: TemplateDefinitionRecord) -> dict[str, str]:
+    renderer_config = template_record.renderer_config or {}
+    field_map = {
+        field["path"]: field["render_targets"][0]
+        for field in template_record.schema
+        if field.get("render_targets")
+    }
+    field_map.update(renderer_config.get("field_map", {}))
+    return field_map
+
+
+def resolve_template_asset_path(template_record: TemplateDefinitionRecord) -> Path:
+    backend_root = Path(__file__).resolve().parents[2]
+    renderer_config = template_record.renderer_config or {}
+    template_asset = renderer_config.get("template_asset")
+    if not template_asset:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Template renderer_config.template_asset is missing.",
+        )
+    template_path = Path(template_asset)
+    if not template_path.is_absolute():
+        template_path = backend_root / template_path
+    return template_path
+
+
 async def generate_pdf_artifact(session: AsyncSession, case_id: str) -> ArtifactPayload:
     case_record = await session.get(CaseFileRecord, case_id)
     if case_record is None:
@@ -75,6 +102,20 @@ async def generate_pdf_artifact(session: AsyncSession, case_id: str) -> Artifact
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="Case must be approved first"
         )
+    template_record = (
+        await session.execute(
+            select(TemplateDefinitionRecord).where(
+                TemplateDefinitionRecord.template_id == case_record.template_id,
+                TemplateDefinitionRecord.template_version
+                == case_record.template_version,
+            )
+        )
+    ).scalar_one_or_none()
+    if template_record is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Template definition is missing for this case.",
+        )
 
     job = await enqueue_job(
         session,
@@ -82,22 +123,14 @@ async def generate_pdf_artifact(session: AsyncSession, case_id: str) -> Artifact
         job_type="generate_artifact",
         triggering_event="artifact.generate.requested",
     )
-    renderer_map = {
-        "applicant.full_name": "applicant_full_name",
-        "applicant.date_of_birth": "applicant_dob",
-        "applicant.phone": "applicant_phone",
-        "applicant.email": "applicant_email",
-        "applicant.address.street": "applicant_address_street",
-        "applicant.address.city": "applicant_address_city",
-        "applicant.address.state": "applicant_address_state",
-        "applicant.address.postal_code": "applicant_address_postal_code",
-        "employment.monthly_income": "employment_monthly_income",
-        "benefits.requested_program": "benefits_requested_program",
-        "identity.ssn_last4": "identity_ssn_last4",
-    }
+    renderer_map = build_renderer_map(template_record)
+    if not renderer_map:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Template renderer field mapping is missing.",
+        )
 
-    backend_root = Path(__file__).resolve().parents[2]
-    template_path = backend_root / "assets" / "pdfs" / "household_assistance_packet.pdf"
+    template_path = resolve_template_asset_path(template_record)
     ensure_pdf_template(template_path, list(renderer_map.values()))
 
     flattened = flatten_schema(case_record.current_schema_state)
@@ -129,7 +162,13 @@ async def generate_pdf_artifact(session: AsyncSession, case_id: str) -> Artifact
         status="generated",
         storage_uri=stored.storage_uri,
         renderer_version="v1",
-        artifact_metadata={"job_id": job.job_id, "template_path": str(template_path)},
+        artifact_metadata={
+            "job_id": job.job_id,
+            "template_path": str(template_path),
+            "field_map": renderer_map,
+            "template_id": template_record.template_id,
+            "template_version": template_record.template_version,
+        },
     )
     session.add(artifact)
     await session.commit()

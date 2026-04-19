@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     qdrant_api_key: str = "qdrant-local-key"
 
     storage_backend: str = "local"
-    local_storage_path: Path = Field(default=Path("../storage"))
+    local_storage_path: Path = Field(default=Path("../.storage"))
     auto_run_jobs: bool = True
     resolution_threshold: float = 0.78
     low_confidence_threshold: float = 0.6
