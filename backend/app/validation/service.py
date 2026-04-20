@@ -16,6 +16,7 @@ from app.cases.models import (
     ReviewStatus,
 )
 from app.cases.service import get_case_detail, serialize_case
+from app.extraction.models import FieldCandidateRecord
 from app.intake.service import list_case_evidence
 from app.resolution.service import assign_nested_value
 from app.templates.models import TemplateDefinitionRecord, TemplateField
@@ -23,6 +24,7 @@ from app.templates.runtime import is_field_active
 from app.validation.models import (
     FieldConfirmRequest,
     FieldEditRequest,
+    FieldRejectRequest,
     ReviewResponse,
     ValidationIssuePayload,
     ValidationIssueRecord,
@@ -279,6 +281,57 @@ async def confirm_field(
     return field_state
 
 
+async def reject_field(
+    session: AsyncSession, case_id: str, field_path: str, payload: FieldRejectRequest
+) -> FieldStateRecord:
+    field_state = (
+        await session.execute(
+            select(FieldStateRecord).where(
+                FieldStateRecord.case_id == case_id,
+                FieldStateRecord.field_path == field_path,
+            )
+        )
+    ).scalar_one_or_none()
+    if field_state is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Field not found"
+        )
+    if field_state.status != FieldStateStatus.PROPOSED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only proposed fields can be rejected",
+        )
+
+    await session.execute(
+        delete(FieldCandidateRecord).where(
+            FieldCandidateRecord.case_id == case_id,
+            FieldCandidateRecord.field_path == field_path,
+        )
+    )
+
+    field_state.resolved_value = None
+    field_state.status = FieldStateStatus.MISSING
+    field_state.confidence = 0.0
+    field_state.candidate_ids = []
+    field_state.source_evidence_ids = []
+    field_state.last_updated_by = payload.rejected_by
+    field_state.last_updated_at = datetime.now(UTC)
+
+    case_record = await session.get(CaseFileRecord, case_id)
+    if case_record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Case not found"
+        )
+    schema_state = dict(case_record.current_schema_state)
+    assign_nested_value(schema_state, field_path, None)
+    case_record.current_schema_state = schema_state
+    case_record.status = CaseStatus.AWAITING_USER
+    case_record.review_status = ReviewStatus.NOT_READY
+
+    await session.commit()
+    return field_state
+
+
 async def approve_case(session: AsyncSession, case_id: str) -> CaseFilePayload:
     issues = await refresh_validation_issues(session, case_id)
     if any(issue.blocking for issue in issues):
@@ -307,10 +360,10 @@ async def approve_case(session: AsyncSession, case_id: str) -> CaseFilePayload:
     template_fields = [
         TemplateField.model_validate(item) for item in template_record.schema
     ]
-    active_field_paths = {
+    required_active_field_paths = {
         tf.path
         for tf in template_fields
-        if is_field_active(tf, case_record.current_schema_state)
+        if tf.required and is_field_active(tf, case_record.current_schema_state)
     }
 
     field_states = (
@@ -326,13 +379,13 @@ async def approve_case(session: AsyncSession, case_id: str) -> CaseFilePayload:
     unconfirmed_active = [
         fs.field_path
         for fs in field_states
-        if fs.field_path in active_field_paths
+        if fs.field_path in required_active_field_paths
         and fs.status != FieldStateStatus.CONFIRMED
     ]
 
     if unconfirmed_active:
         detail = (
-            "All active fields must be confirmed before approval. "
+            "All required active fields must be confirmed before approval. "
             f"Unconfirmed: {', '.join(unconfirmed_active)}"
         )
         raise HTTPException(

@@ -11,6 +11,7 @@ from app.db import get_db_session
 from app.validation.models import (
     FieldConfirmRequest,
     FieldEditRequest,
+    FieldRejectRequest,
     ReviewResponse,
     ValidationIssuePayload,
 )
@@ -20,6 +21,7 @@ from app.validation.service import (
     edit_field,
     get_review_payload,
     get_validation_issues,
+    reject_field,
 )
 
 router = APIRouter()
@@ -64,6 +66,22 @@ async def confirm_field_route(
         payload = FieldConfirmRequest()
 
     field_state = await confirm_field(session, case_id, field_path, payload)
+    return serialize_field_state(field_state)
+
+
+@router.post(
+    "/cases/{case_id}/fields/{field_path}/reject", response_model=FieldStatePayload
+)
+async def reject_field_route(
+    case_id: str,
+    field_path: str,
+    session: DBSession,
+    payload: FieldRejectRequest | None = None,
+) -> FieldStatePayload:
+    if payload is None:
+        payload = FieldRejectRequest()
+
+    field_state = await reject_field(session, case_id, field_path, payload)
     return serialize_field_state(field_state)
 
 

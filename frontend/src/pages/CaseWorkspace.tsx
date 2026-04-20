@@ -41,6 +41,7 @@ import {
   getEvidence,
   getNextQuestion,
   getValidationIssues,
+  rejectField,
   submitTurn,
   uploadFileEvidence,
   Evidence,
@@ -101,6 +102,29 @@ function isQuestionOutstanding(field: TemplateField, state: FieldState): boolean
     return true
   }
   return false
+}
+
+function getEvidenceDisplayText(ev: Evidence): string {
+  if (typeof ev.raw_text === 'string' && ev.raw_text.trim()) {
+    return ev.raw_text.trim()
+  }
+
+  const extractedText = ev.parsed_payload?.extracted_text
+  if (typeof extractedText === 'string' && extractedText.trim()) {
+    return extractedText.trim()
+  }
+
+  return ''
+}
+
+function hasResolvedValue(value: unknown): boolean {
+  if (value === null || value === undefined) {
+    return false
+  }
+  if (typeof value === 'string') {
+    return value.trim().length > 0
+  }
+  return true
 }
 
 export default function CaseWorkspace() {
@@ -225,6 +249,16 @@ export default function CaseWorkspace() {
       queryClient.invalidateQueries({ queryKey: ['case', caseId] })
       queryClient.invalidateQueries({ queryKey: ['validation', caseId] })
       queryClient.invalidateQueries({ queryKey: ['next-question', caseId] })
+    },
+  })
+
+  const rejectFieldMutation = useMutation({
+    mutationFn: (fieldPath: string) => rejectField(caseId!, fieldPath),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['case', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['validation', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['next-question', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['evidence', caseId] })
     },
   })
 
@@ -434,6 +468,7 @@ export default function CaseWorkspace() {
                                 issues={fieldIssues}
                                 allEvidence={evidence || []}
                                 onConfirm={(p) => confirmFieldMutation.mutate(p)}
+                                onReject={(p) => rejectFieldMutation.mutate(p)}
                               />
                             )
                           })}
@@ -684,13 +719,15 @@ function FieldRow({
   state,
   issues,
   allEvidence,
-  onConfirm
+  onConfirm,
+  onReject
 }: {
   field: TemplateField
   state: FieldState | undefined
   issues: any[]
   allEvidence: Evidence[]
   onConfirm: (p: string) => void
+  onReject: (p: string) => void
 }) {
   if (!field) return null
   const confidence = state?.confidence ?? 0
@@ -699,7 +736,7 @@ function FieldRow({
   // Resolve source evidence
   const sourceEvidence = (state?.source_evidence_ids || [])
     .map((id) => allEvidence.find((ev) => ev.evidence_id === id))
-    .filter((ev): ev is Evidence => !!ev && !!ev.raw_text)
+    .filter((ev): ev is Evidence => !!ev && !!getEvidenceDisplayText(ev))
 
   return (
     <div className="group relative flex flex-col space-y-2">
@@ -718,7 +755,11 @@ function FieldRow({
                 )}
               </div>
               <div className="text-[15px] font-bold text-slate-900 tabular-nums truncate">
-                {state?.resolved_value ? String(state.resolved_value) : <span className="text-slate-300 font-medium italic">Awaiting data...</span>}
+                {hasResolvedValue(state?.resolved_value) ? (
+                  String(state?.resolved_value)
+                ) : (
+                  <span className="text-slate-300 font-medium italic">Awaiting data...</span>
+                )}
               </div>
 
               {confidence > 0 && state?.status !== 'confirmed' && (
@@ -739,13 +780,23 @@ function FieldRow({
 
             <div className="flex items-center space-x-2 shrink-0">
               {proposedState && (
-                <Button
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest h-8 px-4 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95"
-                  onClick={() => onConfirm(proposedState.field_path)}
-                >
-                  Confirm Match
-                </Button>
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 text-[10px] font-black uppercase tracking-widest h-8 px-4 rounded-xl transition-all active:scale-95"
+                    onClick={() => onReject(proposedState.field_path)}
+                  >
+                    Reject Match
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest h-8 px-4 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95"
+                    onClick={() => onConfirm(proposedState.field_path)}
+                  >
+                    Confirm Match
+                  </Button>
+                </>
               )}
               {state?.status === 'confirmed' && (
                 <div className="p-1 px-2 bg-emerald-50 text-emerald-600 rounded-lg">
@@ -812,7 +863,8 @@ function getFieldBadge(status: FieldStatus) {
 
 function EvidenceQuote({ ev }: { ev: Evidence }) {
   const [isExpanded, setIsExpanded] = useState(false)
-  const isLongText = (ev.raw_text?.length || 0) > 120
+  const displayText = getEvidenceDisplayText(ev)
+  const isLongText = displayText.length > 120
 
   return (
     <div className="relative pl-3 border-l-2 border-slate-100 hover:border-blue-200 transition-colors group/evidence">
@@ -820,11 +872,12 @@ function EvidenceQuote({ ev }: { ev: Evidence }) {
         "text-[11px] text-slate-500 italic leading-relaxed transition-all",
         !isExpanded && "line-clamp-2"
       )}>
-        “{ev.raw_text}”
+        “{displayText}”
       </p>
       <div className="flex items-center justify-between mt-1">
         <div className="text-[8px] font-bold text-slate-300 uppercase tracking-tighter">
           via {ev.source_type.replace('_', ' ')}
+          {ev.source_subtype ? ` · ${ev.source_subtype}` : ''}
         </div>
         {isLongText && (
           <button

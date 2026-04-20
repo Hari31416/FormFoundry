@@ -79,3 +79,46 @@ def test_confirm_and_approve_flow(client: TestClient) -> None:
     approve_response = client.post(f"/api/v1/cases/{case_id}/approve")
     assert approve_response.status_code == 200
     assert approve_response.json()["status"] == "approved"
+
+
+def test_reject_match_requeues_field_for_questioning(client: TestClient) -> None:
+    case_id = create_case(client)
+
+    evidence_response = client.post(
+        f"/api/v1/cases/{case_id}/evidence/text",
+        json={
+            "text": "Complainant name is Priya Sharma.",
+            "created_by": "validation-test",
+        },
+    )
+    assert evidence_response.status_code == 201
+
+    case_response = client.get(f"/api/v1/cases/{case_id}")
+    assert case_response.status_code == 200
+    field_states = {
+        field["field_path"]: field for field in case_response.json()["field_states"]
+    }
+    assert field_states["complainant.full_name"]["status"] == "proposed"
+
+    reject_response = client.post(
+        f"/api/v1/cases/{case_id}/fields/complainant.full_name/reject",
+        json={"rejected_by": "validation-test"},
+    )
+    assert reject_response.status_code == 200
+    assert reject_response.json()["status"] == "missing"
+    assert reject_response.json()["resolved_value"] is None
+
+    refreshed_case_response = client.get(f"/api/v1/cases/{case_id}")
+    assert refreshed_case_response.status_code == 200
+    refreshed_states = {
+        field["field_path"]: field
+        for field in refreshed_case_response.json()["field_states"]
+    }
+    assert refreshed_states["complainant.full_name"]["status"] == "missing"
+    assert refreshed_case_response.json()["status"] == "awaiting_user"
+
+    next_question_response = client.get(
+        f"/api/v1/cases/{case_id}/conversation/next-question"
+    )
+    assert next_question_response.status_code == 200
+    assert next_question_response.json()["field_path"] == "complainant.full_name"

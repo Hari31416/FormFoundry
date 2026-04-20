@@ -60,6 +60,10 @@ class FieldConfirmRequest(BaseModel):
     confirmed_by: str = "local-user"
 
 
+class FieldRejectRequest(BaseModel):
+    rejected_by: str = "local-user"
+
+
 class ReviewResponse(BaseModel):
     case: CaseFilePayload
     field_states: list[FieldStatePayload]
