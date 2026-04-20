@@ -115,6 +115,15 @@ export default function TemplateSelection() {
                       </div>
                     </div>
 
+                    <Button
+                      className="w-full h-12 bg-slate-900 hover:bg-blue-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-slate-900/10 hover:shadow-blue-600/20"
+                      onClick={() => handleCreateCase(template.template_id, template.template_version)}
+                      disabled={createMutation.isPending}
+                    >
+                      {createMutation.isPending ? 'Initializing...' : 'Start New Case'}
+                      {!createMutation.isPending && <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />}
+                    </Button>
+
                     {templateCases.length > 0 && (
                       <div className="pt-4 border-t border-slate-100">
                         <div className="flex items-center justify-between mb-3">
@@ -171,16 +180,6 @@ export default function TemplateSelection() {
                       </div>
                     )}
                   </CardContent>
-                  <CardFooter className="pt-0 pb-6 px-6">
-                    <Button
-                      className="w-full h-12 bg-slate-900 hover:bg-blue-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-slate-900/10 hover:shadow-blue-600/20"
-                      onClick={() => handleCreateCase(template.template_id, template.template_version)}
-                      disabled={createMutation.isPending}
-                    >
-                      {createMutation.isPending ? 'Initializing...' : 'Start New Case'}
-                      {!createMutation.isPending && <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />}
-                    </Button>
-                  </CardFooter>
                 </Card>
               </motion.div>
             )
