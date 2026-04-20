@@ -5,7 +5,7 @@ def create_case(client: TestClient) -> str:
     response = client.post(
         "/api/v1/cases",
         json={
-            "template_id": "household-assistance-intake",
+            "template_id": "fir-report-intake",
             "created_by": "resolver-test",
         },
     )
@@ -20,8 +20,8 @@ def test_resolution_updates_case_schema_state(client: TestClient) -> None:
         f"/api/v1/cases/{case_id}/evidence/text",
         json={
             "text": (
-                "Applicant name is Jamie Rivera. They request housing assistance. "
-                "SSN last four is 4321."
+                "Complainant name is Priya Sharma. Incident summary: "
+                "Her phone was stolen near MG Road. This is a theft complaint."
             ),
             "created_by": "resolver-test",
         },
@@ -40,9 +40,9 @@ def test_resolution_updates_case_schema_state(client: TestClient) -> None:
         field_state["field_path"]: field_state
         for field_state in schema_payload["field_states"]
     }
-    assert by_path["applicant.full_name"]["status"] == "proposed"
-    assert by_path["benefits.requested_program"]["status"] == "proposed"
-    assert schema_payload["current_schema_state"]["identity"]["ssn_last4"] == "4321"
+    assert by_path["complainant.full_name"]["status"] == "proposed"
+    assert by_path["incident.category"]["status"] == "proposed"
+    assert schema_payload["current_schema_state"]["incident"]["summary"] is not None
 
     unresolved_response = client.get(
         f"/api/v1/cases/{case_id}/schema-state",
@@ -53,7 +53,7 @@ def test_resolution_updates_case_schema_state(client: TestClient) -> None:
         field_state["field_path"]
         for field_state in unresolved_response.json()["field_states"]
     }
-    assert "applicant.phone" in unresolved_paths
+    assert "incident.date" in unresolved_paths
 
 
 def test_resolution_marks_conflicts_when_candidates_disagree(
@@ -63,11 +63,11 @@ def test_resolution_marks_conflicts_when_candidates_disagree(
 
     first_response = client.post(
         f"/api/v1/cases/{case_id}/evidence/text",
-        json={"text": "Applicant name is Jamie Rivera.", "created_by": "source-one"},
+        json={"text": "Complainant name is Priya Sharma.", "created_by": "source-one"},
     )
     second_response = client.post(
         f"/api/v1/cases/{case_id}/evidence/text",
-        json={"text": "Applicant name is Jordan Rivera.", "created_by": "source-two"},
+        json={"text": "Complainant name is Jordan Sharma.", "created_by": "source-two"},
     )
 
     assert first_response.status_code == 201
@@ -81,5 +81,5 @@ def test_resolution_marks_conflicts_when_candidates_disagree(
         field_state["field_path"]: field_state
         for field_state in schema_response.json()["field_states"]
     }
-    assert conflicted_fields["applicant.full_name"]["status"] == "conflicted"
-    assert conflicted_fields["applicant.full_name"]["resolved_value"] is None
+    assert conflicted_fields["complainant.full_name"]["status"] == "conflicted"
+    assert conflicted_fields["complainant.full_name"]["resolved_value"] is None

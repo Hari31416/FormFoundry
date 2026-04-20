@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 def create_case(client: TestClient) -> str:
     response = client.post(
         "/api/v1/cases",
-        json={"template_id": "household-assistance-intake", "created_by": "test-user"},
+        json={"template_id": "fir-report-intake", "created_by": "test-user"},
     )
     assert response.status_code == 201
     return response.json()["case_id"]
@@ -16,7 +16,10 @@ def test_text_evidence_creates_record_and_job(client: TestClient) -> None:
     response = client.post(
         f"/api/v1/cases/{case_id}/evidence/text",
         json={
-            "text": "Applicant name is Jamie Rivera and they request housing assistance.",
+            "text": (
+                "Complainant name is Priya Sharma. Incident summary: "
+                "Her phone was stolen near MG Road. This is a theft complaint."
+            ),
             "created_by": "intake-agent",
             "metadata": {"channel": "paste"},
         },
@@ -34,7 +37,7 @@ def test_text_evidence_creates_record_and_job(client: TestClient) -> None:
     assert evidence_response.status_code == 200
     evidence_items = evidence_response.json()
     assert len(evidence_items) == 1
-    assert evidence_items[0]["raw_text"].startswith("Applicant name is Jamie Rivera")
+    assert evidence_items[0]["raw_text"].startswith("Complainant name is Priya Sharma")
 
     job_response = client.get(f"/api/v1/cases/{case_id}/jobs")
     assert job_response.status_code == 200
@@ -45,8 +48,8 @@ def test_text_evidence_creates_record_and_job(client: TestClient) -> None:
     candidate_fields = {
         candidate["field_path"] for candidate in candidates_response.json()
     }
-    assert "applicant.full_name" in candidate_fields
-    assert "benefits.requested_program" in candidate_fields
+    assert "complainant.full_name" in candidate_fields
+    assert "incident.category" in candidate_fields
 
 
 def test_upload_evidence_stores_file_and_queues_job(client: TestClient) -> None:
@@ -58,7 +61,7 @@ def test_upload_evidence_stores_file_and_queues_job(client: TestClient) -> None:
         files={
             "file": (
                 "supporting-note.png",
-                b"Applicant name is Jamie Rivera and monthly income is 2100",
+                b"Complainant name is Priya Sharma and phone number is 9876543210",
                 "image/png",
             )
         },
@@ -76,4 +79,5 @@ def test_upload_evidence_stores_file_and_queues_job(client: TestClient) -> None:
     candidate_fields = {
         candidate["field_path"] for candidate in candidates_response.json()
     }
-    assert "applicant.full_name" in candidate_fields
+    assert "complainant.full_name" in candidate_fields
+    assert "complainant.phone" in candidate_fields

@@ -7,6 +7,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.cases.models import CaseFileRecord
 from app.core.config import get_settings
 from app.extraction.contracts import FieldCandidate
 from app.extraction.models import FieldCandidateRecord
@@ -14,7 +15,10 @@ from app.extraction.ocr.adapter import extract_text_from_image_bytes
 from app.extraction.parsers.pdf import extract_text_from_pdf_bytes
 from app.intake.models import EvidenceRecord, EvidenceSourceType
 from app.jobs.models import JobRecord, JobStatus
+from app.llm import generate_json
 from app.resolution.service import resolve_case_fields
+from app.templates.models import TemplateDefinition, TemplateField
+from app.templates.service import get_template_definition
 
 
 @dataclass(slots=True)
@@ -23,10 +27,11 @@ class CandidateProposal:
     candidate_value: Any
     confidence: float
     rationale: str
-    extractor_type: str = "heuristic_llm"
+    extractor_type: str
+    source_quote: str | None = None
 
 
-def chunk_text(text: str, *, max_chars: int = 400) -> list[str]:
+def chunk_text(text: str, *, max_chars: int = 1200) -> list[str]:
     normalized = " ".join(text.split())
     if not normalized:
         return []
@@ -36,204 +41,144 @@ def chunk_text(text: str, *, max_chars: int = 400) -> list[str]:
     ]
 
 
-def build_candidates_from_text(text: str) -> list[CandidateProposal]:
-    lowered = text.lower()
+def clamp_confidence(value: Any, *, default: float) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return default
+    return max(0.0, min(parsed, 1.0))
+
+
+def parse_date(value: str) -> str | None:
+    raw = value.strip()
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw):
+        return raw
+    match = re.fullmatch(r"(\d{2})[/-](\d{2})[/-](\d{4})", raw)
+    if match:
+        day, month, year = match.groups()
+        return f"{year}-{month}-{day}"
+    return None
+
+
+def normalize_enum_value(raw: Any, allowed_values: list[str]) -> str | None:
+    value = str(raw).strip().lower().replace(" ", "_")
+    aliases: dict[str, str] = {}
+    for option in allowed_values:
+        aliases[option.lower()] = option
+        aliases[option.replace("_", " ").lower()] = option
+    return aliases.get(value) or aliases.get(value.replace("_", " "))
+
+
+def coerce_candidate_value(field: TemplateField, value: Any) -> Any | None:
+    if value is None:
+        return None
+
+    if field.type == "string":
+        text = str(value).strip()
+        return text or None
+    if field.type == "date":
+        return parse_date(str(value))
+    if field.type == "boolean":
+        if isinstance(value, bool):
+            return value
+        normalized = str(value).strip().lower()
+        if normalized in {"true", "yes", "y", "1", "known", "present"}:
+            return True
+        if normalized in {"false", "no", "n", "0", "unknown", "absent", "not known"}:
+            return False
+        return None
+    if field.type == "integer":
+        try:
+            return int(str(value).replace(",", "").strip())
+        except ValueError:
+            return None
+    if field.type == "number":
+        sanitized = (
+            str(value)
+            .replace(",", "")
+            .replace("INR", "")
+            .replace("Rs.", "")
+            .replace("Rs", "")
+            .strip()
+        )
+        try:
+            return float(sanitized)
+        except ValueError:
+            return None
+    if field.type == "enum":
+        return normalize_enum_value(value, field.enum_options)
+    return value
+
+
+def format_field_catalog(template: TemplateDefinition) -> str:
+    lines: list[str] = []
+    for field in template.template_schema:
+        required = "required" if field.required else "optional"
+        enum_options = (
+            f" Allowed values: {', '.join(field.enum_options)}."
+            if field.enum_options
+            else ""
+        )
+        help_text = f" Help: {field.help_text}." if field.help_text else ""
+        lines.append(
+            f"- {field.path}: {field.label} ({field.type}, {required}).{enum_options}{help_text}"
+        )
+    return "\n".join(lines)
+
+
+async def extract_candidates_with_llm(
+    template: TemplateDefinition,
+    text: str,
+) -> list[CandidateProposal]:
+    field_lookup = {field.path: field for field in template.template_schema}
+    response = await generate_json(
+        system_prompt=(
+            "You extract structured form field candidates from evidence text. "
+            'Return JSON only with the shape {"candidates": [...]} where each candidate contains '
+            "field_path, candidate_value, confidence, rationale, and optional source_quote. "
+            "Only include candidates directly supported by the evidence text."
+        ),
+        user_prompt=(
+            f"Template: {template.name}\n"
+            f"Field catalog:\n{format_field_catalog(template)}\n\n"
+            "Source text:\n"
+            f"{text}"
+        ),
+    )
+    if response is None:
+        raise RuntimeError("LLM extraction did not return a valid response.")
+
+    raw_candidates = response.get("candidates")
+    if not isinstance(raw_candidates, list):
+        raise RuntimeError("LLM extraction response is missing the candidates list.")
+
     proposals: list[CandidateProposal] = []
+    for item in raw_candidates:
+        if not isinstance(item, dict):
+            continue
+        field_path = str(item.get("field_path", "")).strip()
+        field = field_lookup.get(field_path)
+        if field is None:
+            continue
 
-    name_match = re.search(
-        r"(?:applicant name is|name is)\s+([a-zA-Z]+ [a-zA-Z]+)", text, re.I
-    )
-    if name_match:
+        coerced = coerce_candidate_value(field, item.get("candidate_value"))
+        if coerced is None:
+            continue
+
         proposals.append(
             CandidateProposal(
-                field_path="applicant.full_name",
-                candidate_value=name_match.group(1).strip(),
-                confidence=0.92,
-                rationale="Matched an explicit applicant name phrase.",
-            )
-        )
-
-    dob_match = re.search(r"\b(\d{4}-\d{2}-\d{2})\b", text)
-    if dob_match:
-        proposals.append(
-            CandidateProposal(
-                field_path="applicant.date_of_birth",
-                candidate_value=dob_match.group(1),
-                confidence=0.89,
-                rationale="Detected an ISO-formatted date.",
-            )
-        )
-
-    phone_match = re.search(r"(\+?[0-9][0-9()\- ]{7,})", text)
-    if phone_match:
-        proposals.append(
-            CandidateProposal(
-                field_path="applicant.phone",
-                candidate_value=phone_match.group(1).strip(),
-                confidence=0.84,
-                rationale="Detected a phone-like number sequence.",
-            )
-        )
-
-    email_match = re.search(r"([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})", text, re.I)
-    if email_match:
-        proposals.append(
-            CandidateProposal(
-                field_path="applicant.email",
-                candidate_value=email_match.group(1),
-                confidence=0.91,
-                rationale="Detected an email address.",
-            )
-        )
-
-    address_match = re.search(
-        r"address is\s+(.+?),\s*([A-Za-z ]+),\s*([A-Z]{2})\s+(\d{5})", text, re.I
-    )
-    if address_match:
-        proposals.extend(
-            [
-                CandidateProposal(
-                    field_path="applicant.address.street",
-                    candidate_value=address_match.group(1).strip(),
-                    confidence=0.82,
-                    rationale="Parsed street component from address phrase.",
+                field_path=field_path,
+                candidate_value=coerced,
+                confidence=clamp_confidence(item.get("confidence"), default=0.72),
+                rationale=str(item.get("rationale") or "Extracted by litellm."),
+                extractor_type="litellm",
+                source_quote=(
+                    str(item.get("source_quote")).strip()
+                    if item.get("source_quote")
+                    else None
                 ),
-                CandidateProposal(
-                    field_path="applicant.address.city",
-                    candidate_value=address_match.group(2).strip(),
-                    confidence=0.8,
-                    rationale="Parsed city component from address phrase.",
-                ),
-                CandidateProposal(
-                    field_path="applicant.address.state",
-                    candidate_value=address_match.group(3).strip().upper(),
-                    confidence=0.87,
-                    rationale="Parsed state abbreviation from address phrase.",
-                ),
-                CandidateProposal(
-                    field_path="applicant.address.postal_code",
-                    candidate_value=address_match.group(4),
-                    confidence=0.9,
-                    rationale="Parsed postal code from address phrase.",
-                ),
-            ]
-        )
-
-    dependents_match = re.search(r"(\d+)\s+dependents?", lowered)
-    if dependents_match:
-        count = int(dependents_match.group(1))
-        proposals.extend(
-            [
-                CandidateProposal(
-                    field_path="applicant.dependents_count",
-                    candidate_value=count,
-                    confidence=0.88,
-                    rationale="Detected a dependents count reference.",
-                ),
-                CandidateProposal(
-                    field_path="applicant.has_dependents",
-                    candidate_value=count > 0,
-                    confidence=0.86,
-                    rationale="Inferred dependents presence from dependents count.",
-                ),
-            ]
-        )
-
-    if "currently employed" in lowered or "is employed" in lowered:
-        proposals.append(
-            CandidateProposal(
-                field_path="employment.currently_employed",
-                candidate_value=True,
-                confidence=0.8,
-                rationale="Detected an employed phrase.",
             )
         )
-    if "not employed" in lowered or "unemployed" in lowered:
-        proposals.append(
-            CandidateProposal(
-                field_path="employment.currently_employed",
-                candidate_value=False,
-                confidence=0.8,
-                rationale="Detected an unemployed phrase.",
-            )
-        )
-
-    employer_match = re.search(r"employer is\s+([A-Za-z0-9 &.-]+)", text, re.I)
-    if employer_match:
-        proposals.append(
-            CandidateProposal(
-                field_path="employment.employer_name",
-                candidate_value=employer_match.group(1).strip(),
-                confidence=0.78,
-                rationale="Matched an explicit employer phrase.",
-            )
-        )
-
-    income_match = re.search(
-        r"(?:monthly income is|\$)\s*([0-9]+(?:\.[0-9]{2})?)", lowered
-    )
-    if income_match:
-        proposals.append(
-            CandidateProposal(
-                field_path="employment.monthly_income",
-                candidate_value=float(income_match.group(1)),
-                confidence=0.86,
-                rationale="Detected a monthly income amount.",
-            )
-        )
-
-    for program in ["housing assistance", "food support", "utility relief"]:
-        if program in lowered:
-            proposals.append(
-                CandidateProposal(
-                    field_path="benefits.requested_program",
-                    candidate_value=program.replace(" ", "_"),
-                    confidence=0.93,
-                    rationale="Matched a supported benefits program phrase.",
-                )
-            )
-            break
-
-    if "prior application" in lowered:
-        proposals.append(
-            CandidateProposal(
-                field_path="benefits.has_prior_application",
-                candidate_value=True,
-                confidence=0.77,
-                rationale="Detected a prior application mention.",
-            )
-        )
-
-    prior_id_match = re.search(r"application id\s+([A-Z0-9-]+)", text, re.I)
-    if prior_id_match:
-        proposals.extend(
-            [
-                CandidateProposal(
-                    field_path="benefits.prior_application_id",
-                    candidate_value=prior_id_match.group(1),
-                    confidence=0.88,
-                    rationale="Matched a prior application identifier.",
-                ),
-                CandidateProposal(
-                    field_path="benefits.has_prior_application",
-                    candidate_value=True,
-                    confidence=0.83,
-                    rationale="Inferred prior application presence from application ID.",
-                ),
-            ]
-        )
-
-    ssn_match = re.search(r"ssn(?: last four)?(?: is)?\s*(\d{4})", lowered)
-    if ssn_match:
-        proposals.append(
-            CandidateProposal(
-                field_path="identity.ssn_last4",
-                candidate_value=ssn_match.group(1),
-                confidence=0.94,
-                rationale="Detected an SSN last-four pattern.",
-            )
-        )
-
     return proposals
 
 
@@ -282,7 +227,24 @@ async def run_extraction_job(
     if job_record is None:
         return []
     job_record.status = JobStatus.RUNNING
+    job_record.error_summary = None
     await session.flush()
+
+    case_record = await session.get(CaseFileRecord, case_id)
+    if case_record is None:
+        job_record.status = JobStatus.FAILED
+        job_record.error_summary = "Case not found."
+        await session.commit()
+        return []
+
+    template = await get_template_definition(
+        session, case_record.template_id, case_record.template_version
+    )
+    if template is None:
+        job_record.status = JobStatus.FAILED
+        job_record.error_summary = "Template definition is missing for this case."
+        await session.commit()
+        return []
 
     query = select(EvidenceRecord).where(EvidenceRecord.case_id == case_id)
     if evidence_ids:
@@ -290,28 +252,38 @@ async def run_extraction_job(
     evidence_records = (await session.execute(query)).scalars().all()
 
     candidates: list[FieldCandidateRecord] = []
-    for record in evidence_records:
-        text = await extract_evidence_text(record)
-        chunks = chunk_text(text)
-        record.parsed_payload = {
-            **record.parsed_payload,
-            "chunk_count": len(chunks),
-            "extracted_text": text,
-        }
-        for chunk_index, chunk in enumerate(chunks):
-            for proposal in build_candidates_from_text(chunk):
-                candidates.append(
-                    FieldCandidateRecord(
-                        case_id=case_id,
-                        field_path=proposal.field_path,
-                        candidate_value=proposal.candidate_value,
-                        confidence=proposal.confidence,
-                        source_evidence_ids=[record.evidence_id],
-                        source_refs=[{"chunk_index": chunk_index}],
-                        extractor_type=proposal.extractor_type,
-                        rationale=proposal.rationale,
+    try:
+        for record in evidence_records:
+            text = await extract_evidence_text(record)
+            chunks = chunk_text(text)
+            record.parsed_payload = {
+                **record.parsed_payload,
+                "chunk_count": len(chunks),
+                "extracted_text": text,
+            }
+            for chunk_index, chunk in enumerate(chunks):
+                proposals = await extract_candidates_with_llm(template, chunk)
+                for proposal in proposals:
+                    source_ref: dict[str, Any] = {"chunk_index": chunk_index}
+                    if proposal.source_quote:
+                        source_ref["source_quote"] = proposal.source_quote
+                    candidates.append(
+                        FieldCandidateRecord(
+                            case_id=case_id,
+                            field_path=proposal.field_path,
+                            candidate_value=proposal.candidate_value,
+                            confidence=proposal.confidence,
+                            source_evidence_ids=[record.evidence_id],
+                            source_refs=[source_ref],
+                            extractor_type=proposal.extractor_type,
+                            rationale=proposal.rationale,
+                        )
                     )
-                )
+    except RuntimeError as exc:
+        job_record.status = JobStatus.FAILED
+        job_record.error_summary = str(exc)
+        await session.commit()
+        return []
 
     session.add_all(candidates)
     await session.flush()

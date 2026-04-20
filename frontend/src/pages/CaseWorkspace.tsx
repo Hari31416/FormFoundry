@@ -1,45 +1,52 @@
-import React, { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import React, { useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  getCase,
-  getEvidence,
-  getValidationIssues,
-  getArtifacts,
-  getNextQuestion,
-  addTextEvidence,
-  submitTurn,
-  editField,
-  confirmField,
-  approveCase,
-  generateArtifact,
-  getDownloadUrl,
-  CaseDetail,
-  FieldStatus,
-} from '@/lib/api'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import {
-  MessageSquare,
-  FileText,
-  ShieldCheck,
-  Zap,
-  ChevronRight,
-  Download,
   AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  Clock,
+  Download,
+  FileText,
+  Loader2,
+  MessageSquare,
   Plus,
   Send,
-  Loader2,
-  CheckCircle2,
-  Clock,
-  ExternalLink,
+  ShieldCheck,
+  Zap,
 } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
+
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
+import {
+  CaseDetail,
+  FieldStatus,
+  addTextEvidence,
+  approveCase,
+  confirmField,
+  generateArtifact,
+  getArtifacts,
+  getCase,
+  getDownloadUrl,
+  getEvidence,
+  getNextQuestion,
+  getValidationIssues,
+  submitTurn,
+} from '@/lib/api'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 
 export default function CaseWorkspace() {
   const { caseId } = useParams<{ caseId: string }>()
@@ -48,13 +55,11 @@ export default function CaseWorkspace() {
   const [activeTab, setActiveTab] = useState('review')
   const [chatInput, setChatInput] = useState('')
 
-  // Queries
   const { data: caseDetail, isLoading: isLoadingCase } = useQuery({
     queryKey: ['case', caseId],
     queryFn: () => getCase(caseId!),
     enabled: !!caseId,
     refetchInterval: (query) => {
-      // Poll more frequently if status is 'extracting' or 'generating'
       const status = query.state.data?.status
       return status === 'extracting' || status === 'resolving' || status === 'artifact_generating' ? 3000 : 15000
     },
@@ -84,7 +89,6 @@ export default function CaseWorkspace() {
     enabled: !!caseId,
   })
 
-  // Mutations
   const submitTurnMutation = useMutation({
     mutationFn: (msg: string) => submitTurn(caseId!, msg),
     onSuccess: () => {
@@ -133,28 +137,22 @@ export default function CaseWorkspace() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'bg-green-100 text-green-700 border-green-200'
-      case 'failed': return 'bg-red-100 text-red-700 border-red-200'
+      case 'completed':
+        return 'bg-green-100 text-green-700 border-green-200'
+      case 'failed':
+        return 'bg-red-100 text-red-700 border-red-200'
       case 'extracting':
-      case 'resolving': return 'bg-blue-100 text-blue-700 border-blue-200'
-      case 'awaiting_user': return 'bg-amber-100 text-amber-700 border-amber-200'
-      default: return 'bg-slate-100 text-slate-700 border-slate-200'
-    }
-  }
-
-  const getFieldBadge = (status: FieldStatus) => {
-    switch (status) {
-      case 'confirmed': return <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/10 border-green-200/50">Confirmed</Badge>
-      case 'proposed': return <Badge className="bg-blue-500/10 text-blue-600 hover:bg-blue-500/10 border-blue-200/50">Proposed</Badge>
-      case 'conflicted': return <Badge className="bg-red-500/10 text-red-600 hover:bg-red-500/10 border-red-200/50">Conflicted</Badge>
-      case 'missing': return <Badge variant="outline" className="text-slate-400 border-slate-200">Missing</Badge>
-      default: return <Badge variant="outline">{status}</Badge>
+      case 'resolving':
+        return 'bg-blue-100 text-blue-700 border-blue-200'
+      case 'awaiting_user':
+        return 'bg-amber-100 text-amber-700 border-amber-200'
+      default:
+        return 'bg-slate-100 text-slate-700 border-slate-200'
     }
   }
 
   return (
     <div className="h-screen flex flex-col bg-slate-50/30 overflow-hidden">
-      {/* Header */}
       <header className="h-16 border-b border-slate-200/60 bg-white px-6 flex items-center justify-between shrink-0 shadow-sm z-10">
         <div className="flex items-center space-x-4">
           <div className="p-1.5 bg-slate-900 rounded-lg cursor-pointer" onClick={() => navigate('/')}>
@@ -166,6 +164,7 @@ export default function CaseWorkspace() {
               <ChevronRight className="w-3 h-3 text-slate-400" />
               <span className="text-xs font-medium text-slate-500 uppercase tracking-widest">{caseId?.slice(0, 8)}</span>
             </div>
+            <span className="text-xs text-slate-500">{caseDetail?.template.description}</span>
           </div>
         </div>
 
@@ -179,7 +178,7 @@ export default function CaseWorkspace() {
               size="sm"
               className="bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-sm"
               onClick={() => approveMutation.mutate()}
-              disabled={approveMutation.isPending || validation?.some(v => v.blocking)}
+              disabled={approveMutation.isPending || validation?.some((v) => v.blocking)}
             >
               Approve Case
             </Button>
@@ -195,10 +194,8 @@ export default function CaseWorkspace() {
         </div>
       </header>
 
-      {/* Main Content Area */}
       <main className="flex-grow flex overflow-hidden">
-        {/* Left Panel: Conversation/Assistant */}
-        <section className="w-[320px] border-r border-slate-200/60 bg-white flex flex-col shrink-0">
+        <section className="w-[340px] border-r border-slate-200/60 bg-white flex flex-col shrink-0">
           <div className="p-4 border-b border-slate-100 flex items-center space-x-2">
             <MessageSquare className="w-4 h-4 text-blue-500" />
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-tight">Assistant</h2>
@@ -206,7 +203,6 @@ export default function CaseWorkspace() {
 
           <ScrollArea className="flex-grow p-4">
             <div className="space-y-4">
-              {/* Question from system */}
               {nextQuestion ? (
                 <motion.div
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -214,6 +210,15 @@ export default function CaseWorkspace() {
                   className="bg-blue-50/50 border border-blue-100 p-4 rounded-2xl shadow-sm"
                 >
                   <p className="text-sm font-semibold text-blue-900 mb-2">{nextQuestion.question}</p>
+                  {nextQuestion.field_labels.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      {nextQuestion.field_labels.map((label) => (
+                        <Badge key={label} variant="outline" className="text-[10px] border-blue-200 text-blue-700 bg-white">
+                          {label}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
                   <p className="text-[11px] text-blue-600/80 italic">Context: {nextQuestion.reason}</p>
                 </motion.div>
               ) : (
@@ -221,7 +226,7 @@ export default function CaseWorkspace() {
                   <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
                     <CheckCircle2 className="w-6 h-6 text-slate-300" />
                   </div>
-                  <p className="text-xs text-slate-400 font-medium">No pending questions.</p>
+                  <p className="text-xs text-slate-400 font-medium">No pending questions for this case.</p>
                 </div>
               )}
             </div>
@@ -232,7 +237,7 @@ export default function CaseWorkspace() {
               <textarea
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                placeholder="Type your response..."
+                placeholder="Reply with FIR details in plain language..."
                 className="w-full bg-white border border-slate-200 rounded-xl p-3 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 resize-none h-20 shadow-inner"
               />
               <Button
@@ -247,7 +252,6 @@ export default function CaseWorkspace() {
           </div>
         </section>
 
-        {/* Middle Panel: Workspace */}
         <section className="flex-grow flex flex-col bg-slate-50/50 overflow-hidden">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
             <div className="px-6 bg-white border-b border-slate-100 flex items-center justify-between">
@@ -278,16 +282,9 @@ export default function CaseWorkspace() {
                     </div>
                     <div className="grid grid-cols-1 gap-4">
                       {group.field_paths.map((path) => {
-                        const fieldState = caseDetail.field_states.find(fs => fs.field_path === path)
-                        const templateField = caseDetail.template.schema.find(tf => tf.path === path)
-                        return (
-                          <FieldRow
-                            key={path}
-                            field={templateField}
-                            state={fieldState}
-                            onConfirm={(p) => confirmFieldMutation.mutate(p)}
-                          />
-                        )
+                        const fieldState = caseDetail.field_states.find((fs) => fs.field_path === path)
+                        const templateField = caseDetail.template.schema.find((tf) => tf.path === path)
+                        return <FieldRow key={path} field={templateField} state={fieldState} onConfirm={(p) => confirmFieldMutation.mutate(p)} />
                       })}
                     </div>
                   </div>
@@ -306,29 +303,29 @@ export default function CaseWorkspace() {
                         <span className="text-[10px] font-medium text-slate-400">{new Date(ev.created_at).toLocaleDateString()}</span>
                       </CardHeader>
                       <CardContent className="p-4">
-                        <p className="text-xs text-slate-600 line-clamp-4 leading-relaxed italic">
-                          "{ev.raw_text}"
-                        </p>
+                        <p className="text-xs text-slate-600 line-clamp-4 leading-relaxed italic">"{ev.raw_text}"</p>
                       </CardContent>
                     </Card>
                   ))}
                   <Dialog>
-                    <DialogTrigger render={
-                      <motion.button
-                        whileHover={{ scale: 1.01 }}
-                        whileTap={{ scale: 0.99 }}
-                        className="h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-colors bg-white/50"
-                      />
-                    }>
-                        <Plus className="w-6 h-6 mb-1" />
-                        <span className="text-xs font-bold uppercase tracking-widest">Add Evidence</span>
+                    <DialogTrigger
+                      render={
+                        <motion.button
+                          whileHover={{ scale: 1.01 }}
+                          whileTap={{ scale: 0.99 }}
+                          className="h-32 border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 hover:border-blue-400 hover:text-blue-500 transition-colors bg-white/50"
+                        />
+                      }
+                    >
+                      <Plus className="w-6 h-6 mb-1" />
+                      <span className="text-xs font-bold uppercase tracking-widest">Add Evidence</span>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-md bg-white rounded-2xl">
                       <div className="p-6">
-                        <h3 className="text-lg font-bold text-slate-900 mb-4">Add Text Evidence</h3>
+                        <h3 className="text-lg font-bold text-slate-900 mb-4">Add FIR Evidence</h3>
                         <textarea
                           id="evidence-text"
-                          placeholder="Paste or type evidence here..."
+                          placeholder="Paste FIR notes, complaint details, or supporting text here..."
                           className="w-full h-40 p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:outline-none resize-none mb-4"
                         />
                         <div className="flex justify-end space-x-3">
@@ -339,8 +336,6 @@ export default function CaseWorkspace() {
                               const el = document.getElementById('evidence-text') as HTMLTextAreaElement
                               if (el?.value) {
                                 addTextMutation.mutate(el.value)
-                                // Close dialog logic would go here,
-                                // usually handled by Controlled Dialog state or close button
                               }
                             }}
                             disabled={addTextMutation.isPending}
@@ -357,7 +352,6 @@ export default function CaseWorkspace() {
           </Tabs>
         </section>
 
-        {/* Right Panel: Artifacts & Validation */}
         <section className="w-[280px] border-l border-slate-200/60 bg-white p-4 shrink-0 flex flex-col space-y-6">
           <div>
             <div className="flex items-center space-x-2 mb-4">
@@ -366,14 +360,12 @@ export default function CaseWorkspace() {
             </div>
             <div className="space-y-3">
               {artifacts && artifacts.length > 0 ? (
-                artifacts.map(art => (
+                artifacts.map((art) => (
                   <Card key={art.artifact_id} className="border-slate-100 bg-slate-50/50">
                     <CardContent className="p-3 flex items-center justify-between">
                       <div className="flex items-center space-x-2 overflow-hidden">
                         <FileText className="w-4 h-4 text-blue-500 shrink-0" />
-                        <span className="text-[11px] font-bold text-slate-700 uppercase tracking-tighter truncate">
-                          {art.artifact_type}
-                        </span>
+                        <span className="text-[11px] font-bold text-slate-700 uppercase tracking-tighter truncate">{art.artifact_type}</span>
                       </div>
                       {art.status === 'generated' ? (
                         <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-500 hover:text-blue-600">
@@ -396,15 +388,20 @@ export default function CaseWorkspace() {
           </div>
 
           <div>
-             <div className="flex items-center space-x-2 mb-4">
+            <div className="flex items-center space-x-2 mb-4">
               <AlertCircle className="w-4 h-4 text-red-500" />
               <h2 className="text-sm font-bold text-slate-800 uppercase tracking-tight">Validations</h2>
             </div>
             <div className="space-y-2">
               {validation && validation.length > 0 ? (
-                validation.map(issue => (
-                  <div key={issue.issue_id} className={cn("p-2 rounded-lg border text-[11px] leading-tight",
-                    issue.blocking ? "bg-red-50/50 border-red-100 text-red-700" : "bg-amber-50/50 border-amber-100 text-amber-700")}>
+                validation.map((issue) => (
+                  <div
+                    key={issue.issue_id}
+                    className={cn(
+                      'p-2 rounded-lg border text-[11px] leading-tight',
+                      issue.blocking ? 'bg-red-50/50 border-red-100 text-red-700' : 'bg-amber-50/50 border-amber-100 text-amber-700',
+                    )}
+                  >
                     <div className="font-bold uppercase tracking-tighter mb-1">{issue.field_path}</div>
                     {issue.message}
                   </div>
@@ -423,7 +420,7 @@ export default function CaseWorkspace() {
   )
 }
 
-function FieldRow({ field, state, onConfirm }: { field: any, state: any, onConfirm: (p: string) => void }) {
+function FieldRow({ field, state, onConfirm }: { field: any; state: any; onConfirm: (p: string) => void }) {
   if (!field) return null
 
   return (
@@ -435,17 +432,16 @@ function FieldRow({ field, state, onConfirm }: { field: any, state: any, onConfi
             {state && getFieldBadge(state.status)}
           </div>
           <div className="text-sm font-medium text-slate-900">
-            {state?.resolved_value ? (
-              String(state.resolved_value)
-            ) : (
-              <span className="text-slate-300 italic">Not extracted yet...</span>
-            )}
+            {state?.resolved_value ? String(state.resolved_value) : <span className="text-slate-300 italic">Not extracted yet...</span>}
           </div>
           {state?.confidence > 0 && (
             <div className="mt-2 flex items-center space-x-2">
               <div className="w-24 h-1 bg-slate-100 rounded-full overflow-hidden">
                 <div
-                  className={cn("h-full rounded-full transition-all", state.confidence > 0.8 ? "bg-green-500" : state.confidence > 0.5 ? "bg-amber-500" : "bg-red-500")}
+                  className={cn(
+                    'h-full rounded-full transition-all',
+                    state.confidence > 0.8 ? 'bg-green-500' : state.confidence > 0.5 ? 'bg-amber-500' : 'bg-red-500',
+                  )}
                   style={{ width: `${state.confidence * 100}%` }}
                 />
               </div>
@@ -455,7 +451,7 @@ function FieldRow({ field, state, onConfirm }: { field: any, state: any, onConfi
         </div>
 
         <div className="flex items-center space-x-2">
-           {state?.status === 'proposed' && (
+          {state?.status === 'proposed' && (
             <Button
               size="sm"
               variant="outline"
@@ -464,48 +460,42 @@ function FieldRow({ field, state, onConfirm }: { field: any, state: any, onConfi
             >
               Confirm
             </Button>
-           )}
-           <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">
-              <ChevronRight className="w-4 h-4" />
-           </Button>
+          )}
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-300 hover:text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity">
+            <ChevronRight className="w-4 h-4" />
+          </Button>
         </div>
       </CardContent>
     </Card>
   )
 }
 
-function getFieldBadge(status: string) {
+function getFieldBadge(status: FieldStatus) {
   switch (status) {
-    case 'confirmed': return <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/10 border-green-200/50 text-[9px] uppercase font-black px-1.5 h-4">Confirmed</Badge>
-    case 'proposed': return <Badge className="bg-blue-500/10 text-blue-600 hover:bg-blue-500/10 border-blue-200/50 text-[9px] uppercase font-black px-1.5 h-4">Proposed</Badge>
-    case 'conflicted': return <Badge className="bg-red-500/10 text-red-600 hover:bg-red-500/10 border-red-200/50 text-[9px] uppercase font-black px-1.5 h-4">Conflicted</Badge>
-    case 'missing': return <Badge variant="outline" className="text-slate-400 border-slate-200 text-[9px] uppercase font-black px-1.5 h-4">Missing</Badge>
-    default: return null
+    case 'confirmed':
+      return <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/10 border-green-200/50 text-[9px] uppercase font-black px-1.5 h-4">Confirmed</Badge>
+    case 'proposed':
+      return <Badge className="bg-blue-500/10 text-blue-600 hover:bg-blue-500/10 border-blue-200/50 text-[9px] uppercase font-black px-1.5 h-4">Proposed</Badge>
+    case 'conflicted':
+      return <Badge className="bg-red-500/10 text-red-600 hover:bg-red-500/10 border-red-200/50 text-[9px] uppercase font-black px-1.5 h-4">Conflicted</Badge>
+    case 'missing':
+      return <Badge variant="outline" className="text-slate-400 border-slate-200 text-[9px] uppercase font-black px-1.5 h-4">Missing</Badge>
+    default:
+      return null
   }
 }
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-
-function DropdownMenuComponent({ options, onSelect, isLoading }: { options: string[], onSelect: (t: string) => void, isLoading: boolean }) {
+function DropdownMenuComponent({ options, onSelect, isLoading }: { options: string[]; onSelect: (t: string) => void; isLoading: boolean }) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={
-        <Button size="sm" className="bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-sm" />
-      }>
-          {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-          Generate Artifact
+      <DropdownMenuTrigger render={<Button size="sm" className="bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-sm" />}>
+        {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+        Generate Artifact
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-48 rounded-xl p-1 shadow-xl border-slate-100">
         <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-slate-400 px-2 py-1.5">Select Format</DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-slate-100" />
-        {options.map(opt => (
+        {options.map((opt) => (
           <DropdownMenuItem
             key={opt}
             className="rounded-lg text-xs font-bold uppercase tracking-tight text-slate-700 focus:bg-slate-50 focus:text-blue-600 cursor-pointer"

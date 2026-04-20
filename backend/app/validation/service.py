@@ -18,7 +18,8 @@ from app.cases.models import (
 from app.cases.service import get_case_detail, serialize_case
 from app.intake.service import list_case_evidence
 from app.resolution.service import assign_nested_value
-from app.templates.models import TemplateDefinitionRecord
+from app.templates.models import TemplateDefinitionRecord, TemplateField
+from app.templates.runtime import is_field_active
 from app.validation.models import (
     FieldConfirmRequest,
     FieldEditRequest,
@@ -73,7 +74,12 @@ async def refresh_validation_issues(
         .all()
     )
     field_map = {field_state.field_path: field_state for field_state in field_states}
-    template_fields = {field["path"]: field for field in template_record.schema}
+    template_fields = {
+        field.path: field
+        for field in [
+            TemplateField.model_validate(item) for item in template_record.schema
+        ]
+    }
 
     await session.execute(
         delete(ValidationIssueRecord).where(ValidationIssueRecord.case_id == case_id)
@@ -104,52 +110,56 @@ async def refresh_validation_issues(
 
     for field_path, template_field in template_fields.items():
         field_state = field_map[field_path]
+        if not is_field_active(template_field, case_record.current_schema_state):
+            continue
+
         value = field_state.resolved_value
-        if template_field.get("required") and value in (None, "", []):
+        if template_field.required and value in (None, "", []):
             add_issue(
                 field_path=field_path,
                 rule_id="required",
                 message="Required field is missing.",
-                suggested_fix=template_field.get("default_question"),
+                suggested_fix=template_field.default_question,
             )
             continue
         if value in (None, "", []):
             continue
 
-        field_type = template_field.get("type")
-        if field_type == "enum" and value not in template_field.get("enum_options", []):
+        if template_field.type == "enum" and value not in template_field.enum_options:
             add_issue(
                 field_path=field_path,
                 rule_id="enum",
                 message="Value is not in the allowed enum set.",
                 suggested_fix="Choose one of the allowed options.",
             )
-        if field_type == "date" and not re.match(r"^\d{4}-\d{2}-\d{2}$", str(value)):
+        if template_field.type == "date" and not re.match(
+            r"^\d{4}-\d{2}-\d{2}$", str(value)
+        ):
             add_issue(
                 field_path=field_path,
                 rule_id="date",
                 message="Date must use YYYY-MM-DD format.",
             )
-        if field_type == "boolean" and not isinstance(value, bool):
+        if template_field.type == "boolean" and not isinstance(value, bool):
             add_issue(
                 field_path=field_path,
                 rule_id="boolean",
                 message="Value must be true or false.",
             )
-        if field_type == "integer" and not isinstance(value, int):
+        if template_field.type == "integer" and not isinstance(value, int):
             add_issue(
                 field_path=field_path,
                 rule_id="integer",
                 message="Value must be an integer.",
             )
-        if field_type == "number" and not isinstance(value, (int, float)):
+        if template_field.type == "number" and not isinstance(value, (int, float)):
             add_issue(
                 field_path=field_path,
                 rule_id="number",
                 message="Value must be numeric.",
             )
 
-        for rule_ref in template_field.get("validation_refs", []):
+        for rule_ref in template_field.validation_refs:
             if (
                 rule_ref == "email"
                 and value
@@ -163,55 +173,29 @@ async def refresh_validation_issues(
             if (
                 rule_ref == "phone"
                 and value
-                and not re.match(r"^[0-9+()\- ]{7,20}$", str(value))
+                and not re.match(r"^[0-9+()\- ]{10,15}$", str(value))
             ):
                 add_issue(
                     field_path=field_path,
                     rule_id="phone",
                     message="Phone format is invalid.",
                 )
-            if (
-                rule_ref == "postal_code"
-                and value
-                and not re.match(r"^\d{5}$", str(value))
-            ):
-                add_issue(
-                    field_path=field_path,
-                    rule_id="postal_code",
-                    message="Postal code must be five digits.",
-                )
-            if (
-                rule_ref == "ssn_last4"
-                and value
-                and not re.match(r"^\d{4}$", str(value))
-            ):
-                add_issue(
-                    field_path=field_path,
-                    rule_id="ssn_last4",
-                    message="SSN last four must be four digits.",
-                )
-
-    dependents_count = field_map["applicant.dependents_count"].resolved_value
-    has_dependents = field_map["applicant.has_dependents"].resolved_value
-    if (
-        isinstance(dependents_count, int)
-        and dependents_count > 0
-        and has_dependents is False
-    ):
-        add_issue(
-            field_path="applicant.dependents_count",
-            rule_id="dependents_consistency",
-            message="Dependents count cannot be positive when has_dependents is false.",
-        )
-
-    prior_application_id = field_map["benefits.prior_application_id"].resolved_value
-    has_prior_application = field_map["benefits.has_prior_application"].resolved_value
-    if prior_application_id and has_prior_application is not True:
-        add_issue(
-            field_path="benefits.prior_application_id",
-            rule_id="prior_application_consistency",
-            message="A prior application ID requires has_prior_application to be true.",
-        )
+            if rule_ref.startswith("min:") and isinstance(value, (int, float)):
+                threshold = float(rule_ref.split(":", maxsplit=1)[1])
+                if float(value) < threshold:
+                    add_issue(
+                        field_path=field_path,
+                        rule_id="min",
+                        message=f"Value must be at least {threshold}.",
+                    )
+            if rule_ref.startswith("min_length:"):
+                threshold = int(rule_ref.split(":", maxsplit=1)[1])
+                if len(str(value).strip()) < threshold:
+                    add_issue(
+                        field_path=field_path,
+                        rule_id="min_length",
+                        message=f"Value must be at least {threshold} characters long.",
+                    )
 
     session.add_all(issue_records)
     await session.commit()

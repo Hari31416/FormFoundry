@@ -5,7 +5,7 @@ def create_case(client: TestClient) -> str:
     response = client.post(
         "/api/v1/cases",
         json={
-            "template_id": "household-assistance-intake",
+            "template_id": "fir-report-intake",
             "created_by": "artifact-test",
         },
     )
@@ -15,19 +15,17 @@ def create_case(client: TestClient) -> str:
 
 def fill_required_fields(client: TestClient, case_id: str) -> None:
     required_updates = {
-        "applicant.full_name": "Jamie Rivera",
-        "applicant.date_of_birth": "1990-01-01",
-        "applicant.phone": "5551234567",
-        "applicant.address.street": "12 Harbor Ave",
-        "applicant.address.city": "Oakland",
-        "applicant.address.state": "CA",
-        "applicant.address.postal_code": "94607",
-        "applicant.has_dependents": False,
-        "employment.currently_employed": False,
-        "employment.monthly_income": 2100,
-        "benefits.requested_program": "housing_assistance",
-        "benefits.has_prior_application": False,
-        "identity.ssn_last4": "4321",
+        "complainant.full_name": "Priya Sharma",
+        "complainant.phone": "9876543210",
+        "complainant.address": "14 Residency Road, Bengaluru",
+        "incident.date": "2026-04-17",
+        "incident.time": "21:15",
+        "incident.location": "MG Road, Bengaluru",
+        "incident.police_station": "Ashok Nagar Police Station",
+        "incident.category": "theft",
+        "incident.summary": "The complainant's phone was stolen near MG Road.",
+        "accused.known_to_complainant": False,
+        "witnesses.present": False,
     }
     for field_path, value in required_updates.items():
         response = client.post(

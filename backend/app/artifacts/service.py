@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from fastapi import HTTPException, status
@@ -40,13 +41,15 @@ def flatten_schema(payload: dict, prefix: str = "") -> dict[str, str]:
     return flattened
 
 
-def ensure_pdf_template(template_path: Path, field_names: list[str]) -> None:
+def ensure_pdf_template(
+    template_path: Path, title: str, field_names: list[str]
+) -> None:
     if template_path.exists():
         return
     template_path.parent.mkdir(parents=True, exist_ok=True)
     pdf = canvas.Canvas(str(template_path), pagesize=letter)
     pdf.setFont("Helvetica-Bold", 18)
-    pdf.drawString(72, 760, "FormFoundry Household Assistance Packet")
+    pdf.drawString(72, 760, title)
     pdf.setFont("Helvetica", 10)
     form = pdf.acroForm
     top = 720
@@ -130,8 +133,10 @@ async def generate_pdf_artifact(session: AsyncSession, case_id: str) -> Artifact
             detail="Template renderer field mapping is missing.",
         )
 
+    renderer_config = template_record.renderer_config or {}
     template_path = resolve_template_asset_path(template_record)
-    ensure_pdf_template(template_path, list(renderer_map.values()))
+    pdf_title = renderer_config.get("pdf_title", template_record.name)
+    ensure_pdf_template(template_path, pdf_title, list(renderer_map.values()))
 
     flattened = flatten_schema(case_record.current_schema_state)
     fill_values = {
@@ -145,7 +150,8 @@ async def generate_pdf_artifact(session: AsyncSession, case_id: str) -> Artifact
         writer.update_page_form_field_values(page, fill_values)
 
     storage_root = get_settings().local_storage_path
-    output_path = storage_root / "artifacts" / f"{case_id}-packet.pdf"
+    slug = re.sub(r"[^a-z0-9]+", "-", template_record.template_id.lower()).strip("-")
+    output_path = storage_root / "artifacts" / f"{case_id}-{slug}.pdf"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("wb") as handle:
         writer.write(handle)

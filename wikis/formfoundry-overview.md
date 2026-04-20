@@ -10,6 +10,8 @@ FormFoundry is a generalized form-filling and artifact-generation platform. It t
 - Redis is reserved for job orchestration and transient state.
 - Qdrant is provisioned but deferred until retrieval becomes necessary.
 - Template behavior remains declarative-only in v1.
+- Template definitions are loaded from JSON config files so new formats can be added without code changes.
+- `litellm` is the single LLM integration layer for extraction and grouped question phrasing.
 
 ## Phase 0 deliverables
 
@@ -21,7 +23,7 @@ FormFoundry is a generalized form-filling and artifact-generation platform. It t
 
 ## Phase 1 additions
 
-- seeded MVP template: `household-assistance-intake`
+- seeded MVP template: `fir-report-intake`
 - template registry API with version-aware fetches
 - case creation API that persists empty field state for every template field
 - schema-state endpoint that returns both nested data and field-group metadata
@@ -35,8 +37,8 @@ FormFoundry is a generalized form-filling and artifact-generation platform. It t
 ## Phase 3 additions
 
 - extraction job execution with status transitions
-- text chunking and heuristic candidate generation
-- candidate persistence with evidence attribution and case-level inspection APIs
+- text chunking for evidence processing
+- LLM-only candidate generation with evidence attribution and case-level inspection APIs
 
 ## Phase 4 additions
 
@@ -47,6 +49,7 @@ FormFoundry is a generalized form-filling and artifact-generation platform. It t
 ## Phase 5 additions
 
 - next-question selection driven by field state priority and template metadata
+- grouped follow-up question generation for related unresolved fields
 - conversation turns persisted separately from evidence records
 - SSE endpoint for streaming the current assistant question
 

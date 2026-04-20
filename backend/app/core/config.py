@@ -48,9 +48,17 @@ class Settings(BaseSettings):
 
     storage_backend: str = "local"
     local_storage_path: Path = Field(default=Path("../.storage"))
+    template_config_dir: Path = Field(default=Path("app/templates/configs"))
     auto_run_jobs: bool = True
     resolution_threshold: float = 0.78
     low_confidence_threshold: float = 0.6
+
+    llm_enabled: bool = False
+    llm_base_url: str | None = None
+    llm_api_key: str | None = None
+    llm_model: str = "gpt-4.1-mini"
+    llm_timeout_seconds: float = 30.0
+    llm_temperature: float = 0.1
 
     @property
     def decoded_postgres_password(self) -> str:
@@ -102,6 +110,21 @@ class Settings(BaseSettings):
             for host in self.frontend_allowed_hosts.split(",")
             if host.strip()
         ]
+
+    @property
+    def resolved_template_config_dir(self) -> Path:
+        candidate = self.template_config_dir
+        if candidate.is_absolute():
+            return candidate
+        return Path(__file__).resolve().parents[2] / candidate
+
+    @property
+    def llm_is_configured(self) -> bool:
+        return bool(
+            self.llm_enabled
+            and self.llm_model
+            and (self.llm_api_key or self.llm_base_url)
+        )
 
 
 @lru_cache

@@ -6,7 +6,6 @@ export const api = axios.create({
   baseURL: API_BASE_URL,
 })
 
-// Types
 export type CaseStatus =
   | 'draft'
   | 'collecting_input'
@@ -111,12 +110,13 @@ export interface Artifact {
 
 export interface NextQuestion {
   field_path: string
+  field_paths: string[]
+  field_labels: string[]
   question: string
   reason: string
   priority: number
 }
 
-// API Functions
 export const getTemplates = () => api.get<TemplateDefinition[]>('/templates').then((res) => res.data)
 export const createCase = (data: { template_id: string; template_version?: number }) =>
   api.post<CaseFile>('/cases', data).then((res) => res.data)

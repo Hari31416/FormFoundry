@@ -5,7 +5,7 @@ def create_case(client: TestClient) -> str:
     response = client.post(
         "/api/v1/cases",
         json={
-            "template_id": "household-assistance-intake",
+            "template_id": "fir-report-intake",
             "created_by": "conversation-test",
         },
     )
@@ -13,16 +13,19 @@ def create_case(client: TestClient) -> str:
     return response.json()["case_id"]
 
 
-def test_next_question_prioritizes_first_required_missing_field(
-    client: TestClient,
-) -> None:
+def test_next_question_groups_related_required_fields(client: TestClient) -> None:
     case_id = create_case(client)
 
     response = client.get(f"/api/v1/cases/{case_id}/conversation/next-question")
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["field_path"] == "applicant.full_name"
+    assert payload["field_path"] == "complainant.full_name"
+    assert payload["field_paths"] == [
+        "complainant.full_name",
+        "complainant.phone",
+        "complainant.address",
+    ]
     assert payload["priority"] == 1
 
 
@@ -34,15 +37,18 @@ def test_conversation_turn_creates_chat_evidence_and_advances_question(
     response = client.post(
         f"/api/v1/cases/{case_id}/conversation/turns",
         json={
-            "message": "Applicant name is Jamie Rivera.",
+            "message": (
+                "My name is Priya Sharma. Phone number is 9876543210. "
+                "I live at 14 Residency Road, Bengaluru."
+            ),
             "created_by": "conversation-test",
         },
     )
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["user_turn"]["related_field_path"] == "applicant.full_name"
-    assert payload["next_question"]["field_path"] != "applicant.full_name"
+    assert payload["user_turn"]["related_field_path"] == "complainant.full_name"
+    assert payload["next_question"]["field_path"] != "complainant.full_name"
 
     schema_response = client.get(f"/api/v1/cases/{case_id}/schema-state")
     assert schema_response.status_code == 200
@@ -50,7 +56,7 @@ def test_conversation_turn_creates_chat_evidence_and_advances_question(
         field_state["field_path"]: field_state
         for field_state in schema_response.json()["field_states"]
     }
-    assert by_path["applicant.full_name"]["status"] == "proposed"
+    assert by_path["complainant.full_name"]["status"] == "proposed"
 
 
 def test_conversation_stream_returns_sse_payload(client: TestClient) -> None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 from fastapi import HTTPException, UploadFile, status
@@ -52,7 +53,7 @@ async def create_chat_answer_evidence(
     *,
     text: str,
     created_by: str,
-    metadata: dict[str, str] | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> EvidenceIntakeResponse:
     await ensure_case_exists(session, case_id)
     storage = get_storage_service()
@@ -147,7 +148,7 @@ async def create_upload_evidence(
     upload: UploadFile,
     *,
     created_by: str,
-    metadata: dict[str, str] | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> EvidenceIntakeResponse:
     await ensure_case_exists(session, case_id)
     payload = await upload.read()

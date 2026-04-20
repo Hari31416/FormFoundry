@@ -1,4 +1,4 @@
 EXTRACTION_SYSTEM_PROMPT = """
-Extract candidate values for the household assistance intake template.
-Return only structured field proposals with explicit provenance.
+Extract structured field candidates for the active template definition.
+Return only JSON field proposals with explicit rationale and provenance.
 """.strip()

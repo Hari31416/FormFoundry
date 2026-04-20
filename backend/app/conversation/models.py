@@ -30,6 +30,8 @@ class ConversationTurnRequest(BaseModel):
 
 class NextQuestionPayload(BaseModel):
     field_path: str
+    field_paths: list[str] = Field(default_factory=list)
+    field_labels: list[str] = Field(default_factory=list)
     question: str
     reason: str
     priority: int

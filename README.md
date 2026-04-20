@@ -7,6 +7,7 @@ FormFoundry is a generalized form-filling and artifact-generation platform. It i
 - Backend: FastAPI, Pydantic settings, SQLAlchemy, Alembic, pytest, `uv`
 - Frontend: React, TypeScript, Vite, `pnpm`
 - Infra: Docker Compose, Postgres, Redis, Minio, Qdrant
+- LLM orchestration: `litellm`
 
 ## Current status
 
@@ -21,7 +22,8 @@ Phase 0 foundation is in place:
 
 Phase 1 template and case foundations are in progress:
 
-- versioned template registry with one seeded MVP template
+- versioned template registry seeded from JSON config files
+- current demo template: Indian FIR report intake
 - case creation from template selection
 - persisted empty field states and schema-state API
 
@@ -34,7 +36,7 @@ Phase 2 intake and evidence ingestion are in progress:
 Phase 3 extraction is in progress:
 
 - parsers for digital PDFs and image OCR fallback
-- heuristic candidate extraction with provenance
+- LLM-driven candidate extraction via `litellm`
 - job tracking and candidate listing endpoints
 
 Phase 4 resolution is in progress:
@@ -46,6 +48,7 @@ Phase 4 resolution is in progress:
 Phase 5 conversation orchestration is in progress:
 
 - template-driven next-question selection
+- grouped follow-up questions generated from related unresolved fields
 - conversation answers ingested as evidence
 - SSE question streaming for the chat experience
 
@@ -64,11 +67,12 @@ Phase 7 artifact generation is in progress:
 ## Quick start
 
 1. Copy `.env.example` to `.env`.
-2. Start infrastructure with `make up`.
-3. Install backend dependencies with `make backend-setup`.
-4. Install frontend dependencies with `make frontend-setup`.
-5. Run the backend with `make backend-start`.
-6. Run the frontend with `make frontend-start`.
+2. Configure `LLM_*` variables for the model provider you want to use through `litellm`.
+3. Start infrastructure with `make up`.
+4. Install backend dependencies with `make backend-setup`.
+5. Install frontend dependencies with `make frontend-setup`.
+6. Run the backend with `make backend-start`.
+7. Run the frontend with `make frontend-start`.
 
 ## Development
 
