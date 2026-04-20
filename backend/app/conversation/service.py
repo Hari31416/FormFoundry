@@ -284,6 +284,8 @@ async def submit_conversation_turn(
         metadata={
             "related_field_path": next_question.field_path if next_question else "",
             "related_field_paths": next_question.field_paths if next_question else [],
+            "related_question": next_question.question if next_question else "",
+            "related_field_labels": next_question.field_labels if next_question else [],
         },
     )
     refreshed_question = await get_next_question(session, case_id)

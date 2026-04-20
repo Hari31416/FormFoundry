@@ -235,6 +235,32 @@ async def extract_evidence_text(record: EvidenceRecord) -> str:
     settings = get_settings()
     storage = get_storage_service()
     if record.raw_text:
+        if record.source_type == EvidenceSourceType.CHAT_ANSWER:
+            metadata = record.evidence_metadata or {}
+            related_question = str(metadata.get("related_question") or "").strip()
+            related_labels = [
+                str(label).strip()
+                for label in (metadata.get("related_field_labels") or [])
+                if str(label).strip()
+            ]
+            context_lines: list[str] = []
+            if related_question:
+                context_lines.append(f"Question asked: {related_question}")
+            if related_labels:
+                context_lines.append(f"Relevant fields: {', '.join(related_labels)}")
+            context_lines.append(f"User answer: {record.raw_text.strip()}")
+            contextualized = "\n".join(context_lines).strip()
+            logger.info(
+                "extraction.evidence.chat_answer.contextualized",
+                extra={
+                    "case_id": record.case_id,
+                    "evidence_id": record.evidence_id,
+                    "source_type": record.source_type.value,
+                    "raw_chars": len(record.raw_text),
+                    "contextualized_chars": len(contextualized),
+                },
+            )
+            return contextualized
         logger.info(
             "extraction.evidence.raw_text.used",
             extra={

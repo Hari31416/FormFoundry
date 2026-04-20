@@ -146,6 +146,74 @@ async def fake_generate_json(*, system_prompt: str, user_prompt: str) -> dict:
                 }
             )
 
+        if (
+            "relevant fields: accused known to complainant" in lowered_prompt
+            and "user answer: yes" in lowered_prompt
+        ) or (
+            "question asked: is the accused known to the complainant?" in lowered_prompt
+            and "user answer: yes" in lowered_prompt
+        ):
+            candidates.append(
+                {
+                    "field_path": "accused.known_to_complainant",
+                    "candidate_value": True,
+                    "confidence": 0.95,
+                    "rationale": "Mapped affirmative answer to accused-known boolean.",
+                    "source_quote": "user answer: yes",
+                }
+            )
+
+        if (
+            "relevant fields: accused known to complainant" in lowered_prompt
+            and "user answer: no" in lowered_prompt
+        ) or (
+            "question asked: is the accused known to the complainant?" in lowered_prompt
+            and "user answer: no" in lowered_prompt
+        ):
+            candidates.append(
+                {
+                    "field_path": "accused.known_to_complainant",
+                    "candidate_value": False,
+                    "confidence": 0.95,
+                    "rationale": "Mapped negative answer to accused-known boolean.",
+                    "source_quote": "user answer: no",
+                }
+            )
+
+        if (
+            "relevant fields: witnesses present" in lowered_prompt
+            and "user answer: yes" in lowered_prompt
+        ) or (
+            "question asked: were any witnesses present?" in lowered_prompt
+            and "user answer: yes" in lowered_prompt
+        ):
+            candidates.append(
+                {
+                    "field_path": "witnesses.present",
+                    "candidate_value": True,
+                    "confidence": 0.95,
+                    "rationale": "Mapped affirmative answer to witnesses-present boolean.",
+                    "source_quote": "user answer: yes",
+                }
+            )
+
+        if (
+            "relevant fields: witnesses present" in lowered_prompt
+            and "user answer: no" in lowered_prompt
+        ) or (
+            "question asked: were any witnesses present?" in lowered_prompt
+            and "user answer: no" in lowered_prompt
+        ):
+            candidates.append(
+                {
+                    "field_path": "witnesses.present",
+                    "candidate_value": False,
+                    "confidence": 0.95,
+                    "rationale": "Mapped negative answer to witnesses-present boolean.",
+                    "source_quote": "user answer: no",
+                }
+            )
+
         return {"candidates": candidates}
 
     labels = re.findall(r"- ([^:]+):", user_prompt)
