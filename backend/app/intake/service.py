@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cases.models import CaseFileRecord
 from app.core.config import get_settings
+from app.extraction.parsers.pdf import PdfValidationError, validate_pdf_page_limit
 from app.extraction.service import run_extraction_job
 from app.intake.models import (
     EvidenceIntakeResponse,
@@ -152,12 +153,41 @@ async def create_upload_evidence(
 ) -> EvidenceIntakeResponse:
     await ensure_case_exists(session, case_id)
     payload = await upload.read()
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Uploaded file is empty.",
+        )
+
     content_type = upload.content_type or "application/octet-stream"
     suffix = Path(upload.filename or "upload.bin").suffix or ".bin"
+    settings = get_settings()
+    is_pdf = content_type == "application/pdf" or suffix.lower() == ".pdf"
+    is_image = content_type.startswith("image/")
+    if not is_pdf and not is_image:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only image and PDF uploads are supported.",
+        )
+
+    parsed_payload: dict[str, Any] = {
+        "filename": upload.filename,
+        "size_bytes": len(payload),
+    }
+    if is_pdf:
+        try:
+            page_count = validate_pdf_page_limit(
+                payload, max_pages=settings.pdf_ocr_max_pages
+            )
+        except PdfValidationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=str(exc),
+            ) from exc
+        parsed_payload["page_count"] = page_count
+
     source_type = (
-        EvidenceSourceType.PDF_UPLOAD
-        if content_type == "application/pdf"
-        else EvidenceSourceType.IMAGE_UPLOAD
+        EvidenceSourceType.PDF_UPLOAD if is_pdf else EvidenceSourceType.IMAGE_UPLOAD
     )
     storage = get_storage_service()
     object_key = (
@@ -175,7 +205,7 @@ async def create_upload_evidence(
         source_subtype=upload.filename or "upload",
         storage_uri=stored.storage_uri,
         raw_text=None,
-        parsed_payload={"filename": upload.filename, "size_bytes": stored.size_bytes},
+        parsed_payload={**parsed_payload, "size_bytes": stored.size_bytes},
         evidence_metadata={**(metadata or {}), "content_type": stored.content_type},
         source_refs=[],
         created_by=created_by,

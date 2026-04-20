@@ -105,3 +105,39 @@ async def test_generate_json_logs_invalid_json_response(
     ]
     assert invalid_logs
     assert invalid_logs[0].response_chars > 0
+
+
+@pytest.mark.asyncio
+async def test_generate_vision_text_sends_image_payload(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    async def fake_completion(**kwargs: object) -> SimpleNamespace:
+        captured.update(kwargs)
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="Detected text"))]
+        )
+
+    monkeypatch.setenv("LLM_ENABLED", "true")
+    monkeypatch.setenv("LLM_API_KEY", "test-api-key")
+    monkeypatch.setenv("LLM_MODEL", "test-model")
+    monkeypatch.setenv("VISION_MODEL", "test-vision-model")
+    monkeypatch.setattr(llm_service, "acompletion", fake_completion)
+
+    payload = await llm_service.generate_vision_text(
+        system_prompt="ocr system",
+        user_prompt="extract text",
+        media=[{"content_type": "image/png", "payload": b"abc"}],
+    )
+
+    assert payload == "Detected text"
+    assert captured["model"] == "test-vision-model"
+    messages = captured["messages"]
+    assert isinstance(messages, list)
+    user_message = messages[1]
+    assert isinstance(user_message, dict)
+    content = user_message["content"]
+    assert isinstance(content, list)
+    assert content[1]["type"] == "image_url"
+    assert content[1]["image_url"]["url"].startswith("data:image/png;base64,")

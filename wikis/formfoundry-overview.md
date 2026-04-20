@@ -70,8 +70,13 @@ FormFoundry is a generalized form-filling and artifact-generation platform. It t
 - structured backend logs now include contextual metadata under `context` for easier tracing in JSON logs
 - extraction pipeline logs cover job lifecycle, evidence parsing, chunking, per-chunk LLM proposal generation, and failure paths
 - LLM integration logs now capture call start/end, duration, prompt sizes, token usage (when available), and parse errors
+- uploaded images now go through vision-model OCR before candidate extraction
+- uploaded PDFs are rasterized page-by-page for vision OCR, and intake rejects PDFs over 10 pages
+- OCR can use dedicated `VISION_MODEL`, `VISION_API_KEY`, and `VISION_BASE_URL` settings, falling back to `LLM_*` when omitted
 - added reproducible FIR demo evidence PDF generator at `backend/scripts/generate_demo_pdfs.py`
 - generated demo PDFs for MVP walkthroughs at:
   - `backend/assets/pdfs/demo/fir_demo_theft_bengaluru.pdf`
   - `backend/assets/pdfs/demo/fir_demo_cyber_fraud_mumbai.pdf`
   - `backend/assets/pdfs/demo/fir_demo_harassment_hyderabad.pdf`
+- added `LIST /cases` endpoint in backend to support case history and filtering by template
+- implemented "Intake Control Center" in frontend showing recent cases for each template to allow resuming previous work

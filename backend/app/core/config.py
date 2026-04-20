@@ -57,8 +57,12 @@ class Settings(BaseSettings):
     llm_base_url: str | None = None
     llm_api_key: str | None = None
     llm_model: str = "gpt-4.1-mini"
+    vision_model: str | None = None
+    vision_base_url: str | None = None
+    vision_api_key: str | None = None
     llm_timeout_seconds: float = 30.0
     llm_temperature: float = 0.1
+    pdf_ocr_max_pages: int = 10
 
     @property
     def decoded_postgres_password(self) -> str:
@@ -124,6 +128,26 @@ class Settings(BaseSettings):
             self.llm_enabled
             and self.llm_model
             and (self.llm_api_key or self.llm_base_url)
+        )
+
+    @property
+    def resolved_vision_model(self) -> str:
+        return self.vision_model or self.llm_model
+
+    @property
+    def resolved_vision_api_key(self) -> str | None:
+        return self.vision_api_key or self.llm_api_key
+
+    @property
+    def resolved_vision_base_url(self) -> str | None:
+        return self.vision_base_url or self.llm_base_url
+
+    @property
+    def vision_is_configured(self) -> bool:
+        return bool(
+            self.llm_enabled
+            and self.resolved_vision_model
+            and (self.resolved_vision_api_key or self.resolved_vision_base_url)
         )
 
 

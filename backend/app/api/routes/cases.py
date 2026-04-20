@@ -5,13 +5,35 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.cases.models import CaseCreateRequest, CaseDetail, SchemaStateResponse
-from app.cases.service import create_case, get_case_detail, get_filtered_schema_state
+from app.cases.models import (
+    CaseCreateRequest,
+    CaseDetail,
+    CaseFilePayload,
+    SchemaStateResponse,
+)
+from app.cases.service import (
+    create_case,
+    get_case_detail,
+    get_filtered_schema_state,
+    list_cases,
+)
 from app.db import get_db_session
 
 router = APIRouter()
 DBSession = Annotated[AsyncSession, Depends(get_db_session)]
 StatusFilter = Annotated[list[str] | None, Query(alias="status")]
+
+
+@router.get("", response_model=list[CaseFilePayload])
+async def list_cases_route(
+    session: DBSession,
+    template_id: str | None = Query(None, alias="template_id"),
+    limit: int = Query(100, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+) -> list[CaseFilePayload]:
+    return await list_cases(
+        session, template_id=template_id, limit=limit, offset=offset
+    )
 
 
 @router.post("", response_model=CaseDetail, status_code=status.HTTP_201_CREATED)

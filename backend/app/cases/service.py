@@ -148,6 +148,21 @@ async def get_case_detail(session: AsyncSession, case_id: str) -> CaseDetail:
     )
 
 
+async def list_cases(
+    session: AsyncSession,
+    template_id: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> list[CaseFilePayload]:
+    stmt = select(CaseFileRecord).order_by(CaseFileRecord.created_at.desc())
+    if template_id:
+        stmt = stmt.where(CaseFileRecord.template_id == template_id)
+
+    stmt = stmt.limit(limit).offset(offset)
+    records = (await session.execute(stmt)).scalars().all()
+    return [serialize_case(record) for record in records]
+
+
 async def get_schema_state(session: AsyncSession, case_id: str) -> SchemaStateResponse:
     return await get_filtered_schema_state(session, case_id, statuses=None)
 

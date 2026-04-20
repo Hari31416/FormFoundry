@@ -14,11 +14,12 @@ from app.core.config import get_settings
 from app.extraction.contracts import FieldCandidate
 from app.extraction.models import FieldCandidateRecord
 from app.extraction.ocr.adapter import extract_text_from_image_bytes
-from app.extraction.parsers.pdf import extract_text_from_pdf_bytes
+from app.extraction.parsers.pdf import render_pdf_pages_to_png
 from app.intake.models import EvidenceRecord, EvidenceSourceType
 from app.jobs.models import JobRecord, JobStatus
 from app.llm import generate_json
 from app.resolution.service import resolve_case_fields
+from app.storage.minio import get_storage_service
 from app.templates.models import TemplateDefinition, TemplateField
 from app.templates.service import get_template_definition
 
@@ -232,6 +233,7 @@ async def extract_candidates_with_llm(
 
 async def extract_evidence_text(record: EvidenceRecord) -> str:
     settings = get_settings()
+    storage = get_storage_service()
     if record.raw_text:
         logger.info(
             "extraction.evidence.raw_text.used",
@@ -244,35 +246,52 @@ async def extract_evidence_text(record: EvidenceRecord) -> str:
         )
         return record.raw_text
     if record.source_type == EvidenceSourceType.PDF_UPLOAD:
-        file_path = record.storage_uri.replace("local://", "")
-        target = settings.local_storage_path / file_path
-        if target.exists():
-            extracted = extract_text_from_pdf_bytes(target.read_bytes())
+        try:
+            payload = await storage.read_bytes(record.storage_uri)
+            page_images = render_pdf_pages_to_png(
+                payload, max_pages=settings.pdf_ocr_max_pages
+            )
+            page_fragments: list[str] = []
+            for page_index, page_image in enumerate(page_images, start=1):
+                page_text = await extract_text_from_image_bytes(
+                    page_image,
+                    content_type="image/png",
+                    context_label=f"PDF page {page_index}",
+                )
+                if page_text:
+                    page_fragments.append(f"[Page {page_index}]\n{page_text}")
+            extracted = "\n\n".join(page_fragments)
             logger.info(
                 "extraction.evidence.pdf.completed",
                 extra={
                     "case_id": record.case_id,
                     "evidence_id": record.evidence_id,
                     "storage_uri": record.storage_uri,
+                    "page_count": len(page_images),
                     "extracted_chars": len(extracted),
                 },
             )
             return extracted
-        logger.warning(
-            "extraction.evidence.file_missing",
-            extra={
-                "case_id": record.case_id,
-                "evidence_id": record.evidence_id,
-                "source_type": record.source_type.value,
-                "storage_uri": record.storage_uri,
-            },
-        )
-        return ""
+        except FileNotFoundError:
+            logger.warning(
+                "extraction.evidence.file_missing",
+                extra={
+                    "case_id": record.case_id,
+                    "evidence_id": record.evidence_id,
+                    "source_type": record.source_type.value,
+                    "storage_uri": record.storage_uri,
+                },
+            )
+            return ""
     if record.source_type == EvidenceSourceType.IMAGE_UPLOAD:
-        file_path = record.storage_uri.replace("local://", "")
-        target = settings.local_storage_path / file_path
-        if target.exists():
-            extracted = extract_text_from_image_bytes(target.read_bytes())
+        try:
+            extracted = await extract_text_from_image_bytes(
+                await storage.read_bytes(record.storage_uri),
+                content_type=(
+                    str((record.evidence_metadata or {}).get("content_type"))
+                    or "application/octet-stream"
+                ),
+            )
             logger.info(
                 "extraction.evidence.image.completed",
                 extra={
@@ -283,16 +302,17 @@ async def extract_evidence_text(record: EvidenceRecord) -> str:
                 },
             )
             return extracted
-        logger.warning(
-            "extraction.evidence.file_missing",
-            extra={
-                "case_id": record.case_id,
-                "evidence_id": record.evidence_id,
-                "source_type": record.source_type.value,
-                "storage_uri": record.storage_uri,
-            },
-        )
-        return ""
+        except FileNotFoundError:
+            logger.warning(
+                "extraction.evidence.file_missing",
+                extra={
+                    "case_id": record.case_id,
+                    "evidence_id": record.evidence_id,
+                    "source_type": record.source_type.value,
+                    "storage_uri": record.storage_uri,
+                },
+            )
+            return ""
     logger.warning(
         "extraction.evidence.unsupported_source",
         extra={

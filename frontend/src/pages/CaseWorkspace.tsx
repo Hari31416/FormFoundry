@@ -42,6 +42,7 @@ import {
   getNextQuestion,
   getValidationIssues,
   submitTurn,
+  uploadFileEvidence,
   Evidence,
 } from '@/lib/api'
 import {
@@ -109,6 +110,7 @@ export default function CaseWorkspace() {
   const [activeTab, setActiveTab] = useState('review')
   const [isEvidenceModalOpen, setIsEvidenceModalOpen] = useState(false)
   const [chatInput, setChatInput] = useState('')
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   const { data: caseDetail, isLoading: isLoadingCase } = useQuery({
     queryKey: ['case', caseId],
@@ -181,6 +183,25 @@ export default function CaseWorkspace() {
       setIsEvidenceModalOpen(false)
       const el = document.getElementById('evidence-text') as HTMLTextAreaElement
       if (el) el.value = ''
+    },
+  })
+
+  const uploadFileMutation = useMutation({
+    mutationFn: (file: File) => uploadFileEvidence(caseId!, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['evidence', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['case', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['validation', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['next-question', caseId] })
+      setUploadError(null)
+      setIsEvidenceModalOpen(false)
+      const input = document.getElementById('evidence-file') as HTMLInputElement | null
+      if (input) input.value = ''
+    },
+    onError: (error: any) => {
+      const detail =
+        error?.response?.data?.detail || 'Upload failed. Only images and PDFs are supported.'
+      setUploadError(String(detail))
     },
   })
 
@@ -427,15 +448,29 @@ export default function CaseWorkspace() {
                     {evidence?.map((ev) => (
                       <Card key={ev.evidence_id} className="border-slate-200/60 shadow-sm overflow-hidden bg-white hover:border-blue-200 transition-colors group">
                         <CardHeader className="p-4 bg-slate-50/50 border-b border-slate-100 flex-row items-center justify-between space-y-0">
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center space-x-2 min-w-0">
                             <div className="p-1 px-1.5 bg-blue-50 text-blue-600 rounded text-[9px] font-black uppercase tracking-tighter">
                               {ev.source_type}
                             </div>
+                            {ev.source_subtype && (
+                              <span className="max-w-[220px] truncate text-[10px] font-bold text-slate-500">
+                                {ev.source_subtype}
+                              </span>
+                            )}
                             <span className="text-[10px] font-bold text-slate-400 tabular-nums">{new Date(ev.created_at).toLocaleString()}</span>
                           </div>
                         </CardHeader>
                         <CardContent className="p-5">
-                          <p className="text-[13px] text-slate-600 leading-relaxed font-medium italic">"{ev.raw_text}"</p>
+                          <p className="text-[13px] text-slate-600 leading-relaxed font-medium italic">
+                            "
+                            {ev.raw_text || ev.parsed_payload?.extracted_text || 'Extraction pending or no text detected yet.'}
+                            "
+                          </p>
+                          {typeof ev.parsed_payload?.page_count === 'number' && (
+                            <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                              {ev.parsed_payload.page_count} PDF page{ev.parsed_payload.page_count === 1 ? '' : 's'}
+                            </p>
+                          )}
                         </CardContent>
                       </Card>
                     ))}
@@ -465,8 +500,52 @@ export default function CaseWorkspace() {
                             placeholder="Paste notes, transcripts, or complaint details here..."
                             className="w-full h-48 p-5 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:outline-none resize-none text-slate-700 placeholder:text-slate-400 transition-all"
                           />
+                          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <p className="text-[11px] font-black uppercase tracking-widest text-slate-700">Upload image or PDF</p>
+                                <p className="mt-1 text-[11px] text-slate-500">
+                                  Vision OCR will read the file and extract key details. PDFs are limited to 10 pages.
+                                </p>
+                              </div>
+                            </div>
+                            <input
+                              id="evidence-file"
+                              type="file"
+                              accept="image/*,.pdf,application/pdf"
+                              className="mt-4 block w-full text-sm text-slate-600 file:mr-4 file:rounded-xl file:border-0 file:bg-slate-900 file:px-4 file:py-2 file:text-sm file:font-bold file:text-white hover:file:bg-blue-600"
+                              onChange={(event) => {
+                                setUploadError(null)
+                                const file = event.target.files?.[0]
+                                if (file) {
+                                  uploadFileMutation.mutate(file)
+                                }
+                              }}
+                              disabled={uploadFileMutation.isPending}
+                            />
+                            {uploadFileMutation.isPending && (
+                              <div className="mt-3 flex items-center gap-2 text-[11px] font-bold text-blue-600">
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                Uploading and running OCR...
+                              </div>
+                            )}
+                            {uploadError && (
+                              <div className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[11px] font-semibold text-red-700">
+                                {uploadError}
+                              </div>
+                            )}
+                          </div>
                           <div className="flex justify-end space-x-3 mt-8">
-                            <Button variant="ghost" className="rounded-xl font-bold text-slate-500 hover:bg-slate-100" onClick={() => setIsEvidenceModalOpen(false)}>Cancel</Button>
+                            <Button
+                              variant="ghost"
+                              className="rounded-xl font-bold text-slate-500 hover:bg-slate-100"
+                              onClick={() => {
+                                setUploadError(null)
+                                setIsEvidenceModalOpen(false)
+                              }}
+                            >
+                              Cancel
+                            </Button>
                             <Button
                               className="bg-slate-900 hover:bg-blue-600 text-white rounded-xl font-bold px-6 shadow-xl shadow-slate-900/10"
                               onClick={() => {
@@ -475,7 +554,7 @@ export default function CaseWorkspace() {
                                   addTextMutation.mutate(el.value)
                                 }
                               }}
-                              disabled={addTextMutation.isPending}
+                              disabled={addTextMutation.isPending || uploadFileMutation.isPending}
                             >
                               {addTextMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm Ingestion'}
                             </Button>

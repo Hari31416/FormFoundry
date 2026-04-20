@@ -80,6 +80,7 @@ export interface CaseFile {
   created_by: string
   current_schema_state: Record<string, any>
   review_status: string
+  metadata: Record<string, any>
   created_at: string
   updated_at: string
 }
@@ -93,8 +94,13 @@ export interface Evidence {
   evidence_id: string
   case_id: string
   source_type: string
+  source_subtype: string
   storage_uri: string
   raw_text?: string
+  parsed_payload: Record<string, any>
+  metadata: Record<string, any>
+  source_refs: Array<Record<string, any>>
+  created_by: string
   created_at: string
 }
 
@@ -123,6 +129,8 @@ export interface NextQuestion {
 }
 
 export const getTemplates = () => api.get<TemplateDefinition[]>('/templates').then((res) => res.data)
+export const getCases = (params?: { template_id?: string; limit?: number; offset?: number }) =>
+  api.get<CaseFile[]>('/cases', { params }).then((res) => res.data)
 export const createCase = (data: { template_id: string; template_version?: number }) =>
   api.post<CaseFile>('/cases', data).then((res) => res.data)
 export const getCase = (id: string) => api.get<CaseDetail>(`/cases/${id}`).then((res) => res.data)

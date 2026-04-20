@@ -35,7 +35,7 @@ Phase 2 intake and evidence ingestion are in progress:
 
 Phase 3 extraction is in progress:
 
-- parsers for digital PDFs and image OCR fallback
+- vision OCR for uploaded images and PDFs, with PDFs limited to 10 pages
 - LLM-driven candidate extraction via `litellm`
 - job tracking and candidate listing endpoints
 
@@ -67,7 +67,7 @@ Phase 7 artifact generation is in progress:
 ## Quick start
 
 1. Copy `.env.example` to `.env`.
-2. Configure `LLM_*` variables for the model provider you want to use through `litellm`.
+2. Configure `LLM_*` for text extraction and `VISION_*` for OCR through `litellm`.
 3. Start infrastructure with `make up`.
 4. Install backend dependencies with `make backend-setup`.
 5. Install frontend dependencies with `make frontend-setup`.

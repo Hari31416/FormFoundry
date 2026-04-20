@@ -22,6 +22,9 @@ class StorageService:
     ) -> StoredObject:
         raise NotImplementedError
 
+    async def read_bytes(self, storage_uri: str) -> bytes:
+        raise NotImplementedError
+
     async def get_download_url(self, storage_uri: str) -> str:
         raise NotImplementedError
 
@@ -44,6 +47,12 @@ class LocalStorageService(StorageService):
 
     async def get_download_url(self, storage_uri: str) -> str:
         return storage_uri
+
+    async def read_bytes(self, storage_uri: str) -> bytes:
+        if not storage_uri.startswith("local://"):
+            raise FileNotFoundError(f"Unsupported local storage URI: {storage_uri}")
+        relative_path = storage_uri.replace("local://", "", 1)
+        return (self.base_path / relative_path).read_bytes()
 
 
 class MinioStorageService(StorageService):
@@ -84,6 +93,19 @@ class MinioStorageService(StorageService):
             bucket_name=bucket,
             object_name=key,
         )
+
+    async def read_bytes(self, storage_uri: str) -> bytes:
+        if not storage_uri.startswith("s3://"):
+            raise FileNotFoundError(f"Unsupported s3 storage URI: {storage_uri}")
+
+        path_part = storage_uri.replace("s3://", "", 1)
+        bucket, key = path_part.split("/", 1)
+        response = self.client.get_object(bucket_name=bucket, object_name=key)
+        try:
+            return response.read()
+        finally:
+            response.close()
+            response.release_conn()
 
 
 def get_storage_service() -> StorageService:

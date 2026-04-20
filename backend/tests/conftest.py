@@ -156,6 +156,21 @@ async def fake_generate_json(*, system_prompt: str, user_prompt: str) -> dict:
     return {"question": "Please share the remaining FIR details."}
 
 
+async def fake_extract_text_from_image_bytes(
+    payload: bytes,
+    *,
+    content_type: str,
+    context_label: str = "uploaded image",
+) -> str:
+    try:
+        return payload.decode("utf-8")
+    except UnicodeDecodeError:
+        return (
+            f"OCR extracted text from {context_label}. "
+            "Complainant name is Priya Sharma and phone number is 9876543210."
+        )
+
+
 @pytest.fixture()
 def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     database_path = tmp_path / "formfoundry-test.db"
@@ -170,6 +185,11 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
     monkeypatch.setattr(conversation_service, "generate_json", fake_generate_json)
     monkeypatch.setattr(extraction_service, "generate_json", fake_generate_json)
+    monkeypatch.setattr(
+        extraction_service,
+        "extract_text_from_image_bytes",
+        fake_extract_text_from_image_bytes,
+    )
 
     with TestClient(create_app()) as test_client:
         yield test_client
