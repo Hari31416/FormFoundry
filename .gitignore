@@ -17,3 +17,10 @@ frontend/vite.config.js
 .run/
 data/
 .storage/
+
+node_modules/
+dist/
+*.log
+*.env
+*.pyc
+*.pyo
