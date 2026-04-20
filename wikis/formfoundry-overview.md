@@ -64,3 +64,14 @@ FormFoundry is a generalized form-filling and artifact-generation platform. It t
 - generated fillable PDF artifact from approved schema data
 - artifact persistence and download surface
 - renderer metadata captured with each artifact record
+
+## April 20, 2026 updates
+
+- structured backend logs now include contextual metadata under `context` for easier tracing in JSON logs
+- extraction pipeline logs cover job lifecycle, evidence parsing, chunking, per-chunk LLM proposal generation, and failure paths
+- LLM integration logs now capture call start/end, duration, prompt sizes, token usage (when available), and parse errors
+- added reproducible FIR demo evidence PDF generator at `backend/scripts/generate_demo_pdfs.py`
+- generated demo PDFs for MVP walkthroughs at:
+  - `backend/assets/pdfs/demo/fir_demo_theft_bengaluru.pdf`
+  - `backend/assets/pdfs/demo/fir_demo_cyber_fraud_mumbai.pdf`
+  - `backend/assets/pdfs/demo/fir_demo_harassment_hyderabad.pdf`

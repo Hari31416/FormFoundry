@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
+from time import perf_counter
 from typing import Any
 
 from sqlalchemy import select
@@ -19,6 +21,8 @@ from app.llm import generate_json
 from app.resolution.service import resolve_case_fields
 from app.templates.models import TemplateDefinition, TemplateField
 from app.templates.service import get_template_definition
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -130,7 +134,15 @@ async def extract_candidates_with_llm(
     template: TemplateDefinition,
     text: str,
 ) -> list[CandidateProposal]:
+    started_at = perf_counter()
     field_lookup = {field.path: field for field in template.template_schema}
+    log_context = {
+        "template_id": template.template_id,
+        "template_version": template.template_version,
+        "field_count": len(template.template_schema),
+        "source_text_chars": len(text),
+    }
+    logger.info("extraction.llm_candidates.started", extra=log_context)
     response = await generate_json(
         system_prompt=(
             "You extract structured form field candidates from evidence text. "
@@ -146,23 +158,46 @@ async def extract_candidates_with_llm(
         ),
     )
     if response is None:
+        logger.error(
+            "extraction.llm_candidates.failed",
+            extra={
+                **log_context,
+                "reason": "llm_response_missing",
+                "duration_ms": round((perf_counter() - started_at) * 1000, 2),
+            },
+        )
         raise RuntimeError("LLM extraction did not return a valid response.")
 
     raw_candidates = response.get("candidates")
     if not isinstance(raw_candidates, list):
+        logger.error(
+            "extraction.llm_candidates.failed",
+            extra={
+                **log_context,
+                "reason": "candidates_list_missing",
+                "duration_ms": round((perf_counter() - started_at) * 1000, 2),
+                "response_keys": sorted(response.keys()),
+            },
+        )
         raise RuntimeError("LLM extraction response is missing the candidates list.")
 
     proposals: list[CandidateProposal] = []
+    skipped_non_object = 0
+    skipped_unknown_field = 0
+    skipped_uncoercible_value = 0
     for item in raw_candidates:
         if not isinstance(item, dict):
+            skipped_non_object += 1
             continue
         field_path = str(item.get("field_path", "")).strip()
         field = field_lookup.get(field_path)
         if field is None:
+            skipped_unknown_field += 1
             continue
 
         coerced = coerce_candidate_value(field, item.get("candidate_value"))
         if coerced is None:
+            skipped_uncoercible_value += 1
             continue
 
         proposals.append(
@@ -179,25 +214,93 @@ async def extract_candidates_with_llm(
                 ),
             )
         )
+
+    logger.info(
+        "extraction.llm_candidates.completed",
+        extra={
+            **log_context,
+            "duration_ms": round((perf_counter() - started_at) * 1000, 2),
+            "raw_candidate_count": len(raw_candidates),
+            "proposal_count": len(proposals),
+            "skipped_non_object": skipped_non_object,
+            "skipped_unknown_field": skipped_unknown_field,
+            "skipped_uncoercible_value": skipped_uncoercible_value,
+        },
+    )
     return proposals
 
 
 async def extract_evidence_text(record: EvidenceRecord) -> str:
     settings = get_settings()
     if record.raw_text:
+        logger.info(
+            "extraction.evidence.raw_text.used",
+            extra={
+                "case_id": record.case_id,
+                "evidence_id": record.evidence_id,
+                "source_type": record.source_type.value,
+                "extracted_chars": len(record.raw_text),
+            },
+        )
         return record.raw_text
     if record.source_type == EvidenceSourceType.PDF_UPLOAD:
         file_path = record.storage_uri.replace("local://", "")
         target = settings.local_storage_path / file_path
         if target.exists():
-            return extract_text_from_pdf_bytes(target.read_bytes())
+            extracted = extract_text_from_pdf_bytes(target.read_bytes())
+            logger.info(
+                "extraction.evidence.pdf.completed",
+                extra={
+                    "case_id": record.case_id,
+                    "evidence_id": record.evidence_id,
+                    "storage_uri": record.storage_uri,
+                    "extracted_chars": len(extracted),
+                },
+            )
+            return extracted
+        logger.warning(
+            "extraction.evidence.file_missing",
+            extra={
+                "case_id": record.case_id,
+                "evidence_id": record.evidence_id,
+                "source_type": record.source_type.value,
+                "storage_uri": record.storage_uri,
+            },
+        )
         return ""
     if record.source_type == EvidenceSourceType.IMAGE_UPLOAD:
         file_path = record.storage_uri.replace("local://", "")
         target = settings.local_storage_path / file_path
         if target.exists():
-            return extract_text_from_image_bytes(target.read_bytes())
+            extracted = extract_text_from_image_bytes(target.read_bytes())
+            logger.info(
+                "extraction.evidence.image.completed",
+                extra={
+                    "case_id": record.case_id,
+                    "evidence_id": record.evidence_id,
+                    "storage_uri": record.storage_uri,
+                    "extracted_chars": len(extracted),
+                },
+            )
+            return extracted
+        logger.warning(
+            "extraction.evidence.file_missing",
+            extra={
+                "case_id": record.case_id,
+                "evidence_id": record.evidence_id,
+                "source_type": record.source_type.value,
+                "storage_uri": record.storage_uri,
+            },
+        )
         return ""
+    logger.warning(
+        "extraction.evidence.unsupported_source",
+        extra={
+            "case_id": record.case_id,
+            "evidence_id": record.evidence_id,
+            "source_type": record.source_type.value,
+        },
+    )
     return ""
 
 
@@ -223,8 +326,21 @@ async def run_extraction_job(
     job_id: str,
     evidence_ids: list[str] | None = None,
 ) -> list[FieldCandidate]:
+    job_started_at = perf_counter()
+    logger.info(
+        "extraction.job.started",
+        extra={
+            "case_id": case_id,
+            "job_id": job_id,
+            "evidence_filter_count": len(evidence_ids or []),
+        },
+    )
     job_record = await session.get(JobRecord, job_id)
     if job_record is None:
+        logger.warning(
+            "extraction.job.job_missing",
+            extra={"case_id": case_id, "job_id": job_id},
+        )
         return []
     job_record.status = JobStatus.RUNNING
     job_record.error_summary = None
@@ -232,6 +348,10 @@ async def run_extraction_job(
 
     case_record = await session.get(CaseFileRecord, case_id)
     if case_record is None:
+        logger.warning(
+            "extraction.job.case_missing",
+            extra={"case_id": case_id, "job_id": job_id},
+        )
         job_record.status = JobStatus.FAILED
         job_record.error_summary = "Case not found."
         await session.commit()
@@ -241,6 +361,15 @@ async def run_extraction_job(
         session, case_record.template_id, case_record.template_version
     )
     if template is None:
+        logger.warning(
+            "extraction.job.template_missing",
+            extra={
+                "case_id": case_id,
+                "job_id": job_id,
+                "template_id": case_record.template_id,
+                "template_version": case_record.template_version,
+            },
+        )
         job_record.status = JobStatus.FAILED
         job_record.error_summary = "Template definition is missing for this case."
         await session.commit()
@@ -250,19 +379,59 @@ async def run_extraction_job(
     if evidence_ids:
         query = query.where(EvidenceRecord.evidence_id.in_(evidence_ids))
     evidence_records = (await session.execute(query)).scalars().all()
+    logger.info(
+        "extraction.job.evidence_selected",
+        extra={
+            "case_id": case_id,
+            "job_id": job_id,
+            "evidence_count": len(evidence_records),
+            "template_id": template.template_id,
+            "template_version": template.template_version,
+        },
+    )
 
     candidates: list[FieldCandidateRecord] = []
     try:
         for record in evidence_records:
+            evidence_started_at = perf_counter()
             text = await extract_evidence_text(record)
             chunks = chunk_text(text)
             record.parsed_payload = {
-                **record.parsed_payload,
+                **(record.parsed_payload or {}),
                 "chunk_count": len(chunks),
                 "extracted_text": text,
             }
+            logger.info(
+                "extraction.evidence.chunked",
+                extra={
+                    "case_id": case_id,
+                    "job_id": job_id,
+                    "evidence_id": record.evidence_id,
+                    "source_type": record.source_type.value,
+                    "extracted_chars": len(text),
+                    "chunk_count": len(chunks),
+                    "duration_ms": round(
+                        (perf_counter() - evidence_started_at) * 1000, 2
+                    ),
+                },
+            )
             for chunk_index, chunk in enumerate(chunks):
+                chunk_started_at = perf_counter()
                 proposals = await extract_candidates_with_llm(template, chunk)
+                logger.info(
+                    "extraction.chunk.completed",
+                    extra={
+                        "case_id": case_id,
+                        "job_id": job_id,
+                        "evidence_id": record.evidence_id,
+                        "chunk_index": chunk_index,
+                        "chunk_chars": len(chunk),
+                        "proposal_count": len(proposals),
+                        "duration_ms": round(
+                            (perf_counter() - chunk_started_at) * 1000, 2
+                        ),
+                    },
+                )
                 for proposal in proposals:
                     source_ref: dict[str, Any] = {"chunk_index": chunk_index}
                     if proposal.source_quote:
@@ -280,8 +449,23 @@ async def run_extraction_job(
                         )
                     )
     except RuntimeError as exc:
+        logger.exception(
+            "extraction.job.failed_runtime",
+            extra={"case_id": case_id, "job_id": job_id, "error_summary": str(exc)},
+        )
         job_record.status = JobStatus.FAILED
         job_record.error_summary = str(exc)
+        await session.commit()
+        return []
+    except Exception as exc:
+        logger.exception(
+            "extraction.job.failed_unexpected",
+            extra={"case_id": case_id, "job_id": job_id},
+        )
+        job_record.status = JobStatus.FAILED
+        job_record.error_summary = (
+            f"Unexpected extraction error: {type(exc).__name__}: {exc}"
+        )
         await session.commit()
         return []
 
@@ -290,6 +474,15 @@ async def run_extraction_job(
     await resolve_case_fields(session, case_id)
     job_record.status = JobStatus.COMPLETED
     await session.commit()
+    logger.info(
+        "extraction.job.completed",
+        extra={
+            "case_id": case_id,
+            "job_id": job_id,
+            "candidate_count": len(candidates),
+            "duration_ms": round((perf_counter() - job_started_at) * 1000, 2),
+        },
+    )
     return [serialize_candidate(record) for record in candidates]
 
 

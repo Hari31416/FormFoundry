@@ -38,6 +38,11 @@ export interface TemplateField {
   default_question: string
   clarification_question: string
   help_text: string
+  conditions?: {
+    depends_on?: string
+    equals?: unknown
+    not_equals?: unknown
+  }
 }
 
 export interface TemplateFieldGroup {

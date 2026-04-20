@@ -26,7 +26,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 import {
   CaseDetail,
+  FieldState,
   FieldStatus,
+  TemplateField,
   addTextEvidence,
   approveCase,
   confirmField,
@@ -47,6 +49,54 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+
+function getValueByPath(payload: Record<string, unknown>, path: string): unknown {
+  let cursor: unknown = payload
+  for (const segment of path.split('.')) {
+    if (!cursor || typeof cursor !== 'object' || Array.isArray(cursor)) {
+      return undefined
+    }
+    const record = cursor as Record<string, unknown>
+    if (!(segment in record)) {
+      return undefined
+    }
+    cursor = record[segment]
+  }
+  return cursor
+}
+
+function isFieldActive(field: TemplateField, schemaState: Record<string, unknown>): boolean {
+  const conditions = field.conditions ?? {}
+  const dependsOn = conditions.depends_on
+  if (!dependsOn) {
+    return true
+  }
+
+  const actualValue = getValueByPath(schemaState, dependsOn)
+  if ('equals' in conditions) {
+    return actualValue === conditions.equals
+  }
+  if ('not_equals' in conditions) {
+    return actualValue !== conditions.not_equals
+  }
+  return Boolean(actualValue)
+}
+
+function isQuestionOutstanding(field: TemplateField, state: FieldState): boolean {
+  if (field.required && state.status === 'missing') {
+    return true
+  }
+  if (state.status === 'conflicted') {
+    return true
+  }
+  if (field.required && state.status === 'proposed' && state.confidence < 0.9) {
+    return true
+  }
+  if (!field.required && state.status === 'missing') {
+    return true
+  }
+  return false
+}
 
 export default function CaseWorkspace() {
   const { caseId } = useParams<{ caseId: string }>()
@@ -135,6 +185,32 @@ export default function CaseWorkspace() {
     )
   }
 
+  const schemaState = (caseDetail?.current_schema_state ?? {}) as Record<string, unknown>
+  const templateFields = caseDetail?.template.schema ?? []
+  const fieldStates = caseDetail?.field_states ?? []
+  const fieldStatesByPath = new Map(fieldStates.map((state) => [state.field_path, state]))
+  const activeFieldPaths = new Set(
+    templateFields.filter((field) => isFieldActive(field, schemaState)).map((field) => field.path),
+  )
+  const hiddenConditionalFieldCount = templateFields.length - activeFieldPaths.size
+  const outstandingQuestionCount = templateFields.reduce((count, field) => {
+    if (!activeFieldPaths.has(field.path)) {
+      return count
+    }
+    const state = fieldStatesByPath.get(field.path)
+    if (!state) {
+      return count
+    }
+    return isQuestionOutstanding(field, state) ? count + 1 : count
+  }, 0)
+  const isConversationComplete = !nextQuestion && outstandingQuestionCount === 0
+  const completionMessage =
+    caseDetail?.status === 'approved'
+      ? 'All active intake questions are complete. You can generate artifacts now.'
+      : caseDetail?.status === 'ready_for_review'
+        ? 'All active intake questions are complete. Review field values and approve when ready.'
+        : 'All active intake questions are complete.'
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
@@ -152,7 +228,7 @@ export default function CaseWorkspace() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-slate-50/30 overflow-hidden">
+    <div className="h-dvh min-h-screen flex flex-col bg-slate-50/30 overflow-hidden">
       <header className="h-16 border-b border-slate-200/60 bg-white px-6 flex items-center justify-between shrink-0 shadow-sm z-10">
         <div className="flex items-center space-x-4">
           <div className="p-1.5 bg-slate-900 rounded-lg cursor-pointer" onClick={() => navigate('/')}>
@@ -194,14 +270,14 @@ export default function CaseWorkspace() {
         </div>
       </header>
 
-      <main className="flex-grow flex overflow-hidden">
-        <section className="w-[340px] border-r border-slate-200/60 bg-white flex flex-col shrink-0">
+      <main className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-auto lg:overflow-hidden">
+        <section className="w-full lg:w-[340px] min-h-0 border-b lg:border-b-0 lg:border-r border-slate-200/60 bg-white flex flex-col shrink-0">
           <div className="p-4 border-b border-slate-100 flex items-center space-x-2">
             <MessageSquare className="w-4 h-4 text-blue-500" />
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-tight">Assistant</h2>
           </div>
 
-          <ScrollArea className="flex-grow p-4">
+          <ScrollArea className="flex-1 min-h-0 p-4">
             <div className="space-y-4">
               {nextQuestion ? (
                 <motion.div
@@ -221,6 +297,28 @@ export default function CaseWorkspace() {
                   )}
                   <p className="text-[11px] text-blue-600/80 italic">Context: {nextQuestion.reason}</p>
                 </motion.div>
+              ) : isConversationComplete ? (
+                <div className="bg-emerald-50/70 border border-emerald-100 p-4 rounded-2xl shadow-sm">
+                  <p className="text-sm font-semibold text-emerald-900 mb-2">{completionMessage}</p>
+                  <p className="text-[11px] text-emerald-700/80">
+                    No further follow-up is required unless you add new evidence or edit fields.
+                  </p>
+                  {hiddenConditionalFieldCount > 0 && (
+                    <p className="text-[11px] text-emerald-700/70 mt-2">
+                      {hiddenConditionalFieldCount} conditional field{hiddenConditionalFieldCount > 1 ? 's are' : ' is'} hidden because dependencies are not active.
+                    </p>
+                  )}
+                </div>
+              ) : outstandingQuestionCount > 0 ? (
+                <div className="bg-amber-50/70 border border-amber-100 p-4 rounded-2xl shadow-sm">
+                  <p className="text-sm font-semibold text-amber-900 mb-2">
+                    Remaining fields need review
+                  </p>
+                  <p className="text-[11px] text-amber-700/80">
+                    There are still {outstandingQuestionCount} active field{outstandingQuestionCount > 1 ? 's' : ''} that need input or clarification.
+                    Add evidence or edit values from Field Review.
+                  </p>
+                </div>
               ) : (
                 <div className="text-center py-8">
                   <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -252,8 +350,8 @@ export default function CaseWorkspace() {
           </div>
         </section>
 
-        <section className="flex-grow flex flex-col bg-slate-50/50 overflow-hidden">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+        <section className="flex-1 min-h-0 flex flex-col bg-slate-50/50 overflow-hidden">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full min-h-0 flex flex-col">
             <div className="px-6 bg-white border-b border-slate-100 flex items-center justify-between">
               <TabsList className="bg-transparent border-none p-0 h-12 space-x-6">
                 <TabsTrigger value="review" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-slate-900 rounded-none h-full px-0 font-bold text-xs uppercase tracking-widest text-slate-500 data-[state=active]:text-slate-900 transition-all">
@@ -272,23 +370,33 @@ export default function CaseWorkspace() {
               )}
             </div>
 
-            <ScrollArea className="flex-grow p-6">
+            <ScrollArea className="flex-1 min-h-0 p-6">
               <TabsContent value="review" className="m-0 space-y-8">
-                {caseDetail?.template.field_groups.map((group) => (
-                  <div key={group.group_id}>
-                    <div className="mb-4">
-                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">{group.label}</h3>
-                      <p className="text-xs text-slate-500">{group.description}</p>
+                {caseDetail?.template.field_groups.map((group) => {
+                  const activeGroupPaths = group.field_paths.filter((path) => activeFieldPaths.has(path))
+                  if (activeGroupPaths.length === 0) {
+                    return null
+                  }
+
+                  return (
+                    <div key={group.group_id}>
+                      <div className="mb-4">
+                        <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">{group.label}</h3>
+                        <p className="text-xs text-slate-500">{group.description}</p>
+                      </div>
+                      <div className="grid grid-cols-1 gap-4">
+                        {activeGroupPaths.map((path) => {
+                          const fieldState = fieldStatesByPath.get(path)
+                          const templateField = caseDetail.template.schema.find((tf) => tf.path === path)
+                          if (!templateField) {
+                            return null
+                          }
+                          return <FieldRow key={path} field={templateField} state={fieldState} onConfirm={(p) => confirmFieldMutation.mutate(p)} />
+                        })}
+                      </div>
                     </div>
-                    <div className="grid grid-cols-1 gap-4">
-                      {group.field_paths.map((path) => {
-                        const fieldState = caseDetail.field_states.find((fs) => fs.field_path === path)
-                        const templateField = caseDetail.template.schema.find((tf) => tf.path === path)
-                        return <FieldRow key={path} field={templateField} state={fieldState} onConfirm={(p) => confirmFieldMutation.mutate(p)} />
-                      })}
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </TabsContent>
 
               <TabsContent value="evidence" className="m-0">
@@ -352,7 +460,7 @@ export default function CaseWorkspace() {
           </Tabs>
         </section>
 
-        <section className="w-[280px] border-l border-slate-200/60 bg-white p-4 shrink-0 flex flex-col space-y-6">
+        <section className="w-full lg:w-[280px] border-t lg:border-t-0 lg:border-l border-slate-200/60 bg-white p-4 shrink-0 flex flex-col space-y-6 overflow-y-auto">
           <div>
             <div className="flex items-center space-x-2 mb-4">
               <ShieldCheck className="w-4 h-4 text-green-500" />
@@ -420,8 +528,10 @@ export default function CaseWorkspace() {
   )
 }
 
-function FieldRow({ field, state, onConfirm }: { field: any; state: any; onConfirm: (p: string) => void }) {
+function FieldRow({ field, state, onConfirm }: { field: TemplateField; state: FieldState | undefined; onConfirm: (p: string) => void }) {
   if (!field) return null
+  const confidence = state?.confidence ?? 0
+  const proposedState = state?.status === 'proposed' ? state : undefined
 
   return (
     <Card className="border-slate-200/60 shadow-sm hover:border-slate-300 transition-colors bg-white overflow-hidden group">
@@ -434,29 +544,29 @@ function FieldRow({ field, state, onConfirm }: { field: any; state: any; onConfi
           <div className="text-sm font-medium text-slate-900">
             {state?.resolved_value ? String(state.resolved_value) : <span className="text-slate-300 italic">Not extracted yet...</span>}
           </div>
-          {state?.confidence > 0 && (
+          {confidence > 0 && (
             <div className="mt-2 flex items-center space-x-2">
               <div className="w-24 h-1 bg-slate-100 rounded-full overflow-hidden">
                 <div
                   className={cn(
                     'h-full rounded-full transition-all',
-                    state.confidence > 0.8 ? 'bg-green-500' : state.confidence > 0.5 ? 'bg-amber-500' : 'bg-red-500',
+                    confidence > 0.8 ? 'bg-green-500' : confidence > 0.5 ? 'bg-amber-500' : 'bg-red-500',
                   )}
-                  style={{ width: `${state.confidence * 100}%` }}
+                  style={{ width: `${confidence * 100}%` }}
                 />
               </div>
-              <span className="text-[10px] font-bold text-slate-400">{(state.confidence * 100).toFixed(0)}% Confidence</span>
+              <span className="text-[10px] font-bold text-slate-400">{(confidence * 100).toFixed(0)}% Confidence</span>
             </div>
           )}
         </div>
 
         <div className="flex items-center space-x-2">
-          {state?.status === 'proposed' && (
+          {proposedState && (
             <Button
               size="sm"
               variant="outline"
               className="h-8 border-green-200 text-green-600 hover:bg-green-50 text-[11px] font-bold uppercase tracking-tight px-3"
-              onClick={() => onConfirm(state.field_path)}
+              onClick={() => onConfirm(proposedState.field_path)}
             >
               Confirm
             </Button>
