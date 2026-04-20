@@ -78,6 +78,23 @@ DEMO_PDFS: list[DemoPdf] = [
             "Estimated loss in INR: 0",
         ],
     ),
+    DemoPdf(
+        filename="medical_demo_screening_delhi.pdf",
+        title="Medical Screening Intake - Patient Case (Delhi)",
+        lines=[
+            "Patient full name is Neha Kapoor.",
+            "Date of birth: 1985-06-12",
+            "Gender: female",
+            "Primary complaint: Severe abdominal pain and persistent nausea.",
+            "Symptom duration: Started 2 days ago, progressively getting worse.",
+            "Pain level: severe",
+            "Chronic conditions: Hypertension (managed with Atenolol).",
+            "Allergies: Penicillin, Peanuts.",
+            "Current medications: Atenolol 50mg daily, Multivitamins.",
+            "Body temperature: 38.5",
+            "Triage priority: urgent",
+        ],
+    ),
 ]
 
 

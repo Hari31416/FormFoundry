@@ -1,0 +1,170 @@
+{
+  "template_id": "medical-screening-intake",
+  "template_version": 1,
+  "name": "Medical Patient Screening",
+  "domain": "healthcare",
+  "description": "A comprehensive patient screening intake for capturing medical history, current symptoms, and primary complaints.",
+  "schema": [
+    {
+      "path": "patient.full_name",
+      "label": "Patient Full Name",
+      "type": "string",
+      "required": true,
+      "default_question": "What is the patient's full name?",
+      "clarification_question": "Please provide the patient's legal name as it appears on official documents.",
+      "validation_refs": ["required"],
+      "render_targets": ["patient_full_name"]
+    },
+    {
+      "path": "patient.dob",
+      "label": "Date of Birth",
+      "type": "date",
+      "required": true,
+      "default_question": "What is your date of birth?",
+      "clarification_question": "Please confirm the date of birth in YYYY-MM-DD format.",
+      "validation_refs": ["required", "date"],
+      "render_targets": ["patient_dob"]
+    },
+    {
+      "path": "patient.gender",
+      "label": "Gender",
+      "type": "enum",
+      "required": true,
+      "enum_options": ["male", "female", "other", "prefer_not_to_say"],
+      "default_question": "What is your gender?",
+      "clarification_question": "Please select your gender from the provided options.",
+      "validation_refs": ["required", "enum"],
+      "render_targets": ["patient_gender"]
+    },
+    {
+      "path": "issue.primary_complaint",
+      "label": "Primary Complaint",
+      "type": "string",
+      "required": true,
+      "default_question": "What is the main medical issue you are seeking help for today?",
+      "clarification_question": "Please describe your primary symptoms or the reason for your visit clearly.",
+      "validation_refs": ["required"],
+      "render_targets": ["issue_primary_complaint"]
+    },
+    {
+      "path": "issue.duration",
+      "label": "Symptom Duration",
+      "type": "string",
+      "required": true,
+      "default_question": "How long have you been experiencing these symptoms?",
+      "clarification_question": "Please specify approximately how many days or weeks these symptoms have persisted.",
+      "validation_refs": ["required"],
+      "render_targets": ["issue_duration"]
+    },
+    {
+      "path": "issue.severity",
+      "label": "Pain/Severity Level",
+      "type": "enum",
+      "required": true,
+      "enum_options": ["none", "mild", "moderate", "severe", "unbearable"],
+      "default_question": "How would you rate the severity of your pain or discomfort?",
+      "clarification_question": "Please select the level that best describes your current pain or discomfort.",
+      "validation_refs": ["required", "enum"],
+      "render_targets": ["issue_severity"]
+    },
+    {
+      "path": "history.chronic_conditions",
+      "label": "Chronic Conditions",
+      "type": "string",
+      "required": false,
+      "default_question": "Do you have any chronic medical conditions (e.g., diabetes, hypertension)?",
+      "clarification_question": "Please list any chronic conditions you are currently managing.",
+      "help_text": "List any ongoing medical issues you are being treated for.",
+      "render_targets": ["history_chronic_conditions"]
+    },
+    {
+      "path": "history.allergies",
+      "label": "Allergies",
+      "type": "string",
+      "required": true,
+      "default_question": "Do you have any known allergies to medications or food?",
+      "clarification_question": "Please confirm any allergies or state 'none' if you have none.",
+      "validation_refs": ["required"],
+      "render_targets": ["history_allergies"]
+    },
+    {
+      "path": "history.current_medications",
+      "label": "Current Medications",
+      "type": "string",
+      "required": false,
+      "default_question": "Are you currently taking any medications or supplements?",
+      "clarification_question": "Please list any medications or supplements you are currently taking.",
+      "render_targets": ["history_medications"]
+    },
+    {
+      "path": "vitals.temperature",
+      "label": "Body Temperature (°C)",
+      "type": "number",
+      "required": false,
+      "default_question": "What is your current body temperature if known?",
+      "clarification_question": "Please provide the temperature in degrees Celsius.",
+      "validation_refs": ["number"],
+      "render_targets": ["vitals_temperature"]
+    },
+    {
+      "path": "assessment.priority",
+      "label": "Triage Priority",
+      "type": "enum",
+      "required": true,
+      "enum_options": ["routine", "urgent", "emergency"],
+      "default_question": "In your assessment, what is the priority level for this consultation?",
+      "clarification_question": "Please triage the urgency of this case.",
+      "validation_refs": ["required", "enum"],
+      "render_targets": ["assessment_priority"]
+    }
+  ],
+  "field_groups": [
+    {
+      "group_id": "patient_profile",
+      "label": "Patient Profile",
+      "description": "Basic identification and demographic details.",
+      "field_paths": ["patient.full_name", "patient.dob", "patient.gender"]
+    },
+    {
+      "group_id": "current_complaint",
+      "label": "Current Medical Issue",
+      "description": "Details about the primary symptoms and their severity.",
+      "field_paths": ["issue.primary_complaint", "issue.duration", "issue.severity"]
+    },
+    {
+      "group_id": "medical_history",
+      "label": "Medical History",
+      "description": "Background information on chronic issues, medications, and allergies.",
+      "field_paths": ["history.chronic_conditions", "history.allergies", "history.current_medications"]
+    },
+    {
+      "group_id": "triage_assessment",
+      "label": "Triage & Vitals",
+      "description": "Initial assessment and vital signs recorded during screening.",
+      "field_paths": ["vitals.temperature", "assessment.priority"]
+    }
+  ],
+  "validation_rules": [
+    {
+      "rule_id": "required",
+      "type": "requiredness"
+    },
+    {
+      "rule_id": "date",
+      "type": "format",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+    }
+  ],
+  "conversation_config": {
+    "tone": "empathetic and thorough",
+    "explanation_style": "clear",
+    "reask_cooldown_turns": 1,
+    "max_grouped_fields": 2
+  },
+  "supported_artifacts": ["fillable_pdf", "json_export"],
+  "renderer_config": {
+    "artifact_type": "fillable_pdf",
+    "template_asset": "assets/pdfs/medical_screening_packet.pdf",
+    "pdf_title": "Medical Screening Intake Report"
+  }
+}
