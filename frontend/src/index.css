@@ -125,6 +125,23 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground m-0;
+    @apply bg-background text-foreground m-0 antialiased;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
+  }
+
+  /* Smooth Selections */
+  ::selection {
+    @apply bg-blue-100 text-blue-900;
   }
 }
