@@ -44,6 +44,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -125,6 +126,10 @@ export default function CaseWorkspace() {
     queryKey: ['validation', caseId],
     queryFn: () => getValidationIssues(caseId!),
     enabled: !!caseId,
+    refetchInterval: () => {
+      const status = caseDetail?.status
+      return status === 'extracting' || status === 'resolving' || status === 'artifact_generating' ? 3000 : 15000
+    },
   })
 
   const { data: artifacts } = useQuery({
@@ -137,6 +142,10 @@ export default function CaseWorkspace() {
     queryKey: ['next-question', caseId],
     queryFn: () => getNextQuestion(caseId!),
     enabled: !!caseId,
+    refetchInterval: () => {
+      const status = caseDetail?.status
+      return status === 'extracting' || status === 'resolving' || status === 'artifact_generating' ? 3000 : 15000
+    },
   })
 
   const submitTurnMutation = useMutation({
@@ -145,6 +154,7 @@ export default function CaseWorkspace() {
       setChatInput('')
       queryClient.invalidateQueries({ queryKey: ['case', caseId] })
       queryClient.invalidateQueries({ queryKey: ['next-question', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['validation', caseId] })
     },
   })
 
@@ -153,6 +163,8 @@ export default function CaseWorkspace() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evidence', caseId] })
       queryClient.invalidateQueries({ queryKey: ['case', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['validation', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['next-question', caseId] })
     },
   })
 
@@ -174,6 +186,8 @@ export default function CaseWorkspace() {
     mutationFn: (fieldPath: string) => confirmField(caseId!, fieldPath),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['case', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['validation', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['next-question', caseId] })
     },
   })
 
@@ -208,7 +222,7 @@ export default function CaseWorkspace() {
     caseDetail?.status === 'approved'
       ? 'All active intake questions are complete. You can generate artifacts now.'
       : caseDetail?.status === 'ready_for_review'
-        ? 'All active intake questions are complete. Review field values and approve when ready.'
+        ? 'All active intake questions are complete. Confirm all field values in Field Review to enable approval.'
         : 'All active intake questions are complete.'
 
   const getStatusColor = (status: string) => {
@@ -226,6 +240,11 @@ export default function CaseWorkspace() {
         return 'bg-slate-100 text-slate-700 border-slate-200'
     }
   }
+
+  const allFieldsConfirmed = Array.from(activeFieldPaths).every((path) => {
+    const state = fieldStatesByPath.get(path)
+    return state?.status === 'confirmed'
+  })
 
   return (
     <div className="h-dvh min-h-screen flex flex-col bg-slate-50/30 overflow-hidden">
@@ -254,7 +273,7 @@ export default function CaseWorkspace() {
               size="sm"
               className="bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg shadow-sm"
               onClick={() => approveMutation.mutate()}
-              disabled={approveMutation.isPending || validation?.some((v) => v.blocking)}
+              disabled={approveMutation.isPending || validation?.some((v) => v.blocking) || !allFieldsConfirmed}
             >
               Approve Case
             </Button>
@@ -603,17 +622,19 @@ function DropdownMenuComponent({ options, onSelect, isLoading }: { options: stri
         Generate Artifact
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-48 rounded-xl p-1 shadow-xl border-slate-100">
-        <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-slate-400 px-2 py-1.5">Select Format</DropdownMenuLabel>
-        <DropdownMenuSeparator className="bg-slate-100" />
-        {options.map((opt) => (
-          <DropdownMenuItem
-            key={opt}
-            className="rounded-lg text-xs font-bold uppercase tracking-tight text-slate-700 focus:bg-slate-50 focus:text-blue-600 cursor-pointer"
-            onClick={() => onSelect(opt)}
-          >
-            {opt}
-          </DropdownMenuItem>
-        ))}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-slate-400 px-2 py-1.5">Select Format</DropdownMenuLabel>
+          <DropdownMenuSeparator className="bg-slate-100" />
+          {options.map((opt) => (
+            <DropdownMenuItem
+              key={opt}
+              className="rounded-lg text-xs font-bold uppercase tracking-tight text-slate-700 focus:bg-slate-50 focus:text-blue-600 cursor-pointer"
+              onClick={() => onSelect(opt)}
+            >
+              {opt}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   )

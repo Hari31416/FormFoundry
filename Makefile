@@ -17,7 +17,7 @@ install-pnpm:
 	@command -v pnpm >/dev/null 2>&1 || (echo "pnpm is required. Install it first." && exit 1)
 
 up:
-	@docker compose up -d postgres redis minio qdrant
+	@docker compose up -d postgres redis minio
 
 down:
 	@docker compose down

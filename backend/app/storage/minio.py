@@ -22,6 +22,9 @@ class StorageService:
     ) -> StoredObject:
         raise NotImplementedError
 
+    async def get_download_url(self, storage_uri: str) -> str:
+        raise NotImplementedError
+
 
 class LocalStorageService(StorageService):
     def __init__(self, base_path: Path) -> None:
@@ -38,6 +41,9 @@ class LocalStorageService(StorageService):
             content_type=content_type,
             size_bytes=len(payload),
         )
+
+    async def get_download_url(self, storage_uri: str) -> str:
+        return storage_uri
 
 
 class MinioStorageService(StorageService):
@@ -66,6 +72,17 @@ class MinioStorageService(StorageService):
             storage_uri=f"s3://{self.settings.minio_bucket}/{object_key}",
             content_type=content_type,
             size_bytes=len(payload),
+        )
+
+    async def get_download_url(self, storage_uri: str) -> str:
+        if not storage_uri.startswith("s3://"):
+            return storage_uri
+
+        path_part = storage_uri.replace("s3://", "")
+        bucket, key = path_part.split("/", 1)
+        return self.client.presigned_get_object(
+            bucket_name=bucket,
+            object_name=key,
         )
 
 

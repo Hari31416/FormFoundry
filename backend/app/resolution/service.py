@@ -115,22 +115,52 @@ async def resolve_case_fields(session: AsyncSession, case_id: str) -> None:
                 for evidence_id in candidate.source_evidence_ids
             }
         )
-        chosen_candidates = field_candidates
 
-        if len(grouped) == 1 and qualifying:
-            chosen_candidates = max(
-                grouped.values(), key=lambda items: items[0].confidence
+        if qualifying:
+            # Group candidates by their normalized value and sort by max confidence
+            sorted_groups = sorted(
+                grouped.items(),
+                key=lambda x: max(c.confidence for c in x[1]),
+                reverse=True,
             )
-            winner = chosen_candidates[0]
-            resolved_value = winner.candidate_value
-            confidence = winner.confidence
-            status = FieldStateStatus.PROPOSED
-            decision = "selected"
-            summary = "Selected the highest-confidence unambiguous candidate."
-        elif len(grouped) > 1:
-            status = FieldStateStatus.CONFLICTED
-            decision = "conflicted"
-            summary = "Multiple high-confidence candidates disagree materially."
+
+            top_value, top_candidates = sorted_groups[0]
+            top_max_conf = max(c.confidence for c in top_candidates)
+
+            is_clear_winner = False
+            if len(sorted_groups) == 1:
+                is_clear_winner = True
+            else:
+                _, second_candidates = sorted_groups[1]
+                second_max_conf = max(c.confidence for c in second_candidates)
+
+                # Winner if significantly higher confidence OR significantly more evidence
+                confidence_gap = top_max_conf - second_max_conf
+                frequency_lead = len(top_candidates) >= 2 * len(second_candidates)
+
+                if confidence_gap >= 0.05 or frequency_lead:
+                    is_clear_winner = True
+
+            if is_clear_winner:
+                # Pick the highest confidence item in the winning group
+                winner = max(top_candidates, key=lambda c: c.confidence)
+                resolved_value = winner.candidate_value
+                confidence = winner.confidence
+                status = FieldStateStatus.PROPOSED
+                decision = "selected"
+                summary = "Selected the best-supported candidate group."
+            else:
+                status = FieldStateStatus.CONFLICTED
+                decision = "conflicted"
+                summary = (
+                    "Multiple competing high-confidence candidate groups disagree."
+                )
+        else:
+            # Fallback for when no candidates meet threshold but we want to show best guess
+            if field_candidates:
+                summary = "Best guess selection (below threshold)."
+            else:
+                summary = "No candidates found at all."
 
         field_state.resolved_value = resolved_value
         field_state.status = status

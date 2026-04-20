@@ -292,6 +292,54 @@ async def approve_case(session: AsyncSession, case_id: str) -> CaseFilePayload:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Case not found"
         )
+
+    # Ensure all active fields are confirmed
+    template_record = (
+        await session.execute(
+            select(TemplateDefinitionRecord).where(
+                TemplateDefinitionRecord.template_id == case_record.template_id,
+                TemplateDefinitionRecord.template_version
+                == case_record.template_version,
+            )
+        )
+    ).scalar_one()
+
+    template_fields = [
+        TemplateField.model_validate(item) for item in template_record.schema
+    ]
+    active_field_paths = {
+        tf.path
+        for tf in template_fields
+        if is_field_active(tf, case_record.current_schema_state)
+    }
+
+    field_states = (
+        (
+            await session.execute(
+                select(FieldStateRecord).where(FieldStateRecord.case_id == case_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    unconfirmed_active = [
+        fs.field_path
+        for fs in field_states
+        if fs.field_path in active_field_paths
+        and fs.status != FieldStateStatus.CONFIRMED
+    ]
+
+    if unconfirmed_active:
+        detail = (
+            "All active fields must be confirmed before approval. "
+            f"Unconfirmed: {', '.join(unconfirmed_active)}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=detail,
+        )
+
     case_record.status = CaseStatus.APPROVED
     case_record.review_status = ReviewStatus.APPROVED
     case_record.approved_at = datetime.now(UTC)

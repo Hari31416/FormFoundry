@@ -146,7 +146,7 @@ export const submitTurn = (id: string, message: string) =>
 export const editField = (caseId: string, fieldPath: string, value: any) =>
   api.post(`/cases/${caseId}/fields/${fieldPath}/edit`, { value }).then((res) => res.data)
 export const confirmField = (caseId: string, fieldPath: string) =>
-  api.post(`/cases/${caseId}/fields/${fieldPath}/confirm`).then((res) => res.data)
+  api.post(`/cases/${caseId}/fields/${fieldPath}/confirm`, {}).then((res) => res.data)
 
 export const approveCase = (id: string) => api.post(`/cases/${id}/approve`).then((res) => res.data)
 export const generateArtifact = (id: string, type: string) =>

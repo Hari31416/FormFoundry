@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from fastapi import HTTPException, status
-from fastapi.responses import FileResponse
+from fastapi import HTTPException, Response, status
+from fastapi.responses import FileResponse, RedirectResponse
 from pypdf import PdfReader, PdfWriter
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
@@ -198,7 +198,7 @@ async def list_artifacts(session: AsyncSession, case_id: str) -> list[ArtifactPa
 
 async def get_artifact_download_response(
     session: AsyncSession, case_id: str, artifact_id: str
-) -> FileResponse:
+) -> Response:
     artifact = (
         await session.execute(
             select(ArtifactRecord).where(
@@ -211,14 +211,16 @@ async def get_artifact_download_response(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Artifact not found"
         )
-    if not artifact.storage_uri.startswith("local://"):
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Direct downloads are only implemented for local storage.",
+
+    storage = get_storage_service()
+    download_url = await storage.get_download_url(artifact.storage_uri)
+
+    if download_url.startswith("local://"):
+        local_path = get_settings().local_storage_path / download_url.replace(
+            "local://", ""
         )
-    local_path = get_settings().local_storage_path / artifact.storage_uri.replace(
-        "local://", ""
-    )
-    return FileResponse(
-        local_path, media_type="application/pdf", filename=local_path.name
-    )
+        return FileResponse(
+            local_path, media_type="application/pdf", filename=local_path.name
+        )
+
+    return RedirectResponse(download_url)

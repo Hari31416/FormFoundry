@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.artifacts.service import (
@@ -39,5 +38,5 @@ async def download_artifact_route(
     case_id: str,
     artifact_id: str,
     session: DBSession,
-) -> FileResponse:
+) -> Response:
     return await get_artifact_download_response(session, case_id, artifact_id)

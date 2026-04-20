@@ -57,9 +57,12 @@ async def edit_field_route(
 async def confirm_field_route(
     case_id: str,
     field_path: str,
-    payload: FieldConfirmRequest,
     session: DBSession,
+    payload: FieldConfirmRequest | None = None,
 ) -> FieldStatePayload:
+    if payload is None:
+        payload = FieldConfirmRequest()
+
     field_state = await confirm_field(session, case_id, field_path, payload)
     return serialize_field_state(field_state)
 

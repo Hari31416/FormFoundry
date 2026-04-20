@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     resolution_threshold: float = 0.78
     low_confidence_threshold: float = 0.6
 
-    llm_enabled: bool = False
+    llm_enabled: bool = True
     llm_base_url: str | None = None
     llm_api_key: str | None = None
     llm_model: str = "gpt-4.1-mini"
