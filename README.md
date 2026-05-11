@@ -1,87 +1,148 @@
 # FormFoundry
 
-FormFoundry is a generalized form-filling and artifact-generation platform. It ingests uploads, notes, and conversational answers, resolves them into a validated case schema, and generates exportable artifacts such as filled PDFs.
+FormFoundry is a generalized form-filling and artifact-generation platform. It turns uploaded documents, freeform notes, and conversational answers into a validated case schema and exportable artifacts like filled PDFs.
 
-## Stack
+## Architecture Overview
 
-- Backend: FastAPI, Pydantic settings, SQLAlchemy, Alembic, pytest, `uv`
-- Frontend: React, TypeScript, Vite, `pnpm`
-- Infra: Docker Compose, Postgres, Redis, Minio, Qdrant
-- LLM orchestration: `litellm`
+FormFoundry follows a modern full-stack architecture with a FastAPI backend and a React frontend, supported by a robust set of infrastructure services for data persistence, caching, and object storage.
 
-## Current status
+```mermaid
+graph TD
+    User([User]) <--> Frontend[Frontend - React/TS]
+    Frontend <--> Backend[Backend - FastAPI]
 
-Phase 0 foundation is in place:
+    subgraph Persistence
+        Backend <--> DB[(Postgres - Data & Metadata)]
+        Backend <--> Cache[(Redis - Jobs & State)]
+        Backend <--> ObjectStore[(Minio - Files & Artifacts)]
+        Backend <--> VectorDB[(Qdrant - Vector Search)]
+    end
 
-- backend scaffold with health checks, request IDs, structured logging, and tests
-- frontend shell initialized under the FormFoundry brand
-- Docker Compose for local infra
-- Makefile for lifecycle commands
-- Alembic scaffold for migrations
-- pre-commit hooks for formatting and repo hygiene
+    subgraph "AI & Extraction"
+        Backend <--> LLM[LLM Provider - via LiteLLM]
+        LLM <--> OCR[Vision OCR - Vision Models]
+    end
+```
 
-Phase 1 template and case foundations are in progress:
+## Key Features
 
-- versioned template registry seeded from JSON config files
-- current demo template: Indian FIR report intake
-- case creation from template selection
-- persisted empty field states and schema-state API
+- **Declarative Template Registry**: Version-aware template definitions loaded from JSON, allowing for easy expansion to new form types.
+- **Multi-Source Intake**: Ingests data from uploaded files (PDFs, images), text notes, and interactive conversational turns.
+- **AI-Powered Extraction**: Uses vision-based OCR and LLM orchestration via `litellm` to extract candidate data with evidence attribution.
+- **Deterministic Resolution**: Resolves extracted candidates into field states with conflict detection and audit trails.
+- **Interactive Conversation turn**: Streams follow-up questions via SSE based on unresolved fields and template priority.
+- **Validation & Review**: Comprehensive validation engine for field-level and cross-field rules with a blocking approval gate.
+- **Artifact Generation**: Renders approved case data into final artifacts, such as fillable PDFs.
 
-Phase 2 intake and evidence ingestion are in progress:
+## Tech Stack
 
-- text and file intake APIs under the case workflow
-- local or Minio-backed evidence storage
-- queued extraction jobs recorded for downstream processing
+| Component              | Technology                                                    |
+| :--------------------- | :------------------------------------------------------------ |
+| **Backend**            | FastAPI, Python 3.12+, SQLAlchemy, Alembic, Pydantic, LiteLLM |
+| **Frontend**           | React 18, TypeScript, Vite, shadcn/ui, Tailwind CSS           |
+| **Database**           | PostgreSQL 16                                                 |
+| **Caching/Jobs**       | Redis                                                         |
+| **Object Storage**     | Minio (S3 Compatible)                                         |
+| **Vector DB**          | Qdrant                                                        |
+| **Package Management** | `uv` (Backend), `pnpm` (Frontend)                             |
+| **Orchestration**      | Docker Compose, Makefile                                      |
 
-Phase 3 extraction is in progress:
+## Project Structure
 
-- vision OCR for uploaded images and PDFs, with PDFs limited to 10 pages
-- LLM-driven candidate extraction via `litellm`
-- job tracking and candidate listing endpoints
+```text
+.
+├── Makefile                # Lifecycle and management commands
+├── docker-compose.yml      # Infrastructure orchestration
+├── backend/                # Python source code
+│   ├── app/                # Core application logic
+│   │   ├── api/            # API endpoints and routing
+│   │   ├── core/           # Configuration, logging, and security
+│   │   ├── extraction/     # AI extraction and OCR logic
+│   │   ├── templates/      # Template registry and seeding
+│   │   └── ...             # Feature-specific modules (cases, intake, etc.)
+│   ├── alembic/            # Database migrations
+│   ├── assets/             # Demo PDFs and static files
+│   └── pyproject.toml      # Backend dependencies and configuration
+├── frontend/               # TypeScript source code
+│   ├── src/                # React components and hooks
+│   │   ├── components/     # UI components (shadcn/ui)
+│   │   ├── pages/          # Main application views
+│   │   └── ...
+│   └── package.json        # Frontend dependencies and scripts
+├── plans/                  # Product and implementation roadmaps
+└── wikis/                  # Detailed project documentation
+```
 
-Phase 4 resolution is in progress:
+## Logic Flows
 
-- deterministic field resolution over stored candidates
-- conflict detection and schema-state regeneration
-- resolver audit entries and queryable unresolved fields
+The following diagram illustrates the lifecycle of a case from initial intake to final artifact generation.
 
-Phase 5 conversation orchestration is in progress:
+```mermaid
+flowchart TD
+    Start[Intake: Files/Notes/Chat] --> Extraction[Extraction: LLM & OCR]
+    Extraction --> Candidates[Candidate Selection]
+    Candidates --> Resolution[Resolution: Deterministic Conflict Resolution]
+    Resolution --> Validation[Validation: Schema & Logic Checks]
 
-- template-driven next-question selection
-- grouped follow-up questions generated from related unresolved fields
-- conversation answers ingested as evidence
-- SSE question streaming for the chat experience
+    Validation -- Issues Found --> Conversation[Conversation: Follow-up Questions]
+    Conversation --> Intake
 
-Phase 6 validation and review are in progress:
+    Validation -- All Clear --> Approval[Approval Gate]
+    Approval --> Artifact[Artifact Generation: PDF Filling]
+    Artifact --> End[Download Final Artifact]
+```
 
-- deterministic validation issues for field and cross-field checks
-- review payloads that combine evidence, field state, and issues
-- edit, confirm, and approval endpoints with a blocking gate
+## Installation & Setup
 
-Phase 7 artifact generation is in progress:
+### Prerequisites
 
-- fillable PDF rendering from approved case data
-- artifact listing and download endpoints
-- renderer metadata stored alongside generated outputs
+- Docker and Docker Compose
+- Python 3.12+ and `uv`
+- Node.js and `pnpm`
 
-## Quick start
+### Local Development Setup
 
-1. Copy `.env.example` to `.env`.
-2. Configure `LLM_*` for text extraction and `VISION_*` for OCR through `litellm`.
-3. Start infrastructure with `make up`.
-4. Install backend dependencies with `make backend-setup`.
-5. Install frontend dependencies with `make frontend-setup`.
-6. Run the backend with `make backend-start`.
-7. Run the frontend with `make frontend-start`.
+1. **Clone and Configure**:
 
-## Development
+   ```bash
+   cp .env.example .env
+   # Edit .env with your LLM keys (LLM_API_KEY, etc.)
+   ```
 
-- Backend tests: `cd backend && uv run pytest -q`
-- Frontend build: `cd frontend && pnpm build`
-- Install pre-commit hooks: `cd backend && uv run pre-commit install -c ../.pre-commit-config.yaml`
+2. **Infrastructure**:
 
-## Documentation
+   ```bash
+   make up
+   ```
 
-- Implementation notes: [wikis/formfoundry-overview.md](/Users/hari/Desktop/sandbox/generic-form-filler/wikis/formfoundry-overview.md)
-- Product plan: [plans/001-form-filling-system-plan.md](/Users/hari/Desktop/sandbox/generic-form-filler/plans/001-form-filling-system-plan.md)
-- Implementation roadmap: [plans/002-form-filling-system-implementation-plan.md](/Users/hari/Desktop/sandbox/generic-form-filler/plans/002-form-filling-system-implementation-plan.md)
+3. **Backend Setup**:
+
+   ```bash
+   make backend-setup
+   make backend-start
+   ```
+
+4. **Frontend Setup**:
+
+   ```bash
+   make frontend-setup
+   make frontend-start
+   ```
+
+## Usage Examples
+
+### Creating a Case
+
+A case is initialized by selecting a template. For example, to start an Indian FIR Report:
+
+1. Navigate to the "Intake Control Center".
+2. Select the "FIR Report" template.
+3. Upload evidence files or start typing notes.
+
+### Interactive Extraction
+
+Once evidence is uploaded, the system automatically triggers extraction jobs. You can monitor the "Extraction Dashboard" to see candidates being proposed by the LLM and attributed to specific parts of your evidence.
+
+### Finalizing Artifacts
+
+After all fields are resolved and validated, the "Approve" button becomes active. Clicking it generates the final PDF artifact, which can then be downloaded from the "Artifacts" tab.
