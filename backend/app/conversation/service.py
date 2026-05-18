@@ -325,7 +325,7 @@ async def submit_conversation_turn(
         active_lang = await manager.detect_language(payload.message)
 
     # 3. Update persistent preferred language if a change is detected
-    if active_lang != "en" and active_lang != preferred_lang:
+    if active_lang != preferred_lang:
         metadata = dict(case_record.case_metadata or {})
         metadata["preferred_language"] = active_lang
         case_record.case_metadata = metadata

@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger
 } from '@/components/ui/dropdown-menu'
+import { useTranslation } from 'react-i18next'
 
 interface DropdownMenuComponentProps {
   options: string[]
@@ -23,23 +24,24 @@ export function DropdownMenuComponent({
   onSelect,
   isLoading
 }: DropdownMenuComponentProps) {
+  const { t } = useTranslation()
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
           <Button
             size="sm"
-            className="bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-sm"
+            className="bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-sm cursor-pointer"
           />
         }
       >
         {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
-        Generate Artifact
+        {t('generate_artifact')}
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-48 rounded-xl p-1 shadow-xl border-slate-100 bg-white">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-slate-400 px-2 py-1.5">
-            Select Format
+            {t('select_format')}
           </DropdownMenuLabel>
           <DropdownMenuSeparator className="bg-slate-100" />
           {options.map((opt) => (

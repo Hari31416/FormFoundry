@@ -141,9 +141,11 @@ export interface ConversationTurn {
 export const getTemplates = () => api.get<TemplateDefinition[]>('/templates').then((res) => res.data)
 export const getCases = (params?: { template_id?: string; limit?: number; offset?: number }) =>
   api.get<CaseFile[]>('/cases', { params }).then((res) => res.data)
-export const createCase = (data: { template_id: string; template_version?: number }) =>
+export const createCase = (data: { template_id: string; template_version?: number; metadata?: Record<string, any> }) =>
   api.post<CaseFile>('/cases', data).then((res) => res.data)
 export const getCase = (id: string) => api.get<CaseDetail>(`/cases/${id}`).then((res) => res.data)
+export const updateCaseLanguage = (caseId: string, language: string) =>
+  api.put<CaseDetail>(`/cases/${caseId}/language`, { language }).then((res) => res.data)
 export const getCaseSchemaState = (id: string) => api.get<any>(`/cases/${id}/schema-state`).then((res) => res.data)
 export const getEvidence = (id: string) => api.get<Evidence[]>(`/cases/${id}/evidence`).then((res) => res.data)
 export const getValidationIssues = (id: string) => api.get<ValidationIssue[]>(`/cases/${id}/validation`).then((res) => res.data)

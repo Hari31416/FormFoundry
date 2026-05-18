@@ -27,6 +27,7 @@ import {
   getDownloadUrl
 } from '@/lib/api'
 import { FieldRow } from './FieldRow'
+import { useTranslation } from 'react-i18next'
 
 interface SimplifiedChatViewProps {
   caseDetail: CaseDetail | undefined
@@ -98,6 +99,7 @@ export function SimplifiedChatView({
   setUploadError,
   caseId
 }: SimplifiedChatViewProps) {
+  const { t } = useTranslation()
   // Find the index of the latest assistant message to attach active question decorations
   const lastAssistantIdx = React.useMemo(() => {
     for (let i = mergedMessages.length - 1; i >= 0; i--) {
@@ -118,11 +120,11 @@ export function SimplifiedChatView({
               <Sparkles className="w-4 h-4" />
             </div>
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 max-w-[85%]">
-              <p className="text-xs font-black text-slate-900 uppercase tracking-widest mb-1">FormFoundry Assistant</p>
-              <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                Welcome to the simplified intake experience for <strong>{caseDetail?.template.name}</strong>.
-                I will ask a few quick questions to gather all necessary details. You can reply in the chat or upload files (images/PDFs) as evidence at any time.
-              </p>
+              <p className="text-xs font-black text-slate-900 uppercase tracking-widest mb-1">{t('assistant_name')}</p>
+              <p
+                className="text-sm text-slate-600 leading-relaxed font-medium"
+                dangerouslySetInnerHTML={{ __html: t('assistant_welcome', { name: caseDetail ? t('template_' + caseDetail.template.template_id + '_name', { defaultValue: caseDetail.template.name }) : '' }) }}
+              />
             </div>
           </div>
 
@@ -153,11 +155,11 @@ export function SimplifiedChatView({
                   {isAssistant && (
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                        {isLatestAssistant ? "Active Question" : "Assistant"}
+                        {isLatestAssistant ? t('active_question') : t('assistant_name')}
                       </span>
                       {msg.metadata?.reason && !isLatestAssistant && (
                         <span className="text-[8px] font-bold text-slate-300 bg-slate-100 px-1 py-0.5 rounded leading-none uppercase tracking-tighter">
-                          Reasoned Match
+                          {t('reasoned_match')}
                         </span>
                       )}
                     </div>
@@ -205,9 +207,9 @@ export function SimplifiedChatView({
                       <div className="mt-3 border-t border-blue-100/60 pt-2.5">
                         <button
                           onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
-                          className="text-[9px] font-black uppercase tracking-wider text-blue-600 hover:text-blue-700 flex items-center space-x-1"
+                          className="text-[9px] font-black uppercase tracking-wider text-blue-600 hover:text-blue-700 flex items-center space-x-1 cursor-pointer"
                         >
-                          <span>{isThinkingExpanded ? 'Hide Strategy' : 'Show Strategy'}</span>
+                          <span>{isThinkingExpanded ? t('hide_strategy') : t('show_strategy')}</span>
                           <span className="text-[8px]">{isThinkingExpanded ? '▲' : '▼'}</span>
                         </button>
                         <AnimatePresence>
@@ -257,12 +259,12 @@ export function SimplifiedChatView({
               </div>
               <div className="text-left flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-black text-red-900 uppercase tracking-wider">Document Processing Failed</h4>
+                  <h4 className="text-xs font-black text-red-900 uppercase tracking-wider">{t('document_processing_failed')}</h4>
                   <button
                     onClick={() => setUploadError(null)}
-                    className="text-[9px] font-black text-red-500 hover:text-red-700 uppercase tracking-widest leading-none bg-red-100/50 hover:bg-red-100 px-2 py-1 rounded-lg transition-colors"
+                    className="text-[9px] font-black text-red-500 hover:text-red-700 uppercase tracking-widest leading-none bg-red-100/50 hover:bg-red-100 px-2 py-1 rounded-lg transition-colors cursor-pointer"
                   >
-                    Clear Error
+                    {t('clear_error')}
                   </button>
                 </div>
                 <p className="text-[11px] text-red-700 font-bold leading-relaxed mt-1.5 break-words">
@@ -285,9 +287,9 @@ export function SimplifiedChatView({
                   <Check className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-emerald-900 uppercase tracking-wider">Intake Questionnaire Complete</h3>
+                  <h3 className="text-sm font-black text-emerald-900 uppercase tracking-wider">{t('intake_questionnaire_complete')}</h3>
                   <p className="text-xs text-emerald-700 leading-relaxed mt-1 font-medium">
-                    {completionMessage}. All schema values have been proposed with satisfactory certitude.
+                    {completionMessage}
                   </p>
                 </div>
               </div>
@@ -296,14 +298,14 @@ export function SimplifiedChatView({
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div className="flex flex-col">
-                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Inline Field Verification</h4>
-                    <p className="text-[10px] text-slate-400 font-bold">Review and confirm all details directly in your chat</p>
+                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{t('inline_field_verification')}</h4>
+                    <p className="text-[10px] text-slate-400 font-bold">{t('inline_field_verification_desc')}</p>
                   </div>
                   {Array.from(activeFieldPaths).some(p => fieldStatesByPath.get(p)?.status === 'proposed') && (
                     <Button
                       variant="outline"
                       size="xs"
-                      className="bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-200 text-blue-600 font-black uppercase tracking-widest text-[9px] rounded-lg h-8 px-3 transition-all"
+                      className="bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-200 text-blue-600 font-black uppercase tracking-widest text-[9px] rounded-lg h-8 px-3 transition-all cursor-pointer"
                       onClick={() => {
                         const proposedPaths = Array.from(activeFieldPaths).filter(p => fieldStatesByPath.get(p)?.status === 'proposed')
                         bulkConfirmMutation.mutate(proposedPaths)
@@ -311,7 +313,7 @@ export function SimplifiedChatView({
                       disabled={bulkConfirmMutation.isPending}
                     >
                       {bulkConfirmMutation.isPending ? <Loader2 className="w-2.5 h-2.5 animate-spin mr-1.5" /> : <Check className="w-3.5 h-3.5 mr-1.5" />}
-                      Confirm All Fields
+                      {t('confirm_all_fields')}
                     </Button>
                   )}
                 </div>
@@ -349,21 +351,21 @@ export function SimplifiedChatView({
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">Final Verification Complete?</h4>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">{t('final_verification_complete')}</h4>
                     <p className="text-[11px] text-slate-400 mt-1 max-w-md leading-relaxed font-bold">
-                      Once all values are verified, approve the intake to generate required regulatory documents and artifacts.
+                      {t('final_verification_desc')}
                     </p>
                   </div>
                   <Button
                     className={cn(
-                      "bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[10px] rounded-xl h-10 px-8 transition-all shadow-lg shadow-emerald-600/10",
+                      "bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[10px] rounded-xl h-10 px-8 transition-all shadow-lg shadow-emerald-600/10 cursor-pointer",
                       isApproveReady && "animate-bounce"
                     )}
                     onClick={() => approveCaseMutation.mutate()}
                     disabled={approveCaseMutation.isPending}
                   >
                     {approveCaseMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-2" />}
-                    Approve & Close Case
+                    {t('approve_and_close_case')}
                   </Button>
                 </div>
               )}
@@ -373,8 +375,8 @@ export function SimplifiedChatView({
                 <div className="space-y-4">
                   <div className="border-b border-slate-100 pb-3 flex items-center justify-between">
                     <div>
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Case Documents</h4>
-                      <p className="text-[10px] text-slate-400 font-bold">Download generated case artifacts and compliance records</p>
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{t('case_documents')}</h4>
+                      <p className="text-[10px] text-slate-400 font-bold">{t('case_documents_desc')}</p>
                     </div>
                     {caseDetail?.template?.supported_artifacts && caseDetail.template.supported_artifacts.length > 0 && (
                       <div className="flex space-x-2">
@@ -385,11 +387,11 @@ export function SimplifiedChatView({
                             <Button
                               key={type}
                               size="xs"
-                              className="bg-slate-900 hover:bg-blue-600 text-white font-black uppercase tracking-widest text-[8px] rounded-lg h-7 px-2.5 transition-all shadow-sm"
+                              className="bg-slate-900 hover:bg-blue-600 text-white font-black uppercase tracking-widest text-[8px] rounded-lg h-7 px-2.5 transition-all shadow-sm cursor-pointer"
                               onClick={() => generateArtifactMutation.mutate(type)}
                               disabled={generateArtifactMutation.isPending}
                             >
-                              Generate {type}
+                              {t('generate', { type: type.toUpperCase() })}
                             </Button>
                           )
                         })}
@@ -406,11 +408,11 @@ export function SimplifiedChatView({
                           </div>
                           <div className="truncate text-left">
                             <span className="block text-[11px] font-black text-slate-800 uppercase tracking-tighter truncate">{art.artifact_type}</span>
-                            <span className="block text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">READY FOR DOWNLOAD</span>
+                            <span className="block text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">{t('ready_for_download')}</span>
                           </div>
                         </div>
                         {art.status === 'generated' ? (
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer">
                             <a href={getDownloadUrl(caseId!, art.artifact_id)} target="_blank" rel="noreferrer">
                               <Download className="w-4 h-4" />
                             </a>
@@ -423,7 +425,7 @@ export function SimplifiedChatView({
 
                     {caseDetail?.template?.supported_artifacts && caseDetail.template.supported_artifacts.length > 0 && artifacts?.length === 0 && (
                       <div className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center py-6 col-span-2">
-                        <p className="text-[11px] text-slate-400 font-bold mb-3 uppercase tracking-wider">No files generated yet</p>
+                        <p className="text-[11px] text-slate-400 font-bold mb-3 uppercase tracking-wider">{t('no_files_generated')}</p>
                       </div>
                     )}
                   </div>
@@ -441,7 +443,7 @@ export function SimplifiedChatView({
             <textarea
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
-              placeholder={uploadFileMutation.isPending ? "Please wait while your document is being analyzed..." : "Reply to the question or paste case evidence details..."}
+              placeholder={uploadFileMutation.isPending ? t('upload_wait_placeholder') : t('reply_placeholder')}
               className="w-full bg-transparent border-none p-3 pb-0 text-sm focus:outline-none focus:ring-0 resize-none h-16 text-slate-800 placeholder:text-slate-400 leading-relaxed disabled:opacity-50"
               disabled={uploadFileMutation.isPending || submitTurnMutation.isPending}
               onKeyDown={(e) => {
@@ -489,7 +491,7 @@ export function SimplifiedChatView({
                 {uploadFileMutation.isPending && (
                   <div className="flex items-center space-x-1 text-[10px] font-black text-blue-600 uppercase tracking-wider animate-pulse">
                     <Loader2 className="w-3 h-3 animate-spin" />
-                    <span>OCR Analyzing...</span>
+                    <span>{t('ocr_analyzing')}</span>
                   </div>
                 )}
                 {uploadError && (

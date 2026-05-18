@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cases.models import (
@@ -55,3 +56,28 @@ async def get_schema_state_route(
     status_filter: StatusFilter = None,
 ) -> SchemaStateResponse:
     return await get_filtered_schema_state(session, case_id, status_filter)
+
+
+class UpdateLanguagePayload(BaseModel):
+    language: str
+
+
+@router.put("/{case_id}/language", response_model=CaseDetail)
+async def update_case_language_route(
+    case_id: str,
+    payload: UpdateLanguagePayload,
+    session: DBSession,
+) -> CaseDetail:
+    from fastapi import HTTPException
+
+    from app.cases.models import CaseFileRecord
+
+    case_record = await session.get(CaseFileRecord, case_id)
+    if case_record is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    metadata = dict(case_record.case_metadata or {})
+    metadata["preferred_language"] = payload.language
+    case_record.case_metadata = metadata
+    await session.commit()
+    return await get_case_detail(session, case_id)

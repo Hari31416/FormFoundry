@@ -29,3 +29,33 @@ def test_case_creation_persists_empty_field_states(client: TestClient) -> None:
     assert any(
         group["group_id"] == "accused" for group in schema_payload["field_groups"]
     )
+
+
+def test_update_case_preferred_language(client: TestClient) -> None:
+    # 1. Create a case
+    create_response = client.post(
+        "/api/v1/cases",
+        json={
+            "template_id": "fir-report-intake",
+            "created_by": "test-user",
+            "metadata": {"intake_channel": "manual"},
+        },
+    )
+    assert create_response.status_code == 201
+    case_payload = create_response.json()
+    case_id = case_payload["case_id"]
+
+    # 2. Update language to 'hi'
+    update_response = client.put(
+        f"/api/v1/cases/{case_id}/language",
+        json={"language": "hi"},
+    )
+    assert update_response.status_code == 200
+    updated_payload = update_response.json()
+    assert updated_payload["metadata"]["preferred_language"] == "hi"
+
+    # 3. Retrieve case detail to verify persistence
+    get_response = client.get(f"/api/v1/cases/{case_id}")
+    assert get_response.status_code == 200
+    get_payload = get_response.json()
+    assert get_payload["metadata"]["preferred_language"] == "hi"

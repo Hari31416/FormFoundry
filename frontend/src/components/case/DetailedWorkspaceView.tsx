@@ -26,6 +26,7 @@ import {
   getDownloadUrl
 } from '@/lib/api'
 import { FieldRow } from './FieldRow'
+import { useTranslation } from 'react-i18next'
 
 interface DetailedWorkspaceViewProps {
   activeTab: string
@@ -90,17 +91,18 @@ export function DetailedWorkspaceView({
   artifacts,
   caseId
 }: DetailedWorkspaceViewProps) {
+  const { t } = useTranslation()
   return (
     <>
       <section className="flex-1 min-h-0 flex flex-col bg-white overflow-hidden">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full min-h-0 flex flex-col">
           <div className="px-8 bg-slate-50/50 border-b border-slate-200/50 flex items-center justify-between h-12">
             <TabsList className="bg-transparent border-none p-0 h-full space-x-8">
-              <TabsTrigger value="review" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none h-full px-0 font-bold text-[10px] uppercase tracking-widest text-slate-400 data-[state=active]:text-slate-900 transition-all">
-                Field Verification
+              <TabsTrigger value="review" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none h-full px-0 font-bold text-[10px] uppercase tracking-widest text-slate-400 data-[state=active]:text-slate-900 transition-all cursor-pointer">
+                {t('field_verification')}
               </TabsTrigger>
-              <TabsTrigger value="evidence" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none h-full px-0 font-bold text-[10px] uppercase tracking-widest text-slate-400 data-[state=active]:text-slate-900 transition-all">
-                Raw Evidence
+              <TabsTrigger value="evidence" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600 rounded-none h-full px-0 font-bold text-[10px] uppercase tracking-widest text-slate-400 data-[state=active]:text-slate-900 transition-all cursor-pointer">
+                {t('raw_evidence')}
               </TabsTrigger>
             </TabsList>
           </div>
@@ -114,15 +116,15 @@ export function DetailedWorkspaceView({
                       <Check className="w-5 h-5 text-white" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Global Verification</h3>
-                      <p className="text-[10px] text-slate-400 font-bold">Review and finalize all proposed data points.</p>
+                      <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">{t('global_verification')}</h3>
+                      <p className="text-[10px] text-slate-400 font-bold">{t('global_verification_desc')}</p>
                     </div>
                   </div>
                   {Array.from(activeFieldPaths).some(p => fieldStatesByPath.get(p)?.status === 'proposed') && (
                     <Button
                       variant="outline"
                       size="sm"
-                      className="bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-200 text-blue-600 font-black uppercase tracking-widest text-[10px] rounded-xl h-9 px-4 transition-all shadow-sm"
+                      className="bg-white hover:bg-blue-50 border-slate-200 hover:border-blue-200 text-blue-600 font-black uppercase tracking-widest text-[10px] rounded-xl h-9 px-4 transition-all shadow-sm cursor-pointer"
                       onClick={() => {
                         const proposedPaths = Array.from(activeFieldPaths).filter(p => fieldStatesByPath.get(p)?.status === 'proposed')
                         bulkConfirmMutation.mutate(proposedPaths)
@@ -130,7 +132,7 @@ export function DetailedWorkspaceView({
                       disabled={bulkConfirmMutation.isPending}
                     >
                       {bulkConfirmMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Check className="w-3.5 h-3.5 mr-2" />}
-                      Confirm All Fields
+                      {t('confirm_all_fields')}
                     </Button>
                   )}
                 </div>
@@ -151,7 +153,7 @@ export function DetailedWorkspaceView({
                           <Button
                             variant="ghost"
                             size="xs"
-                            className="text-blue-600 hover:bg-blue-50 font-black uppercase tracking-widest text-[9px] rounded-lg px-2 h-7"
+                            className="text-blue-600 hover:bg-blue-50 font-black uppercase tracking-widest text-[9px] rounded-lg px-2 h-7 cursor-pointer"
                             onClick={() => {
                               const groupProposed = activeGroupPaths.filter(p => fieldStatesByPath.get(p)?.status === 'proposed')
                               bulkConfirmMutation.mutate(groupProposed)
@@ -159,7 +161,7 @@ export function DetailedWorkspaceView({
                             disabled={bulkConfirmMutation.isPending}
                           >
                             {bulkConfirmMutation.isPending ? <Loader2 className="w-2.5 h-2.5 animate-spin mr-1.5" /> : <Check className="w-3 h-3 mr-1.5" />}
-                            Confirm Section
+                            {t('confirm_section')}
                           </Button>
                         )}
                       </div>
@@ -212,7 +214,7 @@ export function DetailedWorkspaceView({
                         </p>
                         {typeof ev.parsed_payload?.page_count === 'number' && (
                           <p className="mt-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                            {ev.parsed_payload.page_count} PDF page{ev.parsed_payload.page_count === 1 ? '' : 's'}
+                            {t(ev.parsed_payload.page_count === 1 ? 'pdf_page' : 'pdf_page_plural', { count: ev.parsed_payload.page_count })}
                           </p>
                         )}
                       </CardContent>
@@ -224,12 +226,12 @@ export function DetailedWorkspaceView({
                         <motion.button
                           whileHover={{ scale: 1.005 }}
                           whileTap={{ scale: 0.995 }}
-                          className="h-24 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400 hover:border-blue-200 hover:bg-blue-50/30 hover:text-blue-500 transition-all bg-white"
+                          className="h-24 border-2 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-400 hover:border-blue-200 hover:bg-blue-50/30 hover:text-blue-500 transition-all bg-white cursor-pointer"
                         />
                       }
                     >
                       <Plus className="w-5 h-5 mb-1.5" />
-                      <span className="text-[10px] font-black uppercase tracking-widest">Inject New Evidence</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest">{t('inject_new_evidence')}</span>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-md bg-white rounded-3xl p-0 overflow-hidden border-none shadow-2xl">
                       <div className="p-8">
@@ -237,19 +239,19 @@ export function DetailedWorkspaceView({
                           <div className="p-2 bg-blue-50 rounded-xl">
                             <Plus className="w-5 h-5 text-blue-600" />
                           </div>
-                          <h3 className="text-xl font-black text-slate-900 tracking-tight">New Intake Evidence</h3>
+                          <h3 className="text-xl font-black text-slate-900 tracking-tight">{t('new_intake_evidence')}</h3>
                         </div>
                         <textarea
                           id="evidence-text"
-                          placeholder="Paste notes, transcripts, or complaint details here..."
+                          placeholder={t('paste_notes_placeholder')}
                           className="w-full h-48 p-5 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500/20 focus:outline-none resize-none text-slate-700 placeholder:text-slate-400 transition-all"
                         />
                         <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
                           <div className="flex items-start justify-between gap-4">
                             <div>
-                              <p className="text-[11px] font-black uppercase tracking-widest text-slate-700">Upload image or PDF</p>
+                              <p className="text-[11px] font-black uppercase tracking-widest text-slate-700">{t('upload_image_or_pdf')}</p>
                               <p className="mt-1 text-[11px] text-slate-500">
-                                Vision OCR will read the file and extract key details. PDFs are limited to 10 pages.
+                                {t('vision_ocr_desc')}
                               </p>
                             </div>
                           </div>
@@ -270,7 +272,7 @@ export function DetailedWorkspaceView({
                           {uploadFileMutation.isPending && (
                             <div className="mt-3 flex items-center gap-2 text-[11px] font-bold text-blue-600">
                               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              Uploading and running OCR...
+                              {t('uploading_ocr')}
                             </div>
                           )}
                           {uploadError && (
@@ -282,16 +284,16 @@ export function DetailedWorkspaceView({
                         <div className="flex justify-end space-x-3 mt-8">
                           <Button
                             variant="ghost"
-                            className="rounded-xl font-bold text-slate-500 hover:bg-slate-100"
+                            className="rounded-xl font-bold text-slate-500 hover:bg-slate-100 cursor-pointer"
                             onClick={() => {
                               setUploadError(null)
                               setIsEvidenceModalOpen(false)
                             }}
                           >
-                            Cancel
+                            {t('cancel')}
                           </Button>
                           <Button
-                            className="bg-slate-900 hover:bg-blue-600 text-white rounded-xl font-bold px-6 shadow-xl shadow-slate-900/10"
+                            className="bg-slate-900 hover:bg-blue-600 text-white rounded-xl font-bold px-6 shadow-xl shadow-slate-900/10 cursor-pointer"
                             onClick={() => {
                               const el = document.getElementById('evidence-text') as HTMLTextAreaElement
                               if (el?.value) {
@@ -300,7 +302,7 @@ export function DetailedWorkspaceView({
                             }}
                             disabled={addTextMutation.isPending || uploadFileMutation.isPending}
                           >
-                            {addTextMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm Ingestion'}
+                            {addTextMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t('confirm_ingestion')}
                           </Button>
                         </div>
                       </div>
@@ -320,7 +322,7 @@ export function DetailedWorkspaceView({
               <div className="p-1 px-1.5 bg-blue-600 rounded text-white font-black text-[9px] uppercase tracking-widest">
                 AI
               </div>
-              <h2 className="text-xs font-black text-slate-900 uppercase tracking-widest">Intake Intelligence</h2>
+              <h2 className="text-xs font-black text-slate-900 uppercase tracking-widest">{t('ai_intake_intelligence')}</h2>
             </div>
 
             <div className="space-y-4 min-h-[120px]">
@@ -363,24 +365,24 @@ export function DetailedWorkspaceView({
                     </div>
                   )}
                   <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Strategist Thinking</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">{t('strategist_thinking')}</p>
                     <p className="text-[11px] text-slate-500 italic leading-relaxed">{nextQuestion.reason}</p>
                   </div>
                 </motion.div>
               ) : isConversationComplete ? (
                 <div className="bg-emerald-50/50 border border-emerald-100 p-4 rounded-2xl">
                   <p className="text-[13px] font-bold text-emerald-900 mb-1 leading-tight">{completionMessage}</p>
-                  <p className="text-[11px] text-emerald-600/70 font-medium">Auto-extraction logic has satisfied the schema requirements.</p>
+                  <p className="text-[11px] text-emerald-600/70 font-medium">{t('auto_extraction_complete')}</p>
                   {hiddenConditionalFieldCount > 0 && (
                     <p className="text-[10px] text-emerald-600/50 mt-3 font-bold uppercase tracking-tighter italic">
-                      {hiddenConditionalFieldCount} conditional path{hiddenConditionalFieldCount > 1 ? 's' : ''} skipped
+                      {t(hiddenConditionalFieldCount === 1 ? 'conditional_paths_skipped' : 'conditional_paths_skipped_plural', { count: hiddenConditionalFieldCount })}
                     </p>
                   )}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 opacity-40">
                   <Clock className="w-10 h-10 text-slate-200 mb-2" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Processing Insights...</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{t('processing_insights')}</p>
                 </div>
               )}
             </div>
@@ -390,12 +392,12 @@ export function DetailedWorkspaceView({
                 <textarea
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Add conversation details..."
+                  placeholder={t('add_conversation_details')}
                   className="w-full bg-slate-50/80 border-none rounded-2xl p-4 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 resize-none h-28 text-slate-800 placeholder:text-slate-400"
                 />
                 <Button
                   size="icon"
-                  className="absolute bottom-3 right-3 h-8 w-8 bg-blue-500 hover:bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/20"
+                  className="absolute bottom-3 right-3 h-8 w-8 bg-blue-500 hover:bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-500/20 cursor-pointer"
                   disabled={!chatInput || submitTurnMutation.isPending}
                   onClick={() => submitTurnMutation.mutate(chatInput)}
                 >
@@ -407,7 +409,7 @@ export function DetailedWorkspaceView({
 
           <div className="space-y-4 px-2">
             <div className="flex items-center justify-between">
-              <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Required Artifacts</h2>
+              <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{t('required_artifacts')}</h2>
               {artifacts && artifacts.length > 0 && <span className="text-[9px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded leading-none">{artifacts.length}</span>}
             </div>
             <div className="space-y-2.5">
@@ -421,7 +423,7 @@ export function DetailedWorkspaceView({
                       <span className="text-[11px] font-black text-slate-800 uppercase tracking-tighter truncate">{art.artifact_type}</span>
                     </div>
                     {art.status === 'generated' ? (
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg cursor-pointer">
                         <a href={getDownloadUrl(caseId!, art.artifact_id)} target="_blank" rel="noreferrer">
                           <Download className="w-4 h-4" />
                         </a>
@@ -433,7 +435,7 @@ export function DetailedWorkspaceView({
                 ))
               ) : (
                 <div className="py-8 text-center bg-white border border-dashed border-slate-200 rounded-3xl">
-                  <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">No Documents Yet</p>
+                  <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{t('no_documents_yet')}</p>
                 </div>
               )}
             </div>

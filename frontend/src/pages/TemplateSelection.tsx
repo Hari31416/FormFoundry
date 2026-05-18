@@ -4,15 +4,19 @@ import { Link, useNavigate } from 'react-router-dom'
 import { AlertTriangle, ArrowRight, FileText, ShieldAlert, History, User, Clock } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { formatDistanceToNow } from 'date-fns'
+import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { createCase, getTemplates, getCases, CaseFile } from '@/lib/api'
+import { cn } from '@/lib/utils'
+import { LanguageSelector } from '@/components/case/LanguageSelector'
 
 export default function TemplateSelection() {
   const navigate = useNavigate()
+  const { t, i18n } = useTranslation()
   const { data: templates, isLoading: templatesLoading } = useQuery({
     queryKey: ['templates'],
     queryFn: getTemplates,
@@ -31,7 +35,11 @@ export default function TemplateSelection() {
   })
 
   const handleCreateCase = (templateId: string, version: number) => {
-    createMutation.mutate({ template_id: templateId, template_version: version })
+    createMutation.mutate({
+      template_id: templateId,
+      template_version: version,
+      metadata: { preferred_language: i18n.language }
+    })
   }
 
   const [expandedTemplates, setExpandedTemplates] = React.useState<Record<string, boolean>>({})
@@ -55,17 +63,22 @@ export default function TemplateSelection() {
   const isLoading = templatesLoading || casesLoading
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-16">
+    <div className="max-w-7xl mx-auto px-6 py-16 relative">
+      {/* Language Selector Dropdown */}
+      <div className="absolute top-6 right-6 z-10">
+        <LanguageSelector />
+      </div>
+
       <header className="mb-16 text-center max-w-4xl mx-auto">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           <Badge variant="outline" className="mb-6 px-4 py-1.5 text-blue-600 border-blue-100 bg-blue-50/50 rounded-full font-bold uppercase tracking-wider text-[10px]">
-             Case Intake Management
+             {t('case_intake_management')}
           </Badge>
           <h1 className="text-5xl font-black tracking-tight text-slate-900 mb-6 bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-600">
-            Intake Control Center
+            {t('intake_control_center')}
           </h1>
           <p className="text-lg text-slate-500 leading-relaxed">
-            Select a template to launch a new intake process or resume a pre-existing case. Our AI-driven engine dynamically adapts to your selected schema.
+            {t('template_select_desc')}
           </p>
         </motion.div>
       </header>
@@ -94,18 +107,18 @@ export default function TemplateSelection() {
                   <CardHeader className="pb-4 relative">
                     <div className="absolute top-6 right-6">
                       <Badge variant="secondary" className="bg-slate-100/80 text-slate-500 text-[10px] uppercase font-bold tracking-widest px-2 py-0.5">
-                        v{template.template_version}
+                        {t('version', { version: template.template_version })}
                       </Badge>
                     </div>
                     <div className="p-3 bg-blue-50 rounded-2xl w-fit mb-4 group-hover:bg-blue-600 transition-colors duration-300">
                       <FileText className="w-6 h-6 text-blue-600 group-hover:text-white transition-colors duration-300" />
                     </div>
-                    <CardTitle className="text-2xl font-bold text-slate-900 leading-tight mb-1">{template.name}</CardTitle>
+                    <CardTitle className="text-2xl font-bold text-slate-900 leading-tight mb-1">{t('template_' + template.template_id + '_name', { defaultValue: template.name })}</CardTitle>
                     <CardDescription className="text-blue-500 font-semibold tracking-wide uppercase text-[10px]">{template.domain}</CardDescription>
                   </CardHeader>
                   <CardContent className="flex-grow pb-6 space-y-6">
                     <div>
-                      <p className="text-[15px] text-slate-600 leading-relaxed mb-4 italic">"{template.description}"</p>
+                      <p className="text-[15px] text-slate-600 leading-relaxed mb-4 italic">"{t('template_' + template.template_id + '_desc', { defaultValue: template.description })}"</p>
                       <div className="flex flex-wrap gap-1.5">
                         {template.supported_artifacts.map((artifact) => (
                           <Badge key={artifact} variant="secondary" className="text-[9px] font-bold text-slate-400 bg-slate-50 border-transparent">
@@ -116,11 +129,11 @@ export default function TemplateSelection() {
                     </div>
 
                     <Button
-                      className="w-full h-12 bg-slate-900 hover:bg-blue-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-slate-900/10 hover:shadow-blue-600/20"
+                      className="w-full h-12 bg-slate-900 hover:bg-blue-600 text-white font-bold rounded-2xl transition-all shadow-lg shadow-slate-900/10 hover:shadow-blue-600/20 cursor-pointer"
                       onClick={() => handleCreateCase(template.template_id, template.template_version)}
                       disabled={createMutation.isPending}
                     >
-                      {createMutation.isPending ? 'Initializing...' : 'Start New Case'}
+                      {createMutation.isPending ? t('initializing') : t('start_new_case')}
                       {!createMutation.isPending && <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />}
                     </Button>
 
@@ -129,14 +142,14 @@ export default function TemplateSelection() {
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
                             <History className="w-3.5 h-3.5 text-slate-400" />
-                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Recent Cases</span>
+                            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{t('recent_cases')}</span>
                           </div>
                           {templateCases.length > 3 && (
                             <button
                               onClick={() => toggleExpand(template.template_id)}
-                              className="text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest px-2 py-1 -mr-2"
+                              className="text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest px-2 py-1 -mr-2 cursor-pointer"
                             >
-                              {isExpanded ? 'See less' : `+${templateCases.length - 3} more`}
+                              {isExpanded ? t('see_less') : t('more_cases', { count: templateCases.length - 3 })}
                             </button>
                           )}
                         </div>
@@ -159,13 +172,13 @@ export default function TemplateSelection() {
                                       {c.metadata?.subject_name || c.case_id.split('-')[0]}
                                     </span>
                                     <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-slate-200 bg-white text-slate-500">
-                                      {c.status.replace('_', ' ')}
+                                      {t('case_status_' + c.status)}
                                     </Badge>
                                   </div>
                                   <div className="flex items-center gap-3 text-[10px] text-slate-400">
                                     <span className="flex items-center gap-1">
                                       <Clock className="w-3 h-3" />
-                                      {formatDistanceToNow(new Date(c.created_at))} ago
+                                      {t('time_ago', { time: formatDistanceToNow(new Date(c.created_at)) })}
                                     </span>
                                     <span className="flex items-center gap-1">
                                       <User className="w-3 h-3" />

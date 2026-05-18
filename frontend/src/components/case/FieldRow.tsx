@@ -17,6 +17,7 @@ import {
   FieldStatus,
   Evidence
 } from '@/lib/api'
+import { useTranslation } from 'react-i18next'
 
 // Helper: check if field has resolved value
 export function hasResolvedValue(value: unknown): boolean {
@@ -44,16 +45,17 @@ export function getEvidenceDisplayText(ev: Evidence): string {
 }
 
 // Helper: Render HSL status badges for field certainty/status
-export function getFieldBadge(status: FieldStatus) {
+export function FieldBadge({ status }: { status: FieldStatus }) {
+  const { t } = useTranslation()
   switch (status) {
     case 'confirmed':
-      return <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/10 border-green-200/50 text-[9px] uppercase font-black px-1.5 h-4">Confirmed</Badge>
+      return <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/10 border-green-200/50 text-[9px] uppercase font-black px-1.5 h-4">{t('field_status_confirmed')}</Badge>
     case 'proposed':
-      return <Badge className="bg-blue-500/10 text-blue-600 hover:bg-blue-500/10 border-blue-200/50 text-[9px] uppercase font-black px-1.5 h-4">Proposed</Badge>
+      return <Badge className="bg-blue-500/10 text-blue-600 hover:bg-blue-500/10 border-blue-200/50 text-[9px] uppercase font-black px-1.5 h-4">{t('field_status_proposed')}</Badge>
     case 'conflicted':
-      return <Badge className="bg-red-500/10 text-red-600 hover:bg-red-500/10 border-red-200/50 text-[9px] uppercase font-black px-1.5 h-4">Conflicted</Badge>
+      return <Badge className="bg-red-500/10 text-red-600 hover:bg-red-500/10 border-red-200/50 text-[9px] uppercase font-black px-1.5 h-4">{t('field_status_conflicted')}</Badge>
     case 'missing':
-      return <Badge variant="outline" className="text-slate-400 border-slate-200 text-[9px] uppercase font-black px-1.5 h-4">Missing</Badge>
+      return <Badge variant="outline" className="text-slate-400 border-slate-200 text-[9px] uppercase font-black px-1.5 h-4">{t('field_status_missing')}</Badge>
     default:
       return null
   }
@@ -61,6 +63,7 @@ export function getFieldBadge(status: FieldStatus) {
 
 // Subcomponent: Source Evidence Quote Renderer with expandable toggler
 export function EvidenceQuote({ ev }: { ev: Evidence }) {
+  const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(false)
   const displayText = getEvidenceDisplayText(ev)
   const isLongText = displayText.length > 120
@@ -75,15 +78,15 @@ export function EvidenceQuote({ ev }: { ev: Evidence }) {
       </p>
       <div className="flex items-center justify-between mt-1">
         <div className="text-[8px] font-bold text-slate-300 uppercase tracking-tighter">
-          via {ev.source_type.replace('_', ' ')}
+          {t('via')} {ev.source_type.replace('_', ' ')}
           {ev.source_subtype ? ` · ${ev.source_subtype}` : ''}
         </div>
         {isLongText && (
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-[9px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest transition-colors"
+            className="text-[9px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest transition-colors cursor-pointer"
           >
-            {isExpanded ? 'Show Less' : 'Show More'}
+            {isExpanded ? t('show_less') : t('show_more')}
           </button>
         )}
       </div>
@@ -108,6 +111,7 @@ export function FieldRow({
   onConfirm,
   onReject
 }: FieldRowProps) {
+  const { t } = useTranslation()
   if (!field) return null
   const confidence = state?.confidence ?? 0
   const proposedState = state?.status === 'proposed' ? state : undefined
@@ -128,7 +132,7 @@ export function FieldRow({
             <div className="flex-grow min-w-0 pr-4">
               <div className="flex items-center space-x-2 mb-1.5 flex-wrap gap-y-1">
                 <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{field.label}</span>
-                {state && getFieldBadge(state.status)}
+                {state && <FieldBadge status={state.status} />}
                 {field.required && (
                   <span className="text-[9px] font-bold text-red-500/60 px-1 border border-red-100 rounded leading-none pt-0.5">REQ</span>
                 )}
@@ -137,7 +141,7 @@ export function FieldRow({
                 {hasResolvedValue(state?.resolved_value) ? (
                   String(state?.resolved_value)
                 ) : (
-                  <span className="text-slate-300 font-medium italic">Awaiting data...</span>
+                  <span className="text-slate-300 font-medium italic">{t('awaiting_data')}</span>
                 )}
               </div>
 
@@ -152,7 +156,7 @@ export function FieldRow({
                       style={{ width: `${confidence * 100}%` }}
                     />
                   </div>
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{(confidence * 100).toFixed(0)}% Certainty</span>
+                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{(confidence * 100).toFixed(0)}% {t('certainty')}</span>
                 </div>
               )}
             </div>
@@ -163,17 +167,17 @@ export function FieldRow({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 text-[10px] font-black uppercase tracking-widest h-8 px-4 rounded-xl transition-all active:scale-95"
+                    className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 text-[10px] font-black uppercase tracking-widest h-8 px-4 rounded-xl transition-all active:scale-95 cursor-pointer"
                     onClick={() => onReject(proposedState.field_path)}
                   >
-                    Reject Match
+                    {t('reject_match')}
                   </Button>
                   <Button
                     size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest h-8 px-4 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95"
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest h-8 px-4 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95 cursor-pointer"
                     onClick={() => onConfirm(proposedState.field_path)}
                   >
-                    Confirm Match
+                    {t('confirm_match')}
                   </Button>
                 </>
               )}
@@ -191,7 +195,7 @@ export function FieldRow({
               <div className="pt-3 border-t border-slate-100 space-y-3">
                 <div className="flex items-center space-x-2 text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
                   <Quote className="w-2.5 h-2.5" />
-                  <span>Source Provenance</span>
+                  <span>{t('source_provenance')}</span>
                 </div>
                 {sourceEvidence.map((ev) => (
                   <EvidenceQuote key={ev.evidence_id} ev={ev} />

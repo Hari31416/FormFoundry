@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Layout
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -32,12 +33,14 @@ import {
   textToSpeech,
   uploadFileEvidence,
   Evidence,
-  getConversationTurns
+  getConversationTurns,
+  updateCaseLanguage
 } from '@/lib/api'
 
 import { DropdownMenuComponent } from '@/components/case/DropdownMenuComponent'
 import { SimplifiedChatView } from '@/components/case/SimplifiedChatView'
 import { DetailedWorkspaceView } from '@/components/case/DetailedWorkspaceView'
+import { LanguageSelector } from '@/components/case/LanguageSelector'
 
 function getValueByPath(payload: Record<string, unknown>, path: string): unknown {
   let cursor: unknown = payload
@@ -91,6 +94,8 @@ export default function CaseWorkspace() {
   const { caseId } = useParams<{ caseId: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { t, i18n } = useTranslation()
+
   const [isSimplifiedView, setIsSimplifiedView] = useState(true)
   const [isThinkingExpanded, setIsThinkingExpanded] = useState(false)
   const [activeTab, setActiveTab] = useState('review')
@@ -164,6 +169,15 @@ export default function CaseWorkspace() {
     queryFn: () => getLanguageConfig(),
   })
 
+  React.useEffect(() => {
+    if (caseDetail?.metadata?.preferred_language) {
+      const preferred = caseDetail.metadata.preferred_language
+      if ((preferred === 'hi' || preferred === 'en') && i18n.language !== preferred) {
+        i18n.changeLanguage(preferred)
+      }
+    }
+  }, [caseDetail?.metadata?.preferred_language, i18n])
+
   const [playingQuestion, setPlayingQuestion] = useState<string | null>(null)
   const [audioInstance, setAudioInstance] = useState<HTMLAudioElement | null>(null)
   const [loadingAudio, setLoadingAudio] = useState<string | null>(null)
@@ -204,14 +218,30 @@ export default function CaseWorkspace() {
     }
   }
 
+  const updateLanguageMutation = useMutation({
+    mutationFn: (lang: string) => updateCaseLanguage(caseId!, lang),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['case', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['next-question', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['turns', caseId] })
+    }
+  })
+
   const submitTurnMutation = useMutation({
     mutationFn: async (msg: string) => {
       try {
-        const detection = await detectLanguage(msg)
-        return submitTurn(caseId!, msg, detection.language)
+        let activeLang = i18n.language
+        if (activeLang === 'en') {
+          const detection = await detectLanguage(msg)
+          if (detection.language === 'hi') {
+            activeLang = 'hi'
+            i18n.changeLanguage('hi')
+          }
+        }
+        return submitTurn(caseId!, msg, activeLang)
       } catch (err) {
-        console.error('Failed to detect language, falling back to standard submit:', err)
-        return submitTurn(caseId!, msg)
+        console.error('Failed to detect language, falling back to active locale:', err)
+        return submitTurn(caseId!, msg, i18n.language)
       }
     },
     onSuccess: () => {
@@ -253,7 +283,7 @@ export default function CaseWorkspace() {
     },
     onError: (error: any) => {
       const detail =
-        error?.response?.data?.detail || 'Upload failed. Only images and PDFs are supported.'
+        error?.response?.data?.detail || t('upload_error_generic')
       setUploadError(String(detail))
     },
   })
@@ -334,11 +364,11 @@ export default function CaseWorkspace() {
 
         let displayMessage = ''
         if (ev.source_type === 'pdf_upload' || ev.source_type === 'image_upload') {
-          displayMessage = `📎 Uploaded file: ${ev.source_subtype || 'Document'}`
+          displayMessage = t('uploaded_file', { name: ev.source_subtype || 'Document' })
         } else if (ev.source_type === 'user_text') {
-          displayMessage = `📝 Injected note: "${ev.raw_text}"`
+          displayMessage = t('injected_note', { text: ev.raw_text })
         } else {
-          displayMessage = `➕ Injected evidence (${ev.source_type}): ${ev.source_subtype || ''}`
+          displayMessage = t('injected_evidence', { type: ev.source_type, name: ev.source_subtype || '' })
         }
 
         list.push({
@@ -377,10 +407,10 @@ export default function CaseWorkspace() {
   const isConversationComplete = !nextQuestion && outstandingQuestionCount === 0
   const completionMessage =
     caseDetail?.status === 'approved'
-      ? 'All active intake questions are complete. You can generate artifacts now.'
+      ? t('completion_approved')
       : caseDetail?.status === 'ready_for_review'
-        ? 'All active intake questions are complete. Confirm all field values in Field Review to enable approval.'
-        : 'All active intake questions are complete.'
+        ? t('completion_ready')
+        : t('completion_complete')
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -405,10 +435,28 @@ export default function CaseWorkspace() {
 
   const isApproveReady = caseDetail?.status === 'ready_for_review' && allFieldsConfirmed && !(validation?.some((v) => v.blocking))
 
-  if (isLoadingCase) {
+  const isInitializing = isLoadingCase || (nextQuestionQuery.isLoading && (!turns || turns.length === 0))
+
+  if (isInitializing) {
     return (
-      <div className="h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+      <div className="h-screen flex flex-col items-center justify-center bg-slate-50/20 font-sans">
+        <div className="flex flex-col items-center max-w-sm text-center px-8 py-10 rounded-3xl bg-white shadow-xl shadow-slate-200/50 border border-slate-100/80 backdrop-blur-md animate-in fade-in zoom-in-95 duration-300">
+          <div className="relative mb-6">
+            <div className="absolute inset-0 rounded-full bg-blue-100/60 blur-xl animate-pulse" />
+            <div className="relative p-4 bg-gradient-to-tr from-blue-50 to-white rounded-2xl border border-blue-100 shadow-inner">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+          </div>
+          <h3 className="text-sm font-black text-slate-900 mb-2 uppercase tracking-widest">
+            {isLoadingCase ? t('loading_case') : t('preparing_assistant')}
+          </h3>
+          <p className="text-xs font-bold text-slate-400 leading-relaxed">
+            {isLoadingCase
+              ? t('loading_case_desc')
+              : t('preparing_assistant_desc')
+            }
+          </p>
+        </div>
       </div>
     )
   }
@@ -422,38 +470,43 @@ export default function CaseWorkspace() {
           </div>
           <div className="flex flex-col">
             <div className="flex items-center space-x-2">
-              <span className="text-sm font-bold text-slate-900">{caseDetail?.template.name}</span>
+              <span className="text-sm font-bold text-slate-900">{caseDetail ? t('template_' + caseDetail.template.template_id + '_name', { defaultValue: caseDetail.template.name }) : ''}</span>
               <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded leading-none">#{caseId?.slice(0, 8)}</span>
             </div>
           </div>
         </div>
 
         <div className="flex items-center space-x-3">
+          {/* Language Selector Dropdown */}
+          <LanguageSelector onLanguageChange={(code) => updateLanguageMutation.mutate(code)} />
+
+          <div className="hidden sm:block h-4 w-px bg-slate-200 mx-1" />
+
           {/* Toggle View Mode */}
           <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/60 shadow-sm mr-2 select-none">
             <button
               onClick={() => setIsSimplifiedView(true)}
               className={cn(
-                "flex items-center space-x-1.5 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all duration-200",
+                "flex items-center space-x-1.5 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer",
                 isSimplifiedView
                   ? "bg-white text-blue-600 shadow-sm"
                   : "text-slate-400 hover:text-slate-600"
               )}
             >
               <MessageSquare className="w-3 h-3" />
-              <span>Chat</span>
+              <span>{t('chat_view')}</span>
             </button>
             <button
               onClick={() => setIsSimplifiedView(false)}
               className={cn(
-                "flex items-center space-x-1.5 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all duration-200",
+                "flex items-center space-x-1.5 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer",
                 !isSimplifiedView
                   ? "bg-white text-blue-600 shadow-sm"
                   : "text-slate-400 hover:text-slate-600"
               )}
             >
               <Layout className="w-3 h-3" />
-              <span>Detailed</span>
+              <span>{t('detailed_view')}</span>
             </button>
           </div>
 
@@ -469,12 +522,12 @@ export default function CaseWorkspace() {
           <div className="hidden sm:block h-4 w-px bg-slate-200 mx-1" />
 
           <Badge className={cn('px-2.5 py-0.5 font-bold text-[9px] uppercase tracking-wider border rounded-full', getStatusColor(caseDetail?.status || ''))}>
-            {caseDetail?.status.replace('_', ' ')}
+            {t('case_status_' + caseDetail?.status)}
           </Badge>
 
           {caseDetail?.metadata?.preferred_language && caseDetail?.metadata?.preferred_language !== 'en' && (
             <Badge className="px-2.5 py-0.5 font-bold text-[9px] uppercase tracking-wider border rounded-full bg-blue-50 text-blue-700 border-blue-200">
-              Language: {caseDetail.metadata.preferred_language}
+              {t('language')}: {caseDetail.metadata.preferred_language === 'hi' ? 'हिन्दी' : 'English'}
             </Badge>
           )}
 
@@ -483,11 +536,11 @@ export default function CaseWorkspace() {
           {caseDetail?.status === 'ready_for_review' && (
             <Button
               size="sm"
-              className="bg-green-600 hover:bg-green-700 text-white font-bold h-8 rounded-lg shadow-sm px-4 text-xs transition-all ring-offset-2 focus:ring-2 focus:ring-green-500/20"
+              className="bg-green-600 hover:bg-green-700 text-white font-bold h-8 rounded-lg shadow-sm px-4 text-xs transition-all ring-offset-2 focus:ring-2 focus:ring-green-500/20 cursor-pointer"
               onClick={() => approveMutation.mutate()}
               disabled={approveMutation.isPending || validation?.some((v) => v.blocking) || !allFieldsConfirmed}
             >
-              Approve & Close
+              {t('approve_and_close')}
             </Button>
           )}
 

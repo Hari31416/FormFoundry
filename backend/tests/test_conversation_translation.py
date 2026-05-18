@@ -83,9 +83,9 @@ def test_conversation_turn_routes_translation_and_persists_lang(
     payload = response.json()
 
     # User turn message in database keeps the original message!
-    assert (
-        payload["user_turn"]["message"]
-        == "मेरा नाम प्रिया शर्मा है। फोन नंबर 9876543210 है। मैं 14 रेजीडेंसी रोड, बेंगलुरु में रहती हूँ।"
+    assert payload["user_turn"]["message"] == (
+        "मेरा नाम प्रिया शर्मा है। फोन नंबर 9876543210 है।\n"
+        "            मैं 14 रेजीडेंसी रोड, बेंगलुरु में रहती हूँ।"
     )
     assert payload["user_turn"]["metadata"]["detected_language"] == "hi"
     assert "Priya Sharma" in payload["user_turn"]["metadata"]["english_translation"]

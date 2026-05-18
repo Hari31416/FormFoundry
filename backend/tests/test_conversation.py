@@ -146,7 +146,8 @@ def test_get_conversation_turns_history(client: TestClient) -> None:
     assert history_response.status_code == 200
     history = history_response.json()
 
-    # We should have 3 turns: initial assistant question, user's response, and assistant's follow-up
+    # We should have 3 turns: initial assistant question,
+    # user's response, and assistant's follow-up
     assert len(history) >= 3
     assert history[0]["role"] == "assistant"
     assert history[1]["role"] == "user"
