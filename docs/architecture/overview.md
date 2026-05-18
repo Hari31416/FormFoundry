@@ -38,7 +38,7 @@ The frontend is a Single Page Application (SPA) built with Vite and internationa
 
 ### 2. Backend (FastAPI)
 
-The backend serves as the central orchestration layer. It manages the template registry, case lifecycles, extraction jobs, validation, and artifact generation. Additionally, it features a pluggable **Language Manager** service that dynamically detects input languages, translates content bidirectionally between regional languages and English, synthesizes speech, and syncs user preferences.
+The backend serves as the central orchestration layer. It manages case lifecycles, extraction jobs, validation, and dynamic artifact generation. It hosts a **Dynamic No-Code Template & PDF Builder** allowing administrators to create versioned intake templates entirely from the UI; the system then dynamically generates corresponding interactive fillable PDF sheets on-the-fly. Additionally, it features a pluggable **Language Manager** service that dynamically detects input languages, translates content bidirectionally between regional languages and English, synthesizes speech, and syncs user preferences.
 
 ### 3. Persistence & Caching Layer
 

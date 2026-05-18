@@ -34,7 +34,7 @@ graph TD
   - **Simplified Chat View**: A guided, chat-first UI featuring speech accessibility, strategists' reasoning insights, and quick inline field reviews.
   - **Detailed Workspace View**: A professional three-panel grid for concurrently analyzing uploaded evidence, reviewing structured field values, and auditing AI attribution.
 - **High-Performance Translation Caching**: Redis-backed translation cache using collision-free SHA-256 hashed keys, reducing API costs and latency to near-zero.
-- **Declarative Template Registry**: Version-aware template definitions loaded from JSON, allowing for easy expansion to new form types (e.g. Indian FIR reports, Medical screening, Insurance).
+- **Dynamic No-Code Template & PDF Form Builder**: Design, deploy, and version complex form intake templates directly from the React UI without writing backend code. The system automatically creates matching interactive PDF templates on-the-fly (`assets/pdfs/{template_id}_v{version}.pdf`), complete with programmatic field coordinates and target layouts.
 - **AI-Powered Extraction**: Uses vision-based OCR and LLM orchestration via `litellm` to extract candidate data with evidence attribution.
 - **Deterministic Conflict Resolution**: Resolves extracted candidates into field states with conflict detection and audit trails.
 - **Interactive Conversation turns**: Streams follow-up questions via SSE based on unresolved fields and template priority, automatically translated to the user's preferred language.
@@ -176,3 +176,11 @@ flowchart TD
 
 - Click **Chat** in the header toggle to use the streamlined, mobile-friendly conversational intake view.
 - Click **Detailed** to open the side-by-side evidence inspection panel, candidate resolution tables, and validation errors.
+
+### Dynamic No-Code Template Creation & Intake Filling
+
+1. Click **Create Group Selection** / **Create Template** in the navigation header to open the schema designer.
+2. Define your schema fields (e.g. complainant name, type, required status, default questions) and custom group categories.
+3. Click **Publish** to instantly register the template in the database.
+4. The backend automatically generates a corresponding professional fillable PDF template on-the-fly (`assets/pdfs/{template_id}_v{version}.pdf`) with coordinate-mapped form fields.
+5. Create a new case under your custom template, fill the fields conversational/manually, and download your perfectly generated custom PDF!

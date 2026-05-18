@@ -67,6 +67,7 @@ nav:
     - Overview: frontend/README.md
     - Project Structure: frontend/project-structure.md
     - API Layer: frontend/api-layer.md
+    - No-Code Platform: frontend/no-code-platform.md
   - API Reference:
     - Backend Endpoints: api-reference/backend-endpoints.md
   - Development:

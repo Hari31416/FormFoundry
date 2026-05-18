@@ -11,21 +11,22 @@ The platform combines a high-performance FastAPI orchestration layer, a pluggabl
 - **Accelerated Service Delivery:** Move from raw intake to final document generation in minutes instead of hours or days, regardless of the input language.
 - **Democratized Access & Regional Outreach:** Support client-facing workflows in multiple regional languages (such as Hindi and English) using state-of-the-art translation and speech synthesis APIs.
 - **Unmatched Accuracy:** AI-driven extraction combined with deterministic resolution, validation, and real-time translation eliminates manual data-entry and language transcription errors.
-- **Domain Agnostic Flexibility:** Rapidly deploy new form types and workflows using declarative JSON templates without requiring custom code.
+- **Dynamic No-Code Customization:** Empower non-technical administrators to design custom intake schemas, field groupings, and versioned forms entirely from the UI with zero code modifications, while the backend automatically builds matching interactive PDF assets on-the-fly.
 - **Operational Transparency:** Full audit trails for every field, showing exactly which piece of evidence supported an AI-driven extraction, complete with translation provenance.
 
 ## 3. Client-facing capabilities
 
-| Capability                    | What the client gets                                         | How it works in practice                                                                   | Business impact                                                                |
-| :---------------------------- | :----------------------------------------------------------- | :----------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------- |
-| **Intelligent Intake**        | Support for diverse input sources (PDF, Images, Notes, Chat) | Users upload evidence or type notes; the system rasterizes visual media for analysis       | Consolidates all data sources into a single, unified intake stream             |
-| **Pluggable Multilingualism** | Real-time multilingual processing and translation sync       | Dynamically detects user input languages, translates content, and syncs user preferences   | Breaks down language barriers in public services, GovTech, and global markets  |
-| **Speech Accessibility**      | Playback of assistant questions via Text-to-Speech (TTS)     | Users can click to hear the assistant's questions spoken aloud in their active language    | Dramatically improves accessibility for low-literacy and mobile-first users    |
-| **Vision-AI Extraction**      | Automated data capture from complex, unstructured documents  | Vision-based OCR and LLMs (via LiteLLM) propose field candidates with evidence attribution | Drastically reduces manual transcription effort and data entry costs           |
-| **Deterministic Resolution**  | High-confidence automated resolution with conflict detection | The engine selects the best candidates based on confidence and rules, flagging ambiguities | Ensures high data integrity while highlighting only what needs human attention |
-| **Rule-Based Validation**     | Automated checks for schema, logic, and cross-field rules    | Every case is validated against template rules to ensure completeness and accuracy         | Minimizes downstream errors and re-work costs by catching issues at the source |
-| **Artifact Generation**       | One-click production of professional, ready-to-use documents | Validated data is injected into official templates (e.g., PDFs) for instant download       | Elevates professional services and speeds up final document delivery           |
-| **Audit & Governance**        | Clear traceability of every field value back to its source   | The system persists "Resolution Audit" records for every decision made by AI or humans     | Supports regulatory compliance and improves transparency in decision-making    |
+| Capability                    | What the client gets                                         | How it works in practice                                                                               | Business impact                                                                 |
+| :---------------------------- | :----------------------------------------------------------- | :----------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------ |
+| **Intelligent Intake**        | Support for diverse input sources (PDF, Images, Notes, Chat) | Users upload evidence or type notes; the system rasterizes visual media for analysis                   | Consolidates all data sources into a single, unified intake stream              |
+| **Pluggable Multilingualism** | Real-time multilingual processing and translation sync       | Dynamically detects user input languages, translates content, and syncs user preferences               | Breaks down language barriers in public services, GovTech, and global markets   |
+| **Speech Accessibility**      | Playback of assistant questions via Text-to-Speech (TTS)     | Users can click to hear the assistant's questions spoken aloud in their active language                | Dramatically improves accessibility for low-literacy and mobile-first users     |
+| **Vision-AI Extraction**      | Automated data capture from complex, unstructured documents  | Vision-based OCR and LLMs (via LiteLLM) propose field candidates with evidence attribution             | Drastically reduces manual transcription effort and data entry costs            |
+| **Deterministic Resolution**  | High-confidence automated resolution with conflict detection | The engine selects the best candidates based on confidence and rules, flagging ambiguities             | Ensures high data integrity while highlighting only what needs human attention  |
+| **Rule-Based Validation**     | Automated checks for schema, logic, and cross-field rules    | Every case is validated against template rules to ensure completeness and accuracy                     | Minimizes downstream errors and re-work costs by catching issues at the source  |
+| **Artifact Generation**       | One-click production of professional, ready-to-use documents | Validated data is injected into official templates (e.g., PDFs) for instant download                   | Elevates professional services and speeds up final document delivery            |
+| **No-Code Templating**        | Dynamic intake schema design and versioned form builder      | Non-technical administrators define intake fields and groups in the UI; PDF sheets generate on-the-fly | Dramatically reduces deployment time for new intake types from weeks to minutes |
+| **Audit & Governance**        | Clear traceability of every field value back to its source   | The system persists "Resolution Audit" records for every decision made by AI or humans                 | Supports regulatory compliance and improves transparency in decision-making     |
 
 ## 4. Security and governance posture
 
@@ -133,6 +134,7 @@ The platform exposes a modern REST + SSE API for seamless integration with exist
 - **Extensive Documentation**: Comprehensive technical wiki (MkDocs) and ADRs (Architectural Decision Records).
 - **Quality Assurance**: Structured testing across unit, integration, and language API layers.
 - **Generalized Core**: A domain-agnostic engine that can be repurposed for any vertical without core changes.
+- **Zero-Configuration PDF Generation**: The platform dynamically builds PDF templates on-the-fly when templates are created or updated, parsing complex coordinate and dot-notation data maps automatically.
 
 ## 9. Positioning Statement for Prospective Clients
 

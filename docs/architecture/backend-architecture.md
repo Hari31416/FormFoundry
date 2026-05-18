@@ -25,7 +25,7 @@ FastAPI's dependency injection system is used extensively, primarily for:
 
 - **`app.core`**: Cross-cutting concerns like configuration, logging, and request tracing.
 - **`app.api`**: Central routing and endpoint definitions.
-- **`app.templates`**: Management of the declarative template registry.
+- **`app.templates`**: Management of the dynamic, version-aware database template registry supporting no-code intake creation directly from the UI.
 - **`app.cases`**: Orchestration of the form-filling lifecycle.
 - **`app.intake`**: Ingestion of evidence from various sources.
 - **`app.extraction`**: AI-driven data extraction and OCR logic.
@@ -33,7 +33,7 @@ FastAPI's dependency injection system is used extensively, primarily for:
 - **`app.conversation`**: Interactive chat experience for missing data.
 - **`app.languages`**: Pluggable language detection, translation, speech services, and caching.
 - **`app.validation`**: Schema and logic validation engine.
-- **`app.artifacts`**: Final document generation.
+- **`app.artifacts`**: Final document generation, which automatically constructs interactive fillable PDF sheets on-the-fly if the template asset file is not pre-packaged.
 
 ## AI Orchestration
 
