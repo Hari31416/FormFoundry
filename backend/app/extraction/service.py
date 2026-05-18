@@ -58,10 +58,64 @@ def parse_date(value: str) -> str | None:
     raw = value.strip()
     if re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw):
         return raw
-    match = re.fullmatch(r"(\d{2})[/-](\d{2})[/-](\d{4})", raw)
+
+    # Match standard DD-MM-YYYY or DD/MM/YYYY (with 1-2 digits for day/month)
+    match = re.fullmatch(r"(\d{1,2})[/-](\d{1,2})[/-](\d{4})", raw)
     if match:
         day, month, year = match.groups()
-        return f"{year}-{month}-{day}"
+        return f"{year}-{int(month):02d}-{int(day):02d}"
+
+    # Match YYYY/MM/DD
+    match_ymd = re.fullmatch(r"(\d{4})[/-](\d{1,2})[/-](\d{1,2})", raw)
+    if match_ymd:
+        year, month, day = match_ymd.groups()
+        return f"{year}-{int(month):02d}-{int(day):02d}"
+
+    # Match textual dates like "7 November 2014" or "Nov 7, 2014" or "November 7, 2014"
+    months = {
+        "jan": 1,
+        "january": 1,
+        "feb": 2,
+        "february": 2,
+        "mar": 3,
+        "march": 3,
+        "apr": 4,
+        "april": 4,
+        "may": 5,
+        "jun": 6,
+        "june": 6,
+        "jul": 7,
+        "july": 7,
+        "aug": 8,
+        "august": 8,
+        "sep": 9,
+        "september": 9,
+        "oct": 10,
+        "october": 10,
+        "nov": 11,
+        "november": 11,
+        "dec": 12,
+        "december": 12,
+    }
+
+    # Try parsing patterns like: 7 November 2014 or 7th Nov 2014
+    text_match1 = re.search(r"(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+)\s+(\d{4})", raw)
+    if text_match1:
+        day, mon, year = text_match1.groups()
+        mon_lower = mon.lower()
+        if mon_lower in months:
+            return f"{year}-{months[mon_lower]:02d}-{int(day):02d}"
+
+    # Try parsing patterns like: November 7, 2014 or Nov 7th, 2014
+    text_match2 = re.search(
+        r"([A-Za-z]+)\s+(\d{1,2})(?:st|nd|rd|th)?(?:,)?\s+(\d{4})", raw
+    )
+    if text_match2:
+        mon, day, year = text_match2.groups()
+        mon_lower = mon.lower()
+        if mon_lower in months:
+            return f"{year}-{months[mon_lower]:02d}-{int(day):02d}"
+
     return None
 
 
@@ -149,7 +203,10 @@ async def extract_candidates_with_llm(
             "You extract structured form field candidates from evidence text. "
             'Return JSON only with the shape {"candidates": [...]} where each candidate contains '
             "field_path, candidate_value, confidence, rationale, and optional source_quote. "
-            "Only include candidates directly supported by the evidence text."
+            "Only include candidates directly supported by the evidence text. "
+            "IMPORTANT: Normalize all date values to YYYY-MM-DD format "
+            "(e.g., '7 November 2014' or '07-11-2014' should be "
+            "extracted as '2014-11-07')."
         ),
         user_prompt=(
             f"Template: {template.name}\n"

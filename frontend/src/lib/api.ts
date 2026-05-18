@@ -61,6 +61,22 @@ export interface TemplateDefinition {
   schema: TemplateField[]
   field_groups: TemplateFieldGroup[]
   supported_artifacts: string[]
+  conversation_config?: {
+    tone: string
+    explanation_style?: string
+    reask_cooldown_turns?: number
+    max_grouped_fields?: number
+  }
+  renderer_config?: {
+    artifact_type?: string
+    template_asset?: string
+    pdf_title?: string
+  }
+  validation_rules?: Array<{
+    rule_id: string
+    type: string
+    pattern?: string
+  }>
 }
 
 export interface FieldState {
@@ -139,11 +155,18 @@ export interface ConversationTurn {
 }
 
 export const getTemplates = () => api.get<TemplateDefinition[]>('/templates').then((res) => res.data)
+export const createTemplate = (data: TemplateDefinition) =>
+  api.post<TemplateDefinition>('/templates', data).then((res) => res.data)
+export const updateTemplate = (templateId: string, version: number, data: TemplateDefinition) =>
+  api.put<TemplateDefinition>(`/templates/${templateId}/versions/${version}`, data).then((res) => res.data)
+export const deleteTemplate = (templateId: string, version: number) =>
+  api.delete(`/templates/${templateId}/versions/${version}`).then((res) => res.data)
 export const getCases = (params?: { template_id?: string; limit?: number; offset?: number }) =>
   api.get<CaseFile[]>('/cases', { params }).then((res) => res.data)
 export const createCase = (data: { template_id: string; template_version?: number; metadata?: Record<string, any> }) =>
   api.post<CaseFile>('/cases', data).then((res) => res.data)
 export const getCase = (id: string) => api.get<CaseDetail>(`/cases/${id}`).then((res) => res.data)
+export const deleteCase = (id: string) => api.delete(`/cases/${id}`).then((res) => res.data)
 export const updateCaseLanguage = (caseId: string, language: string) =>
   api.put<CaseDetail>(`/cases/${caseId}/language`, { language }).then((res) => res.data)
 export const getCaseSchemaState = (id: string) => api.get<any>(`/cases/${id}/schema-state`).then((res) => res.data)

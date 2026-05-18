@@ -101,6 +101,7 @@ You primarily use `make` commands to manage the lifecycle of the application.
   - formatting (`black`, `isort`, `prettier` equivalent).
   - Update `wiki` with project changes.
   - Check types and run tests before finishing.
+  - Use i18n patterns for texts on frontend.
 - **Ask first:**
   - Adding new heavy dependencies.
   - Changing core infrastructure architecture.

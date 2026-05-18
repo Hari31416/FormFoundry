@@ -153,3 +153,94 @@ def test_get_conversation_turns_history(client: TestClient) -> None:
     assert history[1]["role"] == "user"
     assert "Priya Sharma" in history[1]["message"]
     assert history[2]["role"] == "assistant"
+
+
+def test_parse_date_robustness() -> None:
+    from app.extraction.service import parse_date
+
+    assert parse_date("7 November 2014") == "2014-11-07"
+    assert parse_date("Nov 7th, 2014") == "2014-11-07"
+    assert parse_date("07-11-2014") == "2014-11-07"
+    assert parse_date("7/11/2014") == "2014-11-07"
+    assert parse_date("2014-11-07") == "2014-11-07"
+    assert parse_date("not a date") is None
+
+
+def test_optional_field_refusal_marks_na(client: TestClient) -> None:
+    case_id = create_case(client)
+
+    # First, satisfy the required complainant details
+    response = client.post(
+        f"/api/v1/cases/{case_id}/conversation/turns",
+        json={
+            "message": (
+                "My name is Priya Sharma. Phone number is 9876543210. "
+                "I live at 14 Residency Road, Bengaluru."
+            ),
+            "created_by": "conversation-test",
+        },
+    )
+    assert response.status_code == 200
+
+    # Satisfy incident details except optional field
+    response = client.post(
+        f"/api/v1/cases/{case_id}/conversation/turns",
+        json={
+            "message": (
+                "The incident happened on 2026-04-17 at 21:15 near MG Road. "
+                "Ashok Nagar Police Station should receive it. It was a theft. "
+                "Incident summary: Her phone was stolen."
+            ),
+            "created_by": "conversation-test",
+        },
+    )
+    assert response.status_code == 200
+
+    # The next question should be a required or optional field. Let's refuse it.
+    next_q = response.json()["next_question"]
+    assert next_q is not None
+
+    refuse_response = client.post(
+        f"/api/v1/cases/{case_id}/conversation/turns",
+        json={
+            "message": "No idea, skip this",
+            "created_by": "conversation-test",
+        },
+    )
+    assert refuse_response.status_code == 200
+
+    # Verify that the field got resolved to "NA" in the schema state
+    schema_response = client.get(f"/api/v1/cases/{case_id}/schema-state")
+    assert schema_response.status_code == 200
+    schema_state = schema_response.json()
+    by_path = {
+        field_state["field_path"]: field_state
+        for field_state in schema_state["field_states"]
+    }
+
+    # For any optional field that was refused, it should be marked as "NA" or skipped
+    refused_paths = next_q["field_paths"]
+    for path in refused_paths:
+        field_state = by_path.get(path)
+        if field_state and not field_state.get("required", True):
+            assert field_state["status"] == "proposed"
+            assert field_state["resolved_value"] == "NA"
+
+
+def test_required_field_refusal_prompts_mandatory(client: TestClient) -> None:
+    case_id = create_case(client)
+
+    # Complainant name is required. Say "I don't know" to the complainant name question
+    response = client.post(
+        f"/api/v1/cases/{case_id}/conversation/turns",
+        json={
+            "message": "I don't know, skip this field",
+            "created_by": "conversation-test",
+        },
+    )
+    assert response.status_code == 200
+    payload = response.json()
+
+    # The assistant response should tell the user that the field is mandatory
+    assert "mandatory" in payload["assistant_turn"]["message"]
+    assert "complainant" in payload["assistant_turn"]["message"]

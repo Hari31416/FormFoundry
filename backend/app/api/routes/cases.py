@@ -81,3 +81,20 @@ async def update_case_language_route(
     case_record.case_metadata = metadata
     await session.commit()
     return await get_case_detail(session, case_id)
+
+
+@router.delete("/{case_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_case_route(
+    case_id: str,
+    session: DBSession,
+) -> None:
+    from fastapi import HTTPException
+
+    from app.cases.models import CaseFileRecord
+
+    case_record = await session.get(CaseFileRecord, case_id)
+    if case_record is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    await session.delete(case_record)
+    await session.commit()

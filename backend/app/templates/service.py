@@ -35,6 +35,18 @@ def serialize_template(record: TemplateDefinitionRecord) -> TemplateDefinition:
     )
 
 
+def save_template_config_to_file(payload: TemplateDefinitionCreate) -> None:
+    template_dir = get_settings().resolved_template_config_dir
+    template_dir.mkdir(parents=True, exist_ok=True)
+    file_name = f"{payload.template_id}_v{payload.template_version}.json"
+    file_path = template_dir / file_name
+
+    import json
+
+    data = json.loads(payload.model_dump_json(by_alias=True))
+    file_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+
 async def create_template(
     session: AsyncSession, payload: TemplateDefinitionCreate
 ) -> TemplateDefinition:
@@ -54,6 +66,15 @@ async def create_template(
     session.add(record)
     await session.commit()
     await session.refresh(record)
+
+    try:
+        save_template_config_to_file(payload)
+    except Exception as e:
+        import logging
+
+        logger = logging.getLogger("app.templates.service")
+        logger.warning(f"Failed to save template to disk: {e}")
+
     return serialize_template(record)
 
 

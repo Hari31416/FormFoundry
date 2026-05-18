@@ -76,6 +76,12 @@ def build_renderer_map(template_record: TemplateDefinitionRecord) -> dict[str, s
         for field in template_record.schema
         if field.get("render_targets")
     }
+    # Fallback: if render_targets is not set, map each field's path to an underscored name
+    for field in template_record.schema:
+        path = field["path"]
+        if path not in field_map:
+            field_map[path] = path.replace(".", "_")
+
     field_map.update(renderer_config.get("field_map", {}))
     return field_map
 
@@ -85,10 +91,9 @@ def resolve_template_asset_path(template_record: TemplateDefinitionRecord) -> Pa
     renderer_config = template_record.renderer_config or {}
     template_asset = renderer_config.get("template_asset")
     if not template_asset:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Template renderer_config.template_asset is missing.",
-        )
+        t_id = template_record.template_id
+        t_ver = template_record.template_version
+        template_asset = f"assets/pdfs/{t_id}_v{t_ver}.pdf"
     template_path = Path(template_asset)
     if not template_path.is_absolute():
         template_path = backend_root / template_path

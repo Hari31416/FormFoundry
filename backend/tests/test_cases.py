@@ -59,3 +59,30 @@ def test_update_case_preferred_language(client: TestClient) -> None:
     assert get_response.status_code == 200
     get_payload = get_response.json()
     assert get_payload["metadata"]["preferred_language"] == "hi"
+
+
+def test_delete_case(client: TestClient) -> None:
+    # 1. Create a case
+    create_response = client.post(
+        "/api/v1/cases",
+        json={
+            "template_id": "fir-report-intake",
+            "created_by": "test-user",
+            "metadata": {"intake_channel": "manual"},
+        },
+    )
+    assert create_response.status_code == 201
+    case_payload = create_response.json()
+    case_id = case_payload["case_id"]
+
+    # 2. Verify retrieval works
+    get_response = client.get(f"/api/v1/cases/{case_id}")
+    assert get_response.status_code == 200
+
+    # 3. Delete the case
+    delete_response = client.delete(f"/api/v1/cases/{case_id}")
+    assert delete_response.status_code == 204
+
+    # 4. Verify case no longer exists
+    get_again_response = client.get(f"/api/v1/cases/{case_id}")
+    assert get_again_response.status_code == 404

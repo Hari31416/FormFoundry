@@ -1,0 +1,109 @@
+{
+  "template_id": "simple-form",
+  "template_version": 1,
+  "name": "New Custom Intake",
+  "domain": "custom",
+  "description": "A dynamically configured intake workflow.",
+  "schema": [
+    {
+      "path": "movie.name",
+      "label": "Movie Name",
+      "type": "string",
+      "required": true,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "What is the name of the movie?",
+      "clarification_question": "What is the name of the movie?",
+      "help_text": "Name of the movie",
+      "sensitivity": "standard",
+      "validation_refs": [],
+      "render_targets": [],
+      "conditions": {}
+    },
+    {
+      "path": "movie.genre",
+      "label": "Movie Genre",
+      "type": "enum",
+      "required": true,
+      "repeated": false,
+      "enum_options": [
+        "Sci Fi",
+        "Fantasy",
+        "Horror",
+        "Drama"
+      ],
+      "default_question": "What is the genre of the movie?",
+      "clarification_question": "What is the genre of the movie?",
+      "help_text": "The movie genre",
+      "sensitivity": "standard",
+      "validation_refs": [],
+      "render_targets": [],
+      "conditions": {}
+    },
+    {
+      "path": "movie.dor",
+      "label": "Date of Release",
+      "type": "date",
+      "required": true,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "What is the release date of the movie?",
+      "clarification_question": "Please specify the release date of the movie in DD-MM-YYYY fomat",
+      "help_text": "The release date of the movie",
+      "sensitivity": "standard",
+      "validation_refs": [],
+      "render_targets": [],
+      "conditions": {}
+    },
+    {
+      "path": "movie.lead",
+      "label": "Lead Actor",
+      "type": "string",
+      "required": false,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "Who is the lead actor?",
+      "clarification_question": "Who is the lead actor?",
+      "help_text": "The lead actor of the movie",
+      "sensitivity": "standard",
+      "validation_refs": [],
+      "render_targets": [],
+      "conditions": {}
+    }
+  ],
+  "field_groups": [
+    {
+      "group_id": "primary_info",
+      "label": "Key Info",
+      "description": "Information about movie",
+      "field_paths": [
+        "subject.full_name",
+        "movie.name",
+        "movie.genre",
+        "movie.dor",
+        "movie.lead"
+      ]
+    }
+  ],
+  "validation_rules": [
+    {
+      "rule_id": "required",
+      "type": "requiredness"
+    }
+  ],
+  "conversation_config": {
+    "tone": "empathetic and professional",
+    "explanation_style": "clear",
+    "reask_cooldown_turns": 1,
+    "max_grouped_fields": 2
+  },
+  "supported_artifacts": [
+    "json_export",
+    "fillable_pdf"
+  ],
+  "renderer_config": {
+    "artifact_type": "json_export",
+    "pdf_title": "Custom Intake Report",
+    "template_asset": "assets/pdfs/simple.pdf"
+  }
+}
