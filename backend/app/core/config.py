@@ -64,6 +64,30 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.1
     pdf_ocr_max_pages: int = 10
 
+    # Language Service Providers (Bhashini, Google, langdetect, None)
+    language_detection_service_provider: str | None = Field(
+        default=None, alias="LANGUAGE_DETECTION_SERVICE_PROVIDER"
+    )
+    language_translation_service_provider: str | None = Field(
+        default=None, alias="LANGUAGE_TRANSLATION_SERVICE_PROVIDER"
+    )
+    tts_service_provider: str | None = Field(default=None, alias="TTS_SERVICE_PROVIDER")
+    stt_service_provider: str | None = Field(default=None, alias="STT_SERVICE_PROVIDER")
+
+    # Bhashini API Configuration
+    bhashini_api_key: str | None = Field(default=None, alias="BHASHINI_API_KEY")
+    bhashini_endpoint_url: str = Field(
+        default="https://dhruva-api.bhashini.gov.in/services/inference/pipeline",
+        alias="BHASHINI_ENDPOINT_URL",
+    )
+    bhashini_lang_detection_service_id: str | None = Field(
+        default=None, alias="BHASHINI_LANG_DETECTION_SERVICE_ID"
+    )
+    bhashini_translation_service_id: str = Field(
+        default="ai4bharat/indictrans-v2-all-gpu--t4",
+        alias="BHASHINI_TRANSLATION_SERVICE_ID",
+    )
+
     @property
     def decoded_postgres_password(self) -> str:
         return unquote(self.postgres_password)

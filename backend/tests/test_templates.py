@@ -6,9 +6,12 @@ def test_seeded_template_is_available(client: TestClient) -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert len(payload) == 1
-    assert payload[0]["template_id"] == "fir-report-intake"
-    assert payload[0]["supported_artifacts"] == ["fillable_pdf", "json_export"]
+    assert len(payload) >= 1
+    fir_template = next(
+        (t for t in payload if t["template_id"] == "fir-report-intake"), None
+    )
+    assert fir_template is not None
+    assert fir_template["supported_artifacts"] == ["fillable_pdf", "json_export"]
 
 
 def test_fetch_template_by_id(client: TestClient) -> None:

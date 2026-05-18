@@ -20,6 +20,11 @@ dependencies = [
   "reportlab>=4.4.4",
   "sqlalchemy>=2.0.43",
   "uvicorn[standard]>=0.35.0",
+  "googletrans==4.0.2",
+  "langdetect>=1.0.9",
+  "pydub>=0.25.1",
+  "audioop-lts>=0.2.2 ; python_full_version >= '3.13'",
+  "tenacity>=9.1.4",
 ]
 
 [dependency-groups]
