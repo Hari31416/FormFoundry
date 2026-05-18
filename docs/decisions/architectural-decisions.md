@@ -29,3 +29,24 @@ This document tracks significant architectural decisions made during the develop
 **Context**: We need to store structured data for hundreds of different form types in a single database.
 **Decision**: Use Postgres with traditional columns for fixed metadata (IDs, statuses, timestamps) and the `JSON` type for dynamic payloads (field states, template schemas).
 **Consequences**: Excellent query performance on core metadata while maintaining high flexibility for template-specific data.
+
+## ADR 5: Pluggable Multilingual & Speech Subsystem
+
+**Status**: Accepted
+**Context**: Reaching regional users (such as citizen intake in India) requires local language interfaces and speech accessibility. However, hardcoding external translation/speech APIs locks the platform into specific vendors and raises API costs.
+**Decision**:
+
+1. Build a decoupled multilingual subsystem with abstract base classes (`BaseTranslationProvider`, `BaseTTSProvider`, etc.) and a service registry orchestrator (`LanguageManager`).
+2. Integrate high-performance, Redis-backed translation caching with SHA-256 collision-free hashing of source, target, and string contents.
+3. Sync case metadata preferences so that backend-generated questions automatically translate and stream to match the active client locale.
+   **Consequences**: Pluggability of localized systems (such as Bhashini or Google Cloud) with zero-key local fallbacks, significant reduction in translation API costs, and low latency for active conversation loops.
+
+## ADR 6: Dual-Workspace UI Architecture
+
+**Status**: Accepted
+**Context**: Monolithic, multi-panel workspace pages lead to heavy initial page-load times, DOM bloat, and poor mobile accessibility. Different users require different intake interactions: end-citizens need guided, simple questionnaires, while backend agents require comprehensive side-by-side data auditing grids.
+**Decision**: Split the primary case workspace component into two high-level modular sub-components:
+
+1. **`DetailedWorkspaceView`**: A heavy, panel-based grid that splits screen real estate between raw files, field status resolution tables, and chats for auditors.
+2. **`SimplifiedChatView`**: A lightweight, mobile-first guided interview workspace that embeds inline fields and strategists' reasoning directly into the chat flow for citizens.
+   **Consequences**: Avoided initial load race conditions, maximized mobile accessibility, optimized frontend re-rendering performance, and provided a highly customized interface matching user roles.

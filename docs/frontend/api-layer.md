@@ -9,6 +9,7 @@ FormFoundry uses **Axios** for HTTP requests due to its robust feature set, incl
 - Automatic JSON transformation.
 - Interceptors for request/response handling.
 - Better error handling for non-2xx status codes.
+- Native support for alternative response types (e.g. streaming binary audio files).
 
 ## Implementation Details
 
@@ -27,12 +28,13 @@ export const api = axios.create({
 
 ### TypeScript Integration
 
-Every API function is fully typed. Interfaces for all backend models (Cases, Templates, Evidence, etc.) are maintained within `api.ts` to ensure end-to-end type safety.
+Every API function is fully typed. Interfaces for all backend models (Cases, Templates, Evidence, NextQuestion, ConversationTurn, etc.) are maintained within `api.ts` to ensure end-to-end type safety.
 
 ```typescript
 export interface CaseFile {
   case_id: string;
   status: CaseStatus;
+  metadata: Record<string, any>;
   // ...
 }
 
@@ -42,15 +44,19 @@ export const getCases = () =>
 
 ## Key API Modules
 
-- **Case Management**: Functions for listing, creating, and fetching detailed case information.
+- **Case Management**: Functions for listing, creating, and fetching detailed case details. Includes `updateCaseLanguage` which triggers case-level locale preference updates.
 - **Evidence Ingestion**: Helpers for submitting text notes and uploading files (using `FormData`).
 - **Field Interactions**: Endpoints for editing, confirming, or rejecting field values.
-- **Conversation**: Logic for fetching the next AI-generated question and submitting user answers.
+- **Conversation**: Logic for fetching the next localized follow-up question and submitting user answers.
+- **Multilingual Support**: Centralized functions to handle translation and speech features:
+  - `getLanguageConfig`: Fetches system configuration settings (`LanguageConfig`) specifying if translation, language detection, and TTS are active.
+  - `detectLanguage`: Requests the backend to run AI detection on a snippet of text and return the ISO code (e.g. `hi`).
+  - `textToSpeech`: Submits text to synthesize speech. Uses `{ responseType: 'blob' }` to load the returned raw MP3 bytes as a browser-compatible media asset.
 - **Artifacts**: Support for triggering generation and downloading final documents.
 
 ## Real-time Updates (SSE)
 
-While standard requests use Axios, real-time question streaming uses the native **EventSource** API (managed via custom hooks in `src/hooks/`). This allows the backend to "push" the current assistant question to the frontend as it is being processed.
+While standard requests use Axios, real-time question streaming uses the native **EventSource** API (managed via custom hooks in `src/hooks/`). This allows the backend to "push" the current localized assistant question to the frontend as it is being processed.
 
 ## Error Handling
 
