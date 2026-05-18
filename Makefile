@@ -1,5 +1,11 @@
 SHELL := /bin/zsh
 
+# Load environment variables from .env file if it exists
+ifneq (,$(wildcard .env))
+    include .env
+    export
+endif
+
 BACKEND_DIR := backend
 FRONTEND_DIR := frontend
 RUN_DIR := .run
