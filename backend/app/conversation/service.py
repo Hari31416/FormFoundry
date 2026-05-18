@@ -5,6 +5,7 @@ from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from typing import Any
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cases.models import CaseDetail, CaseFileRecord, FieldStateStatus
@@ -240,14 +241,43 @@ async def get_next_question(
 ) -> NextQuestionPayload | None:
     detail = await get_case_detail(session, case_id)
     payload = await choose_next_question(detail)
-    if payload is not None and translate:
-        preferred_lang = detail.metadata.get("preferred_language", "en")
-        if preferred_lang != "en":
-            from app.languages.utils import process_outgoing_text
-
-            payload.question = await process_outgoing_text(
-                payload.question, preferred_lang
+    if payload is not None:
+        # Check if we have already saved any assistant turn in this case
+        stmt = (
+            select(ConversationTurnRecord)
+            .where(
+                ConversationTurnRecord.case_id == case_id,
+                ConversationTurnRecord.role == "assistant",
             )
+            .limit(1)
+        )
+        res = await session.execute(stmt)
+        has_assistant_turn = res.scalar() is not None
+
+        if not has_assistant_turn:
+            # First question ever generated for this case! Persist it to history.
+            original_english = payload.question
+            await record_turn(
+                session,
+                case_id=case_id,
+                role="assistant",
+                message=original_english,
+                related_field_path=payload.field_path,
+                metadata={
+                    "reason": payload.reason,
+                    "field_paths": payload.field_paths,
+                    "original_english": original_english,
+                },
+            )
+
+        if translate:
+            preferred_lang = detail.metadata.get("preferred_language", "en")
+            if preferred_lang != "en":
+                from app.languages.utils import process_outgoing_text
+
+                payload.question = await process_outgoing_text(
+                    payload.question, preferred_lang
+                )
     return payload
 
 
@@ -367,3 +397,15 @@ async def stream_next_question_event(
     question = await get_next_question(session, case_id, translate=True)
     payload = {"next_question": question.model_dump() if question else None}
     yield f"event: question\ndata: {json.dumps(payload)}\n\n"
+
+
+async def get_conversation_history(
+    session: AsyncSession, case_id: str
+) -> list[ConversationTurnPayload]:
+    result = await session.execute(
+        select(ConversationTurnRecord)
+        .where(ConversationTurnRecord.case_id == case_id)
+        .order_by(ConversationTurnRecord.created_at.asc())
+    )
+    records = result.scalars().all()
+    return [serialize_turn(record) for record in records]

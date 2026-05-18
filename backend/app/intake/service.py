@@ -136,8 +136,46 @@ async def create_text_evidence(
             job_id=job.job_id,
             evidence_ids=[record.evidence_id],
         )
+        try:
+            from app.conversation.service import get_next_question, record_turn
+
+            refreshed_question_en = await get_next_question(
+                session, case_id, translate=False
+            )
+            refreshed_question = await get_next_question(
+                session, case_id, translate=True
+            )
+            if refreshed_question is not None:
+                translated_question = refreshed_question.question
+                original_english = (
+                    refreshed_question_en.question
+                    if refreshed_question_en
+                    else translated_question
+                )
+
+                await record_turn(
+                    session,
+                    case_id=case_id,
+                    role="assistant",
+                    message=translated_question,
+                    related_field_path=refreshed_question.field_path,
+                    metadata={
+                        "reason": refreshed_question.reason,
+                        "field_paths": refreshed_question.field_paths,
+                        "original_english": original_english,
+                    },
+                )
+        except Exception as err:
+            import logging
+
+            logging.error(f"Failed to record assistant turn after text evidence: {err}")
     await session.commit()
     refreshed_job = await get_job_payload(session, job.job_id)
+    if refreshed_job is not None and refreshed_job.status == "failed":
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=refreshed_job.error_summary or "OCR and data extraction failed.",
+        )
     return EvidenceIntakeResponse(
         evidence=serialize_evidence(record), job=refreshed_job or job
     )
@@ -226,8 +264,48 @@ async def create_upload_evidence(
             job_id=job.job_id,
             evidence_ids=[record.evidence_id],
         )
+        try:
+            from app.conversation.service import get_next_question, record_turn
+
+            refreshed_question_en = await get_next_question(
+                session, case_id, translate=False
+            )
+            refreshed_question = await get_next_question(
+                session, case_id, translate=True
+            )
+            if refreshed_question is not None:
+                translated_question = refreshed_question.question
+                original_english = (
+                    refreshed_question_en.question
+                    if refreshed_question_en
+                    else translated_question
+                )
+
+                await record_turn(
+                    session,
+                    case_id=case_id,
+                    role="assistant",
+                    message=translated_question,
+                    related_field_path=refreshed_question.field_path,
+                    metadata={
+                        "reason": refreshed_question.reason,
+                        "field_paths": refreshed_question.field_paths,
+                        "original_english": original_english,
+                    },
+                )
+        except Exception as err:
+            import logging
+
+            logging.error(
+                f"Failed to record assistant turn after upload evidence: {err}"
+            )
     await session.commit()
     refreshed_job = await get_job_payload(session, job.job_id)
+    if refreshed_job is not None and refreshed_job.status == "failed":
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=refreshed_job.error_summary or "OCR and data extraction failed.",
+        )
     return EvidenceIntakeResponse(
         evidence=serialize_evidence(record), job=refreshed_job or job
     )

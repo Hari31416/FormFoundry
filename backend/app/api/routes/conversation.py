@@ -7,11 +7,13 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.conversation.models import (
+    ConversationTurnPayload,
     ConversationTurnRequest,
     ConversationTurnResponse,
     NextQuestionPayload,
 )
 from app.conversation.service import (
+    get_conversation_history,
     get_next_question,
     stream_next_question_event,
     submit_conversation_turn,
@@ -49,3 +51,13 @@ async def stream_next_question_route(
 ) -> StreamingResponse:
     generator = stream_next_question_event(session, case_id)
     return StreamingResponse(generator, media_type="text/event-stream")
+
+
+@router.get(
+    "/cases/{case_id}/conversation/turns",
+    response_model=list[ConversationTurnPayload],
+)
+async def get_conversation_history_route(
+    case_id: str, session: DBSession
+) -> list[ConversationTurnPayload]:
+    return await get_conversation_history(session, case_id)

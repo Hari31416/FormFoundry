@@ -125,3 +125,30 @@ def test_short_boolean_answer_advances_past_repeated_question(
     }
     assert by_path["accused.known_to_complainant"]["status"] == "proposed"
     assert by_path["accused.known_to_complainant"]["resolved_value"] is False
+
+
+def test_get_conversation_turns_history(client: TestClient) -> None:
+    case_id = create_case(client)
+
+    # Submit a conversation turn
+    response = client.post(
+        f"/api/v1/cases/{case_id}/conversation/turns",
+        json={
+            "message": """My name is Priya Sharma. Phone number is 9876543210.
+            I live at 14 Residency Road, Bengaluru.""",
+            "created_by": "conversation-test",
+        },
+    )
+    assert response.status_code == 200
+
+    # Get conversation turns list
+    history_response = client.get(f"/api/v1/cases/{case_id}/conversation/turns")
+    assert history_response.status_code == 200
+    history = history_response.json()
+
+    # We should have 3 turns: initial assistant question, user's response, and assistant's follow-up
+    assert len(history) >= 3
+    assert history[0]["role"] == "assistant"
+    assert history[1]["role"] == "user"
+    assert "Priya Sharma" in history[1]["message"]
+    assert history[2]["role"] == "assistant"

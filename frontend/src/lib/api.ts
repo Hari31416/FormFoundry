@@ -128,6 +128,16 @@ export interface NextQuestion {
   priority: number
 }
 
+export interface ConversationTurn {
+  turn_id: string
+  case_id: string
+  role: 'user' | 'assistant'
+  message: string
+  related_field_path: string | null
+  metadata: Record<string, any>
+  created_at: string
+}
+
 export const getTemplates = () => api.get<TemplateDefinition[]>('/templates').then((res) => res.data)
 export const getCases = (params?: { template_id?: string; limit?: number; offset?: number }) =>
   api.get<CaseFile[]>('/cases', { params }).then((res) => res.data)
@@ -139,6 +149,7 @@ export const getEvidence = (id: string) => api.get<Evidence[]>(`/cases/${id}/evi
 export const getValidationIssues = (id: string) => api.get<ValidationIssue[]>(`/cases/${id}/validation`).then((res) => res.data)
 export const getArtifacts = (id: string) => api.get<Artifact[]>(`/cases/${id}/artifacts`).then((res) => res.data)
 export const getNextQuestion = (id: string) => api.get<NextQuestion | null>(`/cases/${id}/conversation/next-question`).then((res) => res.data)
+export const getConversationTurns = (id: string) => api.get<ConversationTurn[]>(`/cases/${id}/conversation/turns`).then((res) => res.data)
 
 export const addTextEvidence = (id: string, text: string) =>
   api.post(`/cases/${id}/evidence/text`, { text }).then((res) => res.data)
