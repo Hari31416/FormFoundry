@@ -26,6 +26,7 @@ class ConversationTurnPayload(BaseModel):
 class ConversationTurnRequest(BaseModel):
     message: str
     created_by: str = "local-user"
+    language: str | None = None
 
 
 class NextQuestionPayload(BaseModel):

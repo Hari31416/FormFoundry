@@ -34,11 +34,13 @@ def clear_settings_cache() -> None:
 
 @pytest.mark.asyncio
 async def test_manager_disabled_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Clear any active configurations to test absolute disabled behavior
-    monkeypatch.delenv("LANGUAGE_DETECTION_SERVICE_PROVIDER", raising=False)
-    monkeypatch.delenv("LANGUAGE_TRANSLATION_SERVICE_PROVIDER", raising=False)
-    monkeypatch.delenv("TTS_SERVICE_PROVIDER", raising=False)
-    monkeypatch.delenv("STT_SERVICE_PROVIDER", raising=False)
+    # Clear any active configurations directly on the settings singleton
+    settings = get_settings()
+    monkeypatch.setattr(settings, "language_detection_service_provider", None)
+    monkeypatch.setattr(settings, "language_translation_service_provider", None)
+    monkeypatch.setattr(settings, "tts_service_provider", None)
+    monkeypatch.setattr(settings, "stt_service_provider", None)
+    manager_module._manager = None
 
     mgr = LanguageManager()
 
@@ -56,7 +58,9 @@ async def test_manager_disabled_by_default(monkeypatch: pytest.MonkeyPatch) -> N
 
 @pytest.mark.asyncio
 async def test_langdetect_offline_detection(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("LANGUAGE_DETECTION_SERVICE_PROVIDER", "langdetect")
+    settings = get_settings()
+    monkeypatch.setattr(settings, "language_detection_service_provider", "langdetect")
+    manager_module._manager = None
 
     mgr = LanguageManager()
     assert mgr.is_detection_enabled
@@ -75,10 +79,12 @@ async def test_langdetect_offline_detection(monkeypatch: pytest.MonkeyPatch) -> 
 
 @pytest.mark.asyncio
 async def test_manager_provider_instantiation(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("LANGUAGE_DETECTION_SERVICE_PROVIDER", "Google")
-    monkeypatch.setenv("LANGUAGE_TRANSLATION_SERVICE_PROVIDER", "Bhashini")
-    monkeypatch.setenv("TTS_SERVICE_PROVIDER", "Bhashini")
-    monkeypatch.setenv("STT_SERVICE_PROVIDER", "Bhashini")
+    settings = get_settings()
+    monkeypatch.setattr(settings, "language_detection_service_provider", "Google")
+    monkeypatch.setattr(settings, "language_translation_service_provider", "Bhashini")
+    monkeypatch.setattr(settings, "tts_service_provider", "Bhashini")
+    monkeypatch.setattr(settings, "stt_service_provider", "Bhashini")
+    manager_module._manager = None
 
     mgr = LanguageManager()
 
@@ -176,7 +182,9 @@ async def test_utils_incoming_outgoing_routing(monkeypatch: pytest.MonkeyPatch) 
 @pytest.mark.asyncio
 async def test_utils_fallbacks_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
     # Disable features
-    monkeypatch.delenv("LANGUAGE_TRANSLATION_SERVICE_PROVIDER", raising=False)
+    settings = get_settings()
+    monkeypatch.setattr(settings, "language_translation_service_provider", None)
+    manager_module._manager = None
 
     # Process text should just return original text without raising errors
     assert await lang_utils.process_incoming_text("नमस्ते", "hi") == "नमस्ते"

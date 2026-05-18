@@ -148,8 +148,11 @@ export const uploadFileEvidence = (id: string, file: File) => {
   return api.post(`/cases/${id}/evidence/upload`, formData).then((res) => res.data)
 }
 
-export const submitTurn = (id: string, message: string) =>
-  api.post(`/cases/${id}/conversation/turns`, { message }).then((res) => res.data)
+export const submitTurn = (id: string, message: string, language?: string) =>
+  api.post(`/cases/${id}/conversation/turns`, { message, language }).then((res) => res.data)
+
+export const detectLanguage = (text: string) =>
+  api.post<{ language: string }>('/languages/detect', { text }).then((res) => res.data)
 
 export const editField = (caseId: string, fieldPath: string, value: any) =>
   api.post(`/cases/${caseId}/fields/${fieldPath}/edit`, { value }).then((res) => res.data)
@@ -161,6 +164,19 @@ export const rejectField = (caseId: string, fieldPath: string) =>
 export const approveCase = (id: string) => api.post(`/cases/${id}/approve`).then((res) => res.data)
 export const generateArtifact = (id: string, type: string) =>
   api.post(`/cases/${id}/artifacts`, { artifact_type: type }).then((res) => res.data)
+
+export interface LanguageConfig {
+  is_translation_enabled: boolean
+  is_detection_enabled: boolean
+  is_tts_enabled: boolean
+  is_stt_enabled: boolean
+}
+
+export const getLanguageConfig = () =>
+  api.get<LanguageConfig>('/languages/config').then((res) => res.data)
+
+export const textToSpeech = (text: string, language: string) =>
+  api.post('/languages/tts', { text, language }, { responseType: 'blob' }).then((res) => res.data)
 
 export const getDownloadUrl = (caseId: string, artifactId: string) =>
   `${API_BASE_URL}/cases/${caseId}/artifacts/${artifactId}/download`

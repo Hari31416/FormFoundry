@@ -7,7 +7,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.cases.models import CaseDetail, FieldStateStatus
+from app.cases.models import CaseDetail, CaseFileRecord, FieldStateStatus
 from app.cases.service import get_case_detail
 from app.conversation.models import (
     ConversationTurnPayload,
@@ -17,6 +17,8 @@ from app.conversation.models import (
     NextQuestionPayload,
 )
 from app.intake.service import create_chat_answer_evidence
+from app.languages.manager import get_language_manager
+from app.languages.utils import process_incoming_text
 from app.llm import generate_json
 from app.templates.models import TemplateField
 from app.templates.runtime import is_field_active
@@ -234,10 +236,19 @@ async def choose_next_question(detail: CaseDetail) -> NextQuestionPayload | None
 
 
 async def get_next_question(
-    session: AsyncSession, case_id: str
+    session: AsyncSession, case_id: str, translate: bool = True
 ) -> NextQuestionPayload | None:
     detail = await get_case_detail(session, case_id)
-    return await choose_next_question(detail)
+    payload = await choose_next_question(detail)
+    if payload is not None and translate:
+        preferred_lang = detail.metadata.get("preferred_language", "en")
+        if preferred_lang != "en":
+            from app.languages.utils import process_outgoing_text
+
+            payload.question = await process_outgoing_text(
+                payload.question, preferred_lang
+            )
+    return payload
 
 
 async def record_turn(
@@ -264,7 +275,36 @@ async def record_turn(
 async def submit_conversation_turn(
     session: AsyncSession, case_id: str, payload: ConversationTurnRequest
 ) -> ConversationTurnResponse:
-    next_question = await get_next_question(session, case_id)
+    # 1. Fetch CaseFileRecord to get/set preferred language
+    case_record = await session.get(CaseFileRecord, case_id)
+    if case_record is None:
+        from fastapi import HTTPException, status
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Case not found"
+        )
+
+    preferred_lang = case_record.case_metadata.get("preferred_language", "en")
+
+    # 2. Determine active language for this turn
+    if payload.language:
+        active_lang = payload.language
+    else:
+        # Dynamically detect language from the user's message
+        manager = get_language_manager()
+        active_lang = await manager.detect_language(payload.message)
+
+    # 3. Update persistent preferred language if a change is detected
+    if active_lang != "en" and active_lang != preferred_lang:
+        metadata = dict(case_record.case_metadata or {})
+        metadata["preferred_language"] = active_lang
+        case_record.case_metadata = metadata
+        preferred_lang = active_lang
+
+    # 4. Translate incoming user message from active_lang to English
+    english_message = await process_incoming_text(payload.message, active_lang)
+
+    next_question = await get_next_question(session, case_id, translate=False)
     user_turn = await record_turn(
         session,
         case_id=case_id,
@@ -274,12 +314,14 @@ async def submit_conversation_turn(
         metadata={
             "created_by": payload.created_by,
             "field_paths": next_question.field_paths if next_question else [],
+            "detected_language": active_lang,
+            "english_translation": english_message,
         },
     )
     await create_chat_answer_evidence(
         session,
         case_id,
-        text=payload.message,
+        text=english_message,
         created_by=payload.created_by,
         metadata={
             "related_field_path": next_question.field_path if next_question else "",
@@ -288,20 +330,30 @@ async def submit_conversation_turn(
             "related_field_labels": next_question.field_labels if next_question else [],
         },
     )
-    refreshed_question = await get_next_question(session, case_id)
+    refreshed_question_en = await get_next_question(session, case_id, translate=False)
+    refreshed_question = await get_next_question(session, case_id, translate=True)
     assistant_turn = None
     if refreshed_question is not None:
+        translated_question = refreshed_question.question
+        original_english = (
+            refreshed_question_en.question
+            if refreshed_question_en
+            else translated_question
+        )
+
         assistant_turn = await record_turn(
             session,
             case_id=case_id,
             role="assistant",
-            message=refreshed_question.question,
+            message=translated_question,
             related_field_path=refreshed_question.field_path,
             metadata={
                 "reason": refreshed_question.reason,
                 "field_paths": refreshed_question.field_paths,
+                "original_english": original_english,
             },
         )
+
     return ConversationTurnResponse(
         user_turn=user_turn,
         assistant_turn=assistant_turn,
@@ -312,6 +364,6 @@ async def submit_conversation_turn(
 async def stream_next_question_event(
     session: AsyncSession, case_id: str
 ) -> AsyncGenerator[str, None]:
-    question = await get_next_question(session, case_id)
+    question = await get_next_question(session, case_id, translate=True)
     payload = {"next_question": question.model_dump() if question else None}
     yield f"event: question\ndata: {json.dumps(payload)}\n\n"

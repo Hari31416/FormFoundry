@@ -15,6 +15,7 @@ from app.languages.bhashini import (
     BhashiniTranslationProvider,
     BhashiniTTSProvider,
 )
+from app.languages.cache import get_cached_translation, set_cached_translation
 from app.languages.google import (
     GoogleLanguageDetectionProvider,
     GoogleTranslationProvider,
@@ -155,7 +156,20 @@ class LanguageManager:
             )
             return text
 
-        return await self._translation_provider.translate(text, source, destination)
+        # Check local Redis cache
+        cached = await get_cached_translation(text, source, destination)
+        if cached is not None:
+            return cached
+
+        # Fetch fresh translation from provider
+        translated_text = await self._translation_provider.translate(
+            text, source, destination
+        )
+
+        # Cache the successful translation
+        await set_cached_translation(text, source, destination, translated_text)
+
+        return translated_text
 
     async def text_to_speech(
         self, text: str, language: str, gender: str = "female"

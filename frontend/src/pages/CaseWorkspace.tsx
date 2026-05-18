@@ -4,18 +4,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertCircle,
   CheckCircle2,
-  ChevronRight,
   Clock,
   Check,
   Download,
   FileText,
   Loader2,
-  MessageSquare,
   Plus,
   Send,
-  ShieldCheck,
   Zap,
   Quote,
+  Volume2,
+  VolumeX,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 
@@ -43,6 +42,9 @@ import {
   getValidationIssues,
   rejectField,
   submitTurn,
+  detectLanguage,
+  getLanguageConfig,
+  textToSpeech,
   uploadFileEvidence,
   Evidence,
 } from '@/lib/api'
@@ -186,8 +188,61 @@ export default function CaseWorkspace() {
     },
   })
 
+  const { data: langConfig } = useQuery({
+    queryKey: ['languages-config'],
+    queryFn: () => getLanguageConfig(),
+  })
+
+  const [playingQuestion, setPlayingQuestion] = useState<string | null>(null)
+  const [audioInstance, setAudioInstance] = useState<HTMLAudioElement | null>(null)
+  const [loadingAudio, setLoadingAudio] = useState<string | null>(null)
+
+  const handlePlayTTS = async (text: string, lang: string) => {
+    if (playingQuestion === text) {
+      if (audioInstance) {
+        audioInstance.pause()
+        audioInstance.currentTime = 0
+      }
+      setPlayingQuestion(null)
+      return
+    }
+
+    try {
+      setLoadingAudio(text)
+      const audioBlob = await textToSpeech(text, lang)
+      const audioUrl = URL.createObjectURL(audioBlob)
+      const audio = new Audio(audioUrl)
+
+      setAudioInstance(audio)
+      setLoadingAudio(null)
+      setPlayingQuestion(text)
+
+      audio.onended = () => {
+        setPlayingQuestion(null)
+        URL.revokeObjectURL(audioUrl)
+      }
+      audio.onerror = () => {
+        setPlayingQuestion(null)
+        URL.revokeObjectURL(audioUrl)
+      }
+      await audio.play()
+    } catch (err) {
+      console.error('Failed to play TTS audio:', err)
+      setLoadingAudio(null)
+      setPlayingQuestion(null)
+    }
+  }
+
   const submitTurnMutation = useMutation({
-    mutationFn: (msg: string) => submitTurn(caseId!, msg),
+    mutationFn: async (msg: string) => {
+      try {
+        const detection = await detectLanguage(msg)
+        return submitTurn(caseId!, msg, detection.language)
+      } catch (err) {
+        console.error('Failed to detect language, falling back to standard submit:', err)
+        return submitTurn(caseId!, msg)
+      }
+    },
     onSuccess: () => {
       setChatInput('')
       queryClient.invalidateQueries({ queryKey: ['case', caseId] })
@@ -358,6 +413,12 @@ export default function CaseWorkspace() {
           <Badge className={cn('px-2.5 py-0.5 font-bold text-[9px] uppercase tracking-wider border rounded-full', getStatusColor(caseDetail?.status || ''))}>
             {caseDetail?.status.replace('_', ' ')}
           </Badge>
+
+          {caseDetail?.metadata?.preferred_language && caseDetail?.metadata?.preferred_language !== 'en' && (
+            <Badge className="px-2.5 py-0.5 font-bold text-[9px] uppercase tracking-wider border rounded-full bg-blue-50 text-blue-700 border-blue-200">
+              Language: {caseDetail.metadata.preferred_language}
+            </Badge>
+          )}
 
           <div className="h-4 w-px bg-slate-200 mx-1" />
 
@@ -621,7 +682,29 @@ export default function CaseWorkspace() {
                     animate={{ opacity: 1, y: 0 }}
                     className="space-y-3"
                   >
-                    <p className="text-[15px] font-bold text-slate-900 leading-snug">{nextQuestion.question}</p>
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-[15px] font-bold text-slate-900 leading-snug flex-1">{nextQuestion.question}</p>
+                      {langConfig?.is_tts_enabled && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            "h-7 w-7 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 shrink-0",
+                            playingQuestion === nextQuestion.question && "text-blue-600 bg-blue-50 animate-pulse"
+                          )}
+                          onClick={() => handlePlayTTS(nextQuestion.question, caseDetail?.metadata?.preferred_language || 'en')}
+                          disabled={!!loadingAudio && loadingAudio !== nextQuestion.question}
+                        >
+                          {loadingAudio === nextQuestion.question ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : playingQuestion === nextQuestion.question ? (
+                            <VolumeX className="w-3.5 h-3.5" />
+                          ) : (
+                            <Volume2 className="w-3.5 h-3.5" />
+                          )}
+                        </Button>
+                      )}
+                    </div>
                     {nextQuestion.field_labels.length > 0 && (
                       <div className="flex flex-wrap gap-2">
                         {nextQuestion.field_labels.map((label) => (
