@@ -101,6 +101,8 @@ interface FieldRowProps {
   allEvidence: Evidence[]
   onConfirm: (path: string) => void
   onReject: (path: string) => void
+  isLocallyRejected?: boolean
+  onUndoReject?: (path: string) => void
 }
 
 export function FieldRow({
@@ -109,7 +111,9 @@ export function FieldRow({
   issues,
   allEvidence,
   onConfirm,
-  onReject
+  onReject,
+  isLocallyRejected = false,
+  onUndoReject
 }: FieldRowProps) {
   const { t } = useTranslation()
   if (!field) return null
@@ -132,7 +136,13 @@ export function FieldRow({
             <div className="flex-grow min-w-0 pr-4">
               <div className="flex items-center space-x-2 mb-1.5 flex-wrap gap-y-1">
                 <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{field.label}</span>
-                {state && <FieldBadge status={state.status} />}
+                {isLocallyRejected ? (
+                  <Badge className="bg-red-500/10 text-red-600 hover:bg-red-500/10 border-red-200/50 text-[9px] uppercase font-black px-1.5 h-4">
+                    {t('field_status_rejected_pending', { defaultValue: 'Rejected (Pending QA)' })}
+                  </Badge>
+                ) : (
+                  state && <FieldBadge status={state.status} />
+                )}
                 {field.required && (
                   <span className="text-[9px] font-bold text-red-500/60 px-1 border border-red-100 rounded leading-none pt-0.5">REQ</span>
                 )}
@@ -162,7 +172,7 @@ export function FieldRow({
             </div>
 
             <div className="flex items-center space-x-2 shrink-0">
-              {proposedState && (
+              {proposedState && !isLocallyRejected && (
                 <>
                   <Button
                     size="sm"
@@ -171,6 +181,25 @@ export function FieldRow({
                     onClick={() => onReject(proposedState.field_path)}
                   >
                     {t('reject_match')}
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest h-8 px-4 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95 cursor-pointer"
+                    onClick={() => onConfirm(proposedState.field_path)}
+                  >
+                    {t('confirm_match')}
+                  </Button>
+                </>
+              )}
+              {proposedState && isLocallyRejected && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 text-[10px] font-black uppercase tracking-widest h-8 px-4 rounded-xl transition-all active:scale-95 cursor-pointer"
+                    onClick={() => onUndoReject && onUndoReject(proposedState.field_path)}
+                  >
+                    {t('undo_rejection', { defaultValue: 'Undo' })}
                   </Button>
                   <Button
                     size="sm"

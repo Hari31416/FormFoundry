@@ -66,6 +66,11 @@ interface SimplifiedChatViewProps {
   uploadError: string | null
   setUploadError: (err: string | null) => void
   caseId: string | undefined
+  localRejectedFields: Set<string>
+  onLocalReject: (path: string) => void
+  onUndoLocalReject: (path: string) => void
+  bulkRejectMutation: any
+  unreviewedProposedCount: number
 }
 
 export function SimplifiedChatView({
@@ -97,7 +102,12 @@ export function SimplifiedChatView({
   uploadFileMutation,
   uploadError,
   setUploadError,
-  caseId
+  caseId,
+  localRejectedFields,
+  onLocalReject,
+  onUndoLocalReject,
+  bulkRejectMutation,
+  unreviewedProposedCount
 }: SimplifiedChatViewProps) {
   const { t } = useTranslation()
   // Find the index of the latest assistant message to attach active question decorations
@@ -336,7 +346,9 @@ export function SimplifiedChatView({
                           issues={fieldIssues}
                           allEvidence={evidence || []}
                           onConfirm={(p) => confirmFieldMutation.mutate(p)}
-                          onReject={(p) => rejectFieldMutation.mutate(p)}
+                          onReject={(p) => onLocalReject(p)}
+                          isLocallyRejected={localRejectedFields.has(path)}
+                          onUndoReject={onUndoLocalReject}
                         />
                       )
                     })
@@ -344,29 +356,79 @@ export function SimplifiedChatView({
                 </div>
               </div>
 
-              {/* Inline Approve & Close panel */}
+              {/* Inline Approve, QA, or Review panel */}
               {caseDetail?.status !== 'approved' && caseDetail?.status !== 'artifact_generating' && (
                 <div className="p-6 bg-white border border-slate-100 shadow-sm rounded-3xl flex flex-col items-center text-center space-y-4">
-                  <div className="p-3 bg-emerald-50 text-emerald-500 rounded-2xl">
-                    <CheckCircle2 className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">{t('final_verification_complete')}</h4>
-                    <p className="text-[11px] text-slate-400 mt-1 max-w-md leading-relaxed font-bold">
-                      {t('final_verification_desc')}
-                    </p>
-                  </div>
-                  <Button
-                    className={cn(
-                      "bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[10px] rounded-xl h-10 px-8 transition-all shadow-lg shadow-emerald-600/10 cursor-pointer",
-                      isApproveReady && "animate-bounce"
-                    )}
-                    onClick={() => approveCaseMutation.mutate()}
-                    disabled={approveCaseMutation.isPending}
-                  >
-                    {approveCaseMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-2" />}
-                    {t('approve_and_close_case')}
-                  </Button>
+                  {unreviewedProposedCount > 0 ? (
+                    <>
+                      <div className="p-3 bg-amber-50 text-amber-500 rounded-2xl">
+                        <Loader2 className="w-6 h-6 animate-spin" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                          {t('review_in_progress', { defaultValue: 'Review in Progress' })}
+                        </h4>
+                        <p className="text-[11px] text-slate-400 mt-1 max-w-md leading-relaxed font-bold animate-pulse">
+                          {t('review_in_progress_desc', { defaultValue: 'Please approve or reject the remaining proposed fields to proceed.' })}
+                        </p>
+                      </div>
+                      <Button
+                        className="bg-slate-100 text-slate-400 font-black uppercase tracking-widest text-[10px] rounded-xl h-10 px-8 cursor-not-allowed"
+                        disabled
+                      >
+                        {t('awaiting_verification_count', { count: unreviewedProposedCount, defaultValue: `Review Remaining (${unreviewedProposedCount})` })}
+                      </Button>
+                    </>
+                  ) : localRejectedFields.size > 0 ? (
+                    <>
+                      <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl animate-pulse">
+                        <Zap className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                          {t('rejections_pending', { defaultValue: 'Review Completed with Rejections' })}
+                        </h4>
+                        <p className="text-[11px] text-slate-400 mt-1 max-w-md leading-relaxed font-bold">
+                          {t('rejections_pending_desc', { defaultValue: 'You have rejected some fields. Start the intake chat again to clarify these details.' })}
+                        </p>
+                      </div>
+                      <Button
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[10px] rounded-xl h-10 px-8 transition-all shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer"
+                        onClick={() => bulkRejectMutation.mutate(Array.from(localRejectedFields))}
+                        disabled={bulkRejectMutation.isPending}
+                      >
+                        {bulkRejectMutation.isPending ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" />
+                        ) : (
+                          <Zap className="w-3.5 h-3.5 mr-2" />
+                        )}
+                        {t('start_qa_for_rejections', { count: localRejectedFields.size, defaultValue: `Start QA for Rejected Fields (${localRejectedFields.size})` })}
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                          <div className="p-3 bg-emerald-50 text-emerald-500 rounded-2xl">
+                            <CheckCircle2 className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">{t('final_verification_complete')}</h4>
+                            <p className="text-[11px] text-slate-400 mt-1 max-w-md leading-relaxed font-bold">
+                              {t('final_verification_desc')}
+                            </p>
+                          </div>
+                          <Button
+                            className={cn(
+                              "bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[10px] rounded-xl h-10 px-8 transition-all shadow-lg shadow-emerald-600/10 cursor-pointer",
+                              isApproveReady && "animate-bounce"
+                            )}
+                            onClick={() => approveCaseMutation.mutate()}
+                            disabled={approveCaseMutation.isPending}
+                          >
+                            {approveCaseMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-2" />}
+                            {t('approve_and_close_case')}
+                          </Button>
+                    </>
+                  )}
                 </div>
               )}
 

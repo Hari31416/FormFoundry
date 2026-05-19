@@ -89,6 +89,12 @@ async def resolve_case_fields(session: AsyncSession, case_id: str) -> None:
     }
 
     for field_state in field_states:
+        if field_state.status == FieldStateStatus.CONFIRMED:
+            assign_nested_value(
+                schema_state, field_state.field_path, field_state.resolved_value
+            )
+            continue
+
         field_candidates = candidates_by_field.get(field_state.field_path, [])
         qualifying = [
             candidate

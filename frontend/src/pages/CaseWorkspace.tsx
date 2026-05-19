@@ -102,6 +102,7 @@ export default function CaseWorkspace() {
   const [isEvidenceModalOpen, setIsEvidenceModalOpen] = useState(false)
   const [chatInput, setChatInput] = useState('')
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [localRejectedFields, setLocalRejectedFields] = useState<Set<string>>(new Set())
 
   const { data: caseDetail, isLoading: isLoadingCase } = useQuery({
     queryKey: ['case', caseId],
@@ -304,7 +305,12 @@ export default function CaseWorkspace() {
 
   const confirmFieldMutation = useMutation({
     mutationFn: (fieldPath: string) => confirmField(caseId!, fieldPath),
-    onSuccess: () => {
+    onSuccess: (_, fieldPath) => {
+      setLocalRejectedFields((prev) => {
+        const next = new Set(prev)
+        next.delete(fieldPath)
+        return next
+      })
       queryClient.invalidateQueries({ queryKey: ['case', caseId] })
       queryClient.invalidateQueries({ queryKey: ['turns', caseId] })
       queryClient.invalidateQueries({ queryKey: ['validation', caseId] })
@@ -327,13 +333,48 @@ export default function CaseWorkspace() {
     mutationFn: async (fieldPaths: string[]) => {
       await Promise.all(fieldPaths.map((path) => confirmField(caseId!, path)))
     },
-    onSuccess: () => {
+    onSuccess: (_, fieldPaths) => {
+      setLocalRejectedFields((prev) => {
+        const next = new Set(prev)
+        fieldPaths.forEach(path => next.delete(path))
+        return next
+      })
       queryClient.invalidateQueries({ queryKey: ['case', caseId] })
       queryClient.invalidateQueries({ queryKey: ['turns', caseId] })
       queryClient.invalidateQueries({ queryKey: ['validation', caseId] })
       queryClient.invalidateQueries({ queryKey: ['next-question', caseId] })
     },
   })
+
+  const bulkRejectMutation = useMutation({
+    mutationFn: async (fieldPaths: string[]) => {
+      await Promise.all(fieldPaths.map((path) => rejectField(caseId!, path)))
+    },
+    onSuccess: () => {
+      setLocalRejectedFields(new Set())
+      queryClient.invalidateQueries({ queryKey: ['case', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['turns', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['validation', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['next-question', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['evidence', caseId] })
+    },
+  })
+
+  const handleLocalReject = (fieldPath: string) => {
+    setLocalRejectedFields((prev) => {
+      const next = new Set(prev)
+      next.add(fieldPath)
+      return next
+    })
+  }
+
+  const handleUndoLocalReject = (fieldPath: string) => {
+    setLocalRejectedFields((prev) => {
+      const next = new Set(prev)
+      next.delete(fieldPath)
+      return next
+    })
+  }
 
   const mergedMessages = React.useMemo(() => {
     const list: Array<{
@@ -383,8 +424,30 @@ export default function CaseWorkspace() {
     }
 
     list.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+
+    if (nextQuestion) {
+      const lastAsstIdx = list.map((m) => m.role).lastIndexOf('assistant')
+      const hasUserMsgAfterLastAsst =
+        lastAsstIdx === -1 || list.slice(lastAsstIdx + 1).some((m) => m.role === 'user')
+
+      if (hasUserMsgAfterLastAsst) {
+        list.push({
+          id: 'virtual-next-question',
+          role: 'assistant',
+          message: nextQuestion.question,
+          created_at: new Date().toISOString(),
+          type: 'turn',
+          metadata: {
+            reason: nextQuestion.reason,
+            field_paths: nextQuestion.field_paths,
+            isVirtual: true,
+          },
+        })
+      }
+    }
+
     return list
-  }, [turns, evidence])
+  }, [turns, evidence, nextQuestion])
 
   const schemaState = (caseDetail?.current_schema_state ?? {}) as Record<string, unknown>
   const templateFields = caseDetail?.template.schema ?? []
@@ -405,6 +468,11 @@ export default function CaseWorkspace() {
     return isQuestionOutstanding(field, state) ? count + 1 : count
   }, 0)
   const isConversationComplete = !nextQuestion && outstandingQuestionCount === 0
+  const proposedFields = Array.from(activeFieldPaths).filter((path) => {
+    const state = fieldStatesByPath.get(path)
+    return state?.status === 'proposed'
+  })
+  const unreviewedProposedCount = proposedFields.filter(path => !localRejectedFields.has(path)).length
   const completionMessage =
     caseDetail?.status === 'approved'
       ? t('completion_approved')
@@ -586,6 +654,11 @@ export default function CaseWorkspace() {
             uploadError={uploadError}
             setUploadError={setUploadError}
             caseId={caseId}
+            localRejectedFields={localRejectedFields}
+            onLocalReject={handleLocalReject}
+            onUndoLocalReject={handleUndoLocalReject}
+            bulkRejectMutation={bulkRejectMutation}
+            unreviewedProposedCount={unreviewedProposedCount}
           />
         ) : (
             <DetailedWorkspaceView
@@ -618,6 +691,11 @@ export default function CaseWorkspace() {
               submitTurnMutation={submitTurnMutation}
               artifacts={artifacts}
               caseId={caseId}
+              localRejectedFields={localRejectedFields}
+              onLocalReject={handleLocalReject}
+              onUndoLocalReject={handleUndoLocalReject}
+              bulkRejectMutation={bulkRejectMutation}
+              unreviewedProposedCount={unreviewedProposedCount}
             />
         )}
       </main>
