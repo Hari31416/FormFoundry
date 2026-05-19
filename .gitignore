@@ -25,3 +25,7 @@ dist/
 *.pyc
 *.pyo
 /site/
+
+# Playwright
+frontend/playwright-report/
+frontend/test-results/

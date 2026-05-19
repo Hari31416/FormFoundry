@@ -14,7 +14,7 @@ FRONTEND_PID := $(RUN_DIR)/frontend.pid
 BACKEND_LOG := $(RUN_DIR)/backend.log
 FRONTEND_LOG := $(RUN_DIR)/frontend.log
 
-.PHONY: install-uv install-pnpm up down nuke backend-setup backend-start backend-stop logs-backend frontend-setup frontend-start frontend-stop frontend-preview logs-frontend setup start stop restart logs ps health down-all up-all nuke-all backend-migrate docs-serve docs-build
+.PHONY: install-uv install-pnpm up down nuke backend-setup backend-start backend-stop logs-backend frontend-setup frontend-start frontend-stop frontend-preview logs-frontend setup start stop restart logs ps health down-all up-all nuke-all backend-migrate docs-serve docs-build test-e2e test-e2e-ui
 
 install-uv:
 	@command -v uv >/dev/null 2>&1 || (echo "uv is required. Install it first." && exit 1)
@@ -96,3 +96,9 @@ docs-serve:
 
 docs-build:
 	@uv run mkdocs build
+
+test-e2e:
+	@cd $(FRONTEND_DIR) && pnpm test:e2e
+
+test-e2e-ui:
+	@cd $(FRONTEND_DIR) && pnpm test:e2e:ui
