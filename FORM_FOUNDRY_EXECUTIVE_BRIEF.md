@@ -47,7 +47,7 @@ The platform combines a high-performance FastAPI orchestration layer, a pluggabl
 ### High-Level Architecture Diagram
 
 ```mermaid
-graph TD
+graph LR
     User["Business User / Intake Agent"]
 
     subgraph "Frontend Workspace"
@@ -71,7 +71,6 @@ graph TD
         Postgres[("PostgreSQL Metadata")]
         Redis[("Redis Caching & Translation Store")]
         Minio[("Minio/S3 Artifact Store")]
-        Qdrant[("Qdrant Vector DB")]
         LLM["AI Providers (OpenAI/Anthropic/Gemini)"]
         Bhashini["Bhashini GovTech API (Translation/TTS)"]
         Google["Google Translate API"]
