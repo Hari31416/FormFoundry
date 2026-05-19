@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import re
 from datetime import UTC, datetime
 
@@ -251,7 +252,7 @@ async def edit_field(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Case not found"
         )
-    schema_state = dict(case_record.current_schema_state)
+    schema_state = copy.deepcopy(case_record.current_schema_state)
     assign_nested_value(schema_state, field_path, payload.value)
     case_record.current_schema_state = schema_state
     await session.commit()
@@ -322,7 +323,7 @@ async def reject_field(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Case not found"
         )
-    schema_state = dict(case_record.current_schema_state)
+    schema_state = copy.deepcopy(case_record.current_schema_state)
     assign_nested_value(schema_state, field_path, None)
     case_record.current_schema_state = schema_state
     case_record.status = CaseStatus.AWAITING_USER

@@ -95,6 +95,10 @@ class SchemaStateResponse(BaseModel):
     field_groups: list[TemplateFieldGroup]
 
 
+class ArtifactCreateRequest(BaseModel):
+    artifact_type: str = "fillable_pdf"
+
+
 class ArtifactPayload(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 

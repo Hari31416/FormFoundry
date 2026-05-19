@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -186,6 +187,73 @@ async def generate_pdf_artifact(session: AsyncSession, case_id: str) -> Artifact
     return serialize_artifact(artifact)
 
 
+async def generate_json_artifact(
+    session: AsyncSession, case_id: str
+) -> ArtifactPayload:
+    case_record = await session.get(CaseFileRecord, case_id)
+    if case_record is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Case not found"
+        )
+    if case_record.status != CaseStatus.APPROVED:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="Case must be approved first"
+        )
+    template_record = (
+        await session.execute(
+            select(TemplateDefinitionRecord).where(
+                TemplateDefinitionRecord.template_id == case_record.template_id,
+                TemplateDefinitionRecord.template_version
+                == case_record.template_version,
+            )
+        )
+    ).scalar_one_or_none()
+    if template_record is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Template definition is missing for this case.",
+        )
+
+    job = await enqueue_job(
+        session,
+        case_id=case_id,
+        job_type="generate_artifact",
+        triggering_event="artifact.generate.requested",
+    )
+
+    schema_state_json = json.dumps(case_record.current_schema_state, indent=2)
+    schema_state_bytes = schema_state_json.encode("utf-8")
+
+    storage_root = get_settings().local_storage_path
+    slug = re.sub(r"[^a-z0-9]+", "-", template_record.template_id.lower()).strip("-")
+    output_path = storage_root / "artifacts" / f"{case_id}-{slug}.json"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_bytes(schema_state_bytes)
+
+    storage = get_storage_service()
+    stored = await storage.store_bytes(
+        object_key=f"cases/{case_id}/artifacts/{output_path.name}",
+        payload=schema_state_bytes,
+        content_type="application/json",
+    )
+
+    artifact = ArtifactRecord(
+        case_id=case_id,
+        artifact_type="json_export",
+        status="generated",
+        storage_uri=stored.storage_uri,
+        renderer_version="v1",
+        artifact_metadata={
+            "job_id": job.job_id,
+            "template_id": template_record.template_id,
+            "template_version": template_record.template_version,
+        },
+    )
+    session.add(artifact)
+    await session.commit()
+    return serialize_artifact(artifact)
+
+
 async def list_artifacts(session: AsyncSession, case_id: str) -> list[ArtifactPayload]:
     records = (
         (
@@ -224,8 +292,11 @@ async def get_artifact_download_response(
         local_path = get_settings().local_storage_path / download_url.replace(
             "local://", ""
         )
-        return FileResponse(
-            local_path, media_type="application/pdf", filename=local_path.name
+        media_type = (
+            "application/json"
+            if artifact.artifact_type == "json_export"
+            else "application/pdf"
         )
+        return FileResponse(local_path, media_type=media_type, filename=local_path.name)
 
     return RedirectResponse(download_url)

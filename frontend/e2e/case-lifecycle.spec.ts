@@ -9,11 +9,11 @@ test.describe('FormFoundry E2E Case Lifecycle', () => {
     await expect(page.locator('h1')).toContainText(/Intake Control Center/i)
 
     // 2. Select a template and click 'Start Case'
-    // We target the first template card in the grid
-    const firstTemplateCard = page.locator('.group').first()
-    await expect(firstTemplateCard).toBeVisible()
+    // We target the Indian FIR Report Intake card specifically
+    const templateCard = page.locator('.group').filter({ hasText: /Indian FIR Report Intake/i })
+    await expect(templateCard).toBeVisible()
 
-    const startCaseButton = firstTemplateCard.getByRole('button', { name: /Start Case/i })
+    const startCaseButton = templateCard.getByRole('button', { name: /Start Case/i })
     await expect(startCaseButton).toBeEnabled()
     await startCaseButton.click()
 
@@ -88,10 +88,10 @@ test.describe('FormFoundry E2E Case Lifecycle', () => {
     await page.goto('/')
 
     // 2. Select a template and click 'Start Case'
-    const firstTemplateCard = page.locator('.group').first()
-    await expect(firstTemplateCard).toBeVisible()
+    const templateCard = page.locator('.group').filter({ hasText: /Indian FIR Report Intake/i })
+    await expect(templateCard).toBeVisible()
 
-    const startCaseButton = firstTemplateCard.getByRole('button', { name: /Start Case/i })
+    const startCaseButton = templateCard.getByRole('button', { name: /Start Case/i })
     await expect(startCaseButton).toBeEnabled()
     await startCaseButton.click()
 

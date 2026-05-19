@@ -40,7 +40,7 @@ backend-migrate:
 backend-start:
 	@mkdir -p $(RUN_DIR)
 	@if [ -f $(BACKEND_PID) ] && kill -0 $$(cat $(BACKEND_PID)) 2>/dev/null; then echo "Backend already running"; exit 0; fi
-	@cd $(BACKEND_DIR) && nohup uv run uvicorn app.main:app --host $${BACKEND_HOST:-0.0.0.0} --port $${BACKEND_PORT:-8000} > ../$(BACKEND_LOG) 2>&1 & echo $$! > ../$(BACKEND_PID)
+	@cd $(BACKEND_DIR) && uv run uvicorn app.main:app --host $${BACKEND_HOST:-0.0.0.0} --port $${BACKEND_PORT:-8000} --reload > ../$(BACKEND_LOG) 2>&1 & echo $$! > ../$(BACKEND_PID)
 
 backend-stop:
 	@if [ -f $(BACKEND_PID) ] && kill -0 $$(cat $(BACKEND_PID)) 2>/dev/null; then kill $$(cat $(BACKEND_PID)) && rm -f $(BACKEND_PID); else echo "Backend not running"; fi
