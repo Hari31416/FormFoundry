@@ -64,6 +64,11 @@ class FieldRejectRequest(BaseModel):
     rejected_by: str = "local-user"
 
 
+class BulkFieldRejectRequest(BaseModel):
+    field_paths: list[str] = Field(min_length=1)
+    rejected_by: str = "local-user"
+
+
 class ReviewResponse(BaseModel):
     case: CaseFilePayload
     field_states: list[FieldStatePayload]

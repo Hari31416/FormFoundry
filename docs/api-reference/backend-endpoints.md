@@ -31,17 +31,19 @@ This is a summary of the key API endpoints available in the FormFoundry backend.
 
 ## Extraction & Fields
 
-| Method | Path                                       | Description                             |
-| :----- | :----------------------------------------- | :-------------------------------------- |
-| `POST` | `/api/v1/cases/{id}/fields/{path}/edit`    | Manually edit a field value.            |
-| `POST` | `/api/v1/cases/{id}/fields/{path}/confirm` | Confirm an AI-proposed field candidate. |
-| `POST` | `/api/v1/cases/{id}/fields/{path}/reject`  | Reject an AI-proposed candidate.        |
+| Method | Path                                       | Description                                                         |
+| :----- | :----------------------------------------- | :------------------------------------------------------------------ |
+| `POST` | `/api/v1/cases/{id}/fields/{path}/edit`    | Manually edit a field value.                                        |
+| `POST` | `/api/v1/cases/{id}/fields/{path}/confirm` | Confirm an AI-proposed field candidate.                             |
+| `POST` | `/api/v1/cases/{id}/fields/{path}/reject`  | Reject an AI-proposed candidate.                                    |
+| `POST` | `/api/v1/cases/{id}/fields/reject-bulk`    | Reject multiple proposed fields and enqueue one follow-up question. |
 
 ## Conversation
 
 | Method | Path                                            | Description                                                                                      |
 | :----- | :---------------------------------------------- | :----------------------------------------------------------------------------------------------- |
-| `GET`  | `/api/v1/cases/{id}/conversation/next-question` | Get the next recommended question.                                                               |
+| `GET`  | `/api/v1/cases/{id}/conversation/next-question` | Compute the current recommended question without mutating conversation history.                  |
+| `GET`  | `/api/v1/cases/{id}/conversation/turns`         | List the canonical chronological chat timeline rendered by the frontend.                         |
 | `POST` | `/api/v1/cases/{id}/conversation/turns`         | Submit a user answer to a question. (Supports language code parameters for dynamic translations) |
 
 ## Pluggable Multilingual & Speech APIs

@@ -83,10 +83,11 @@ The resolution engine updates the **Field State** based on candidates:
 
 If there are unresolved fields or validation issues, the assistant generates a follow-up question:
 
-1. **Question Generation**: The `app/conversation/service.py` builds question candidates and utilizes the LLM to generate a consolidated, English follow-up question.
-2. **Outgoing Translation**: If the case's `preferred_language` is not English (e.g. Hindi), the question is translated back to the target language (utilizing the Redis cache `translation:en:hi:<hash>` to avoid redundant translations).
-3. **SSE Streaming**: The question is sent to the client as an SSE (Server-Sent Events) question event.
-4. **Text-to-Speech (TTS)**: When the user views the question on the frontend (Simplified or Detailed), they can trigger real-time Text-to-Speech audio playback. The backend `/languages/tts` route handles generating MP3 audio bytes using Bhashini's speech pipelines, streaming the audio directly back to the React player.
+1. **Question Generation**: The `app/conversation/service.py` deterministically selects the outstanding field candidates, then requires the LLM to generate the consolidated, English follow-up question text. The backend does not fall back to canned template questions.
+2. **Read-only Preview**: `GET /conversation/next-question` computes the current question without inserting a conversation turn. This keeps polling and page reloads idempotent.
+3. **Canonical Timeline**: Assistant questions are persisted only during command flows: case creation, submitted user answers, evidence ingestion, and field rejection. `GET /conversation/turns` is the canonical chronological timeline rendered by the frontend.
+4. **Outgoing Translation**: If the case's `preferred_language` is not English (e.g. Hindi), the persisted assistant question is translated back to the target language (utilizing the Redis cache `translation:en:hi:<hash>` to avoid redundant translations).
+5. **Text-to-Speech (TTS)**: When the user views the question on the frontend (Simplified or Detailed), they can trigger real-time Text-to-Speech audio playback. The backend `/languages/tts` route handles generating MP3 audio bytes using Bhashini's speech pipelines, streaming the audio directly back to the React player.
 
 ---
 

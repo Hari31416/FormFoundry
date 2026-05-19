@@ -19,6 +19,7 @@ import {
   TemplateField,
   addTextEvidence,
   approveCase,
+  bulkRejectFields,
   confirmField,
   generateArtifact,
   getArtifacts,
@@ -347,9 +348,7 @@ export default function CaseWorkspace() {
   })
 
   const bulkRejectMutation = useMutation({
-    mutationFn: async (fieldPaths: string[]) => {
-      await Promise.all(fieldPaths.map((path) => rejectField(caseId!, path)))
-    },
+    mutationFn: (fieldPaths: string[]) => bulkRejectFields(caseId!, fieldPaths),
     onSuccess: () => {
       setLocalRejectedFields(new Set())
       queryClient.invalidateQueries({ queryKey: ['case', caseId] })
@@ -399,55 +398,10 @@ export default function CaseWorkspace() {
       })
     }
 
-    if (evidence) {
-      evidence.forEach((ev) => {
-        if (ev.source_type === 'chat_answer') return
-
-        let displayMessage = ''
-        if (ev.source_type === 'pdf_upload' || ev.source_type === 'image_upload') {
-          displayMessage = t('uploaded_file', { name: ev.source_subtype || 'Document' })
-        } else if (ev.source_type === 'user_text') {
-          displayMessage = t('injected_note', { text: ev.raw_text })
-        } else {
-          displayMessage = t('injected_evidence', { type: ev.source_type, name: ev.source_subtype || '' })
-        }
-
-        list.push({
-          id: ev.evidence_id,
-          role: 'user',
-          message: displayMessage,
-          created_at: ev.created_at,
-          type: 'evidence',
-          metadata: { ev },
-        })
-      })
-    }
-
     list.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
 
-    if (nextQuestion) {
-      const lastAsstIdx = list.map((m) => m.role).lastIndexOf('assistant')
-      const hasUserMsgAfterLastAsst =
-        lastAsstIdx === -1 || list.slice(lastAsstIdx + 1).some((m) => m.role === 'user')
-
-      if (hasUserMsgAfterLastAsst) {
-        list.push({
-          id: 'virtual-next-question',
-          role: 'assistant',
-          message: nextQuestion.question,
-          created_at: new Date().toISOString(),
-          type: 'turn',
-          metadata: {
-            reason: nextQuestion.reason,
-            field_paths: nextQuestion.field_paths,
-            isVirtual: true,
-          },
-        })
-      }
-    }
-
     return list
-  }, [turns, evidence, nextQuestion])
+  }, [turns])
 
   const schemaState = (caseDetail?.current_schema_state ?? {}) as Record<string, unknown>
   const templateFields = caseDetail?.template.schema ?? []

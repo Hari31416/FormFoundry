@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 
@@ -11,6 +12,28 @@ def create_case(client: TestClient) -> str:
     )
     assert response.status_code == 201
     return response.json()["case_id"]
+
+
+def test_case_creation_fails_without_llm_question(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import app.conversation.service as conversation_service
+
+    async def missing_question(*, system_prompt: str, user_prompt: str) -> dict:
+        return {}
+
+    monkeypatch.setattr(conversation_service, "generate_json", missing_question)
+
+    response = client.post(
+        "/api/v1/cases",
+        json={
+            "template_id": "fir-report-intake",
+            "created_by": "conversation-test",
+        },
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Unable to generate the next question."
 
 
 def test_next_question_groups_related_required_fields(client: TestClient) -> None:
@@ -155,6 +178,24 @@ def test_get_conversation_turns_history(client: TestClient) -> None:
     assert history[2]["role"] == "assistant"
 
 
+def test_next_question_read_does_not_duplicate_history(client: TestClient) -> None:
+    case_id = create_case(client)
+
+    initial_history_response = client.get(f"/api/v1/cases/{case_id}/conversation/turns")
+    assert initial_history_response.status_code == 200
+    initial_history = initial_history_response.json()
+    assert len(initial_history) == 1
+    assert initial_history[0]["role"] == "assistant"
+
+    for _ in range(3):
+        response = client.get(f"/api/v1/cases/{case_id}/conversation/next-question")
+        assert response.status_code == 200
+
+    final_history_response = client.get(f"/api/v1/cases/{case_id}/conversation/turns")
+    assert final_history_response.status_code == 200
+    assert final_history_response.json() == initial_history
+
+
 def test_parse_date_robustness() -> None:
     from app.extraction.service import parse_date
 
@@ -227,7 +268,9 @@ def test_optional_field_refusal_marks_na(client: TestClient) -> None:
             assert field_state["resolved_value"] == "NA"
 
 
-def test_required_field_refusal_prompts_mandatory(client: TestClient) -> None:
+def test_required_field_refusal_reasks_without_deterministic_warning(
+    client: TestClient,
+) -> None:
     case_id = create_case(client)
 
     # Complainant name is required. Say "I don't know" to the complainant name question
@@ -241,6 +284,7 @@ def test_required_field_refusal_prompts_mandatory(client: TestClient) -> None:
     assert response.status_code == 200
     payload = response.json()
 
-    # The assistant response should tell the user that the field is mandatory
-    assert "mandatory" in payload["assistant_turn"]["message"]
-    assert "complainant" in payload["assistant_turn"]["message"]
+    assert payload["assistant_turn"] is not None
+    assert "mandatory" not in payload["assistant_turn"]["message"]
+    assert "I understand" not in payload["assistant_turn"]["message"]
+    assert payload["next_question"]["field_path"] == "complainant.full_name"

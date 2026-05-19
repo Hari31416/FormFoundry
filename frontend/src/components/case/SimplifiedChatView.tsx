@@ -141,7 +141,12 @@ export function SimplifiedChatView({
           {/* Merged Conversation History */}
           {mergedMessages.map((msg, idx) => {
             const isAssistant = msg.role === 'assistant'
-            const isLatestAssistant = isAssistant && idx === lastAssistantIdx && !!nextQuestion
+            const messageFieldPaths = Array.isArray(msg.metadata?.field_paths) ? msg.metadata.field_paths : []
+            const nextQuestionFieldPaths = Array.isArray(nextQuestion?.field_paths) ? nextQuestion.field_paths : []
+            const isSameQuestion = messageFieldPaths.join('|') === nextQuestionFieldPaths.join('|')
+            const isLatestAssistant = isAssistant && idx === lastAssistantIdx && !!nextQuestion && isSameQuestion
+            const fieldLabels = msg.metadata?.field_labels || nextQuestion?.field_labels || []
+            const reason = msg.metadata?.reason || nextQuestion?.reason
 
             return (
               <div key={msg.id} className={cn("flex items-start space-x-3 w-full", !isAssistant && "justify-end")}>
@@ -177,9 +182,9 @@ export function SimplifiedChatView({
 
                   {isLatestAssistant ? (
                     <div className="space-y-3">
-                      {nextQuestion.field_labels && nextQuestion.field_labels.length > 0 && (
+                      {fieldLabels.length > 0 && (
                         <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                          {nextQuestion.field_labels.map((lbl: string) => (
+                          {fieldLabels.map((lbl: string) => (
                             <Badge key={lbl} variant="outline" className="text-[8px] font-bold border-blue-200 text-blue-600 bg-blue-100/30 uppercase tracking-tighter h-4">
                               {lbl}
                             </Badge>
@@ -189,7 +194,7 @@ export function SimplifiedChatView({
 
                       <div className="flex items-start justify-between gap-4">
                         <p className="text-[13px] leading-relaxed font-black text-slate-900 whitespace-pre-wrap text-left">
-                          {nextQuestion.question}
+                          {msg.message}
                         </p>
                         {langConfig?.is_tts_enabled && (
                           <Button
@@ -197,14 +202,14 @@ export function SimplifiedChatView({
                             size="icon"
                             className={cn(
                               "h-7 w-7 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 shrink-0",
-                              playingQuestion === nextQuestion.question && "text-blue-600 bg-blue-50 animate-pulse"
+                              playingQuestion === msg.message && "text-blue-600 bg-blue-50 animate-pulse"
                             )}
-                            onClick={() => handlePlayTTS(nextQuestion.question, caseDetail?.metadata?.preferred_language || 'en')}
-                            disabled={!!loadingAudio && loadingAudio !== nextQuestion.question}
+                            onClick={() => handlePlayTTS(msg.message, caseDetail?.metadata?.preferred_language || 'en')}
+                            disabled={!!loadingAudio && loadingAudio !== msg.message}
                           >
-                            {loadingAudio === nextQuestion.question ? (
+                            {loadingAudio === msg.message ? (
                               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : playingQuestion === nextQuestion.question ? (
+                            ) : playingQuestion === msg.message ? (
                               <VolumeX className="w-3.5 h-3.5" />
                             ) : (
                               <Volume2 className="w-3.5 h-3.5" />
@@ -231,7 +236,7 @@ export function SimplifiedChatView({
                               className="overflow-hidden mt-2"
                             >
                               <p className="text-[11px] text-slate-500 bg-slate-50 rounded-xl p-3 border border-slate-100/60 italic leading-relaxed">
-                                {nextQuestion.reason}
+                                {reason}
                               </p>
                             </motion.div>
                           )}

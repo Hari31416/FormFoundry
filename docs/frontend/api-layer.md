@@ -46,17 +46,17 @@ export const getCases = () =>
 
 - **Case Management**: Functions for listing, creating, and fetching detailed case details. Includes `updateCaseLanguage` which triggers case-level locale preference updates.
 - **Evidence Ingestion**: Helpers for submitting text notes and uploading files (using `FormData`).
-- **Field Interactions**: Endpoints for editing, confirming, or rejecting field values.
-- **Conversation**: Logic for fetching the next localized follow-up question and submitting user answers.
+- **Field Interactions**: Endpoints for editing, confirming, rejecting, or bulk rejecting field values.
+- **Conversation**: Logic for listing canonical conversation turns, fetching a read-only next-question preview, and submitting user answers.
 - **Multilingual Support**: Centralized functions to handle translation and speech features:
   - `getLanguageConfig`: Fetches system configuration settings (`LanguageConfig`) specifying if translation, language detection, and TTS are active.
   - `detectLanguage`: Requests the backend to run AI detection on a snippet of text and return the ISO code (e.g. `hi`).
   - `textToSpeech`: Submits text to synthesize speech. Uses `{ responseType: 'blob' }` to load the returned raw MP3 bytes as a browser-compatible media asset.
 - **Artifacts**: Support for triggering generation and downloading final documents.
 
-## Real-time Updates (SSE)
+## Chat Timeline
 
-While standard requests use Axios, real-time question streaming uses the native **EventSource** API (managed via custom hooks in `src/hooks/`). This allows the backend to "push" the current localized assistant question to the frontend as it is being processed.
+The chat UI renders `GET /conversation/turns` directly. Uploaded files and text evidence are recorded as user turns by the backend, so the frontend does not merge evidence records into the chat timeline or synthesize temporary assistant messages. `GET /conversation/next-question` is used only to determine whether the input bar should be available and to decorate the currently active assistant question.
 
 ## Error Handling
 

@@ -5,6 +5,7 @@ from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from typing import Any
 
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,7 +30,6 @@ from app.templates.runtime import is_field_active
 class QuestionCandidate:
     priority: int
     field: TemplateField
-    question: str
     reason: str
     order: int
 
@@ -61,6 +61,10 @@ def get_group_id(detail: CaseDetail, field_path: str) -> str | None:
     return None
 
 
+class QuestionGenerationError(RuntimeError):
+    pass
+
+
 def build_question_candidates(detail: CaseDetail) -> list[QuestionCandidate]:
     field_states_by_path = {
         field_state.field_path: field_state for field_state in detail.field_states
@@ -77,7 +81,6 @@ def build_question_candidates(detail: CaseDetail) -> list[QuestionCandidate]:
                 QuestionCandidate(
                     priority=1,
                     field=template_field,
-                    question=template_field.default_question,
                     reason="Required field is missing.",
                     order=index,
                 )
@@ -87,7 +90,6 @@ def build_question_candidates(detail: CaseDetail) -> list[QuestionCandidate]:
                 QuestionCandidate(
                     priority=2,
                     field=template_field,
-                    question=template_field.clarification_question,
                     reason="High-confidence evidence conflicts for this field.",
                     order=index,
                 )
@@ -101,7 +103,6 @@ def build_question_candidates(detail: CaseDetail) -> list[QuestionCandidate]:
                 QuestionCandidate(
                     priority=3,
                     field=template_field,
-                    question=template_field.clarification_question,
                     reason="Required field is still low-confidence.",
                     order=index,
                 )
@@ -114,7 +115,6 @@ def build_question_candidates(detail: CaseDetail) -> list[QuestionCandidate]:
                 QuestionCandidate(
                     priority=4,
                     field=template_field,
-                    question=template_field.default_question,
                     reason="Optional field is still empty.",
                     order=index,
                 )
@@ -126,7 +126,7 @@ def build_question_candidates(detail: CaseDetail) -> list[QuestionCandidate]:
 async def generate_grouped_question(
     detail: CaseDetail,
     selected_fields: list[QuestionCandidate],
-) -> str | None:
+) -> str:
     field_lines: list[str] = []
     for candidate in selected_fields:
         help_text = (
@@ -138,7 +138,9 @@ async def generate_grouped_question(
             else ""
         )
         field_lines.append(
-            f"- {candidate.field.label}: {candidate.question}{help_text}{enum_text}"
+            f"- {candidate.field.label} "
+            f"({candidate.field.path}, {candidate.field.type}, {candidate.reason})"
+            f"{help_text}{enum_text}"
         )
 
     field_details = "\n".join(field_lines)
@@ -146,6 +148,7 @@ async def generate_grouped_question(
         system_prompt=(
             "You write one concise follow-up question for a conversational form-filling assistant. "
             "Combine related missing or unclear fields into a single question. "
+            "Do not use canned wording; write the final user-facing question yourself. "
             'Return JSON only with the shape {"question": "..."}.'
         ),
         user_prompt=(
@@ -155,41 +158,14 @@ async def generate_grouped_question(
         ),
     )
     if not response:
-        return None
+        raise QuestionGenerationError("LLM did not return a question payload.")
 
     question = response.get("question")
     if not isinstance(question, str):
-        return None
+        raise QuestionGenerationError("LLM question payload is missing question text.")
     question = question.strip()
-    return question or None
-
-
-def build_fallback_grouped_question(selected_fields: list[QuestionCandidate]) -> str:
-    if len(selected_fields) == 1:
-        return selected_fields[0].question
-
-    labels = [candidate.field.label.lower() for candidate in selected_fields]
-    priority = selected_fields[0].priority
-    if priority == 1:
-        intro = "Please share these remaining required FIR details together"
-    elif priority == 2:
-        intro = "Please clarify these related FIR details together"
-    elif priority == 3:
-        intro = "Please confirm these related FIR details together"
-    else:
-        intro = "If available, please share these additional FIR details together"
-
-    hints: list[str] = []
-    if any(candidate.field.path == "incident.date" for candidate in selected_fields):
-        hints.append("Use YYYY-MM-DD for the date")
-    if any(
-        candidate.field.path == "incident.category" for candidate in selected_fields
-    ):
-        hints.append("use the closest incident category")
-
-    question = f"{intro}: {format_labels(labels)}."
-    if hints:
-        question = f"{question} {'; '.join(hints)}."
+    if not question:
+        raise QuestionGenerationError("LLM returned empty question text.")
     return question
 
 
@@ -216,9 +192,6 @@ async def choose_next_question(detail: CaseDetail) -> NextQuestionPayload | None
             grouped_candidates.append(candidate)
 
     question = await generate_grouped_question(detail, grouped_candidates)
-    if question is None:
-        question = build_fallback_grouped_question(grouped_candidates)
-
     field_paths = [candidate.field.path for candidate in grouped_candidates]
     field_labels = [candidate.field.label for candidate in grouped_candidates]
     reason = (
@@ -240,36 +213,14 @@ async def get_next_question(
     session: AsyncSession, case_id: str, translate: bool = True
 ) -> NextQuestionPayload | None:
     detail = await get_case_detail(session, case_id)
-    payload = await choose_next_question(detail)
+    try:
+        payload = await choose_next_question(detail)
+    except QuestionGenerationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Unable to generate the next question.",
+        ) from exc
     if payload is not None:
-        # Check if we have already saved any assistant turn in this case
-        stmt = (
-            select(ConversationTurnRecord)
-            .where(
-                ConversationTurnRecord.case_id == case_id,
-                ConversationTurnRecord.role == "assistant",
-            )
-            .limit(1)
-        )
-        res = await session.execute(stmt)
-        has_assistant_turn = res.scalar() is not None
-
-        if not has_assistant_turn:
-            # First question ever generated for this case! Persist it to history.
-            original_english = payload.question
-            await record_turn(
-                session,
-                case_id=case_id,
-                role="assistant",
-                message=original_english,
-                related_field_path=payload.field_path,
-                metadata={
-                    "reason": payload.reason,
-                    "field_paths": payload.field_paths,
-                    "original_english": original_english,
-                },
-            )
-
         if translate:
             preferred_lang = detail.metadata.get("preferred_language", "en")
             if preferred_lang != "en":
@@ -289,6 +240,7 @@ async def record_turn(
     message: str,
     related_field_path: str | None = None,
     metadata: dict[str, Any] | None = None,
+    commit: bool = True,
 ) -> ConversationTurnPayload:
     record = ConversationTurnRecord(
         case_id=case_id,
@@ -298,8 +250,79 @@ async def record_turn(
         turn_metadata=metadata or {},
     )
     session.add(record)
-    await session.commit()
+    if commit:
+        await session.commit()
+    else:
+        await session.flush()
     return serialize_turn(record)
+
+
+def field_paths_match(left: list[str] | None, right: list[str] | None) -> bool:
+    return list(left or []) == list(right or [])
+
+
+async def record_active_question_turn(
+    session: AsyncSession,
+    case_id: str,
+    *,
+    force: bool = False,
+) -> ConversationTurnPayload | None:
+    question_en = await get_next_question(session, case_id, translate=False)
+    if question_en is None:
+        return None
+    question = await get_next_question(session, case_id, translate=True)
+    if question is None:
+        return None
+
+    latest_turn = (
+        await session.execute(
+            select(ConversationTurnRecord)
+            .where(ConversationTurnRecord.case_id == case_id)
+            .order_by(ConversationTurnRecord.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+    if (
+        latest_turn is not None
+        and latest_turn.role == "assistant"
+        and not force
+        and field_paths_match(
+            latest_turn.turn_metadata.get("field_paths"), question_en.field_paths
+        )
+    ):
+        if latest_turn.message != question.question:
+            metadata = dict(latest_turn.turn_metadata or {})
+            metadata.update(
+                {
+                    "kind": "question",
+                    "status": "active",
+                    "reason": question.reason,
+                    "field_paths": question.field_paths,
+                    "field_labels": question.field_labels,
+                    "original_english": question_en.question,
+                }
+            )
+            latest_turn.message = question.question
+            latest_turn.turn_metadata = metadata
+            await session.commit()
+        return serialize_turn(latest_turn)
+
+    return await record_turn(
+        session,
+        case_id=case_id,
+        role="assistant",
+        message=question.question,
+        related_field_path=question.field_path,
+        metadata={
+            "kind": "question",
+            "status": "active",
+            "reason": question.reason,
+            "field_paths": question.field_paths,
+            "field_labels": question.field_labels,
+            "original_english": question_en.question,
+        },
+    )
 
 
 def is_refusal_or_dont_know(text: str) -> bool:
@@ -371,9 +394,6 @@ async def submit_conversation_turn(
 
     next_question = await get_next_question(session, case_id, translate=False)
 
-    user_was_refusing = False
-    refused_mandatory_field_label = None
-
     if next_question and is_refusal_or_dont_know(english_message):
         from app.templates.service import get_template_definition
 
@@ -403,10 +423,6 @@ async def submit_conversation_turn(
                             ),
                         )
                         session.add(candidate)
-                    else:
-                        # REQUIRED field: mark that user is refusing a mandatory field
-                        user_was_refusing = True
-                        refused_mandatory_field_label = field.label
 
             await session.flush()
             from app.resolution.service import resolve_case_fields
@@ -420,8 +436,10 @@ async def submit_conversation_turn(
         message=payload.message,
         related_field_path=next_question.field_path if next_question else None,
         metadata={
+            "kind": "answer",
             "created_by": payload.created_by,
             "field_paths": next_question.field_paths if next_question else [],
+            "field_labels": next_question.field_labels if next_question else [],
             "detected_language": active_lang,
             "english_translation": english_message,
         },
@@ -449,29 +467,6 @@ async def submit_conversation_turn(
             else translated_question
         )
 
-        if user_was_refusing:
-            label_text = (
-                refused_mandatory_field_label or refreshed_question.field_labels[0]
-            )
-            next_q_text = (
-                refreshed_question_en.question
-                if refreshed_question_en
-                else refreshed_question.question
-            )
-            original_english = (
-                f"I understand, but '{label_text}' is "
-                f"mandatory to complete the intake. {next_q_text}"
-            )
-            if preferred_lang != "en":
-                from app.languages.utils import process_outgoing_text
-
-                translated_question = await process_outgoing_text(
-                    original_english, preferred_lang
-                )
-            else:
-                translated_question = original_english
-            refreshed_question.question = translated_question
-
         assistant_turn = await record_turn(
             session,
             case_id=case_id,
@@ -479,8 +474,11 @@ async def submit_conversation_turn(
             message=translated_question,
             related_field_path=refreshed_question.field_path,
             metadata={
+                "kind": "question",
+                "status": "active",
                 "reason": refreshed_question.reason,
                 "field_paths": refreshed_question.field_paths,
+                "field_labels": refreshed_question.field_labels,
                 "original_english": original_english,
             },
         )

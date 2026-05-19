@@ -18,6 +18,7 @@ from app.cases.service import (
     get_filtered_schema_state,
     list_cases,
 )
+from app.conversation.service import record_active_question_turn
 from app.db import get_db_session
 
 router = APIRouter()
@@ -41,7 +42,9 @@ async def list_cases_route(
 async def create_case_route(
     payload: CaseCreateRequest, session: DBSession
 ) -> CaseDetail:
-    return await create_case(session, payload)
+    case_detail = await create_case(session, payload)
+    await record_active_question_turn(session, case_detail.case_id)
+    return case_detail
 
 
 @router.get("/{case_id}", response_model=CaseDetail)
@@ -80,6 +83,7 @@ async def update_case_language_route(
     metadata["preferred_language"] = payload.language
     case_record.case_metadata = metadata
     await session.commit()
+    await record_active_question_turn(session, case_id)
     return await get_case_detail(session, case_id)
 
 

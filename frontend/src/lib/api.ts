@@ -196,6 +196,8 @@ export const confirmField = (caseId: string, fieldPath: string) =>
   api.post(`/cases/${caseId}/fields/${fieldPath}/confirm`, {}).then((res) => res.data)
 export const rejectField = (caseId: string, fieldPath: string) =>
   api.post(`/cases/${caseId}/fields/${fieldPath}/reject`, {}).then((res) => res.data)
+export const bulkRejectFields = (caseId: string, fieldPaths: string[]) =>
+  api.post(`/cases/${caseId}/fields/reject-bulk`, { field_paths: fieldPaths }).then((res) => res.data)
 
 export const approveCase = (id: string) => api.post(`/cases/${id}/approve`).then((res) => res.data)
 export const generateArtifact = (id: string, type: string) =>

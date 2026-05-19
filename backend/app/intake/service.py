@@ -122,6 +122,21 @@ async def create_text_evidence(
     )
     session.add(record)
     await session.flush()
+    from app.conversation.service import record_turn
+
+    await record_turn(
+        session,
+        case_id=case_id,
+        role="user",
+        message=f"Added note: {payload.text}",
+        related_field_path=None,
+        metadata={
+            "kind": "text_evidence",
+            "evidence_id": record.evidence_id,
+            "created_by": payload.created_by,
+        },
+        commit=False,
+    )
     job = await enqueue_job(
         session,
         case_id=case_id,
@@ -137,34 +152,9 @@ async def create_text_evidence(
             evidence_ids=[record.evidence_id],
         )
         try:
-            from app.conversation.service import get_next_question, record_turn
+            from app.conversation.service import record_active_question_turn
 
-            refreshed_question_en = await get_next_question(
-                session, case_id, translate=False
-            )
-            refreshed_question = await get_next_question(
-                session, case_id, translate=True
-            )
-            if refreshed_question is not None:
-                translated_question = refreshed_question.question
-                original_english = (
-                    refreshed_question_en.question
-                    if refreshed_question_en
-                    else translated_question
-                )
-
-                await record_turn(
-                    session,
-                    case_id=case_id,
-                    role="assistant",
-                    message=translated_question,
-                    related_field_path=refreshed_question.field_path,
-                    metadata={
-                        "reason": refreshed_question.reason,
-                        "field_paths": refreshed_question.field_paths,
-                        "original_english": original_english,
-                    },
-                )
+            await record_active_question_turn(session, case_id)
         except Exception as err:
             import logging
 
@@ -250,6 +240,23 @@ async def create_upload_evidence(
     )
     session.add(record)
     await session.flush()
+    from app.conversation.service import record_turn
+
+    filename = upload.filename or "upload"
+    await record_turn(
+        session,
+        case_id=case_id,
+        role="user",
+        message=f"Uploaded file: {filename}",
+        related_field_path=None,
+        metadata={
+            "kind": "upload",
+            "evidence_id": record.evidence_id,
+            "filename": filename,
+            "created_by": created_by,
+        },
+        commit=False,
+    )
     job = await enqueue_job(
         session,
         case_id=case_id,
@@ -265,34 +272,9 @@ async def create_upload_evidence(
             evidence_ids=[record.evidence_id],
         )
         try:
-            from app.conversation.service import get_next_question, record_turn
+            from app.conversation.service import record_active_question_turn
 
-            refreshed_question_en = await get_next_question(
-                session, case_id, translate=False
-            )
-            refreshed_question = await get_next_question(
-                session, case_id, translate=True
-            )
-            if refreshed_question is not None:
-                translated_question = refreshed_question.question
-                original_english = (
-                    refreshed_question_en.question
-                    if refreshed_question_en
-                    else translated_question
-                )
-
-                await record_turn(
-                    session,
-                    case_id=case_id,
-                    role="assistant",
-                    message=translated_question,
-                    related_field_path=refreshed_question.field_path,
-                    metadata={
-                        "reason": refreshed_question.reason,
-                        "field_paths": refreshed_question.field_paths,
-                        "original_english": original_english,
-                    },
-                )
+            await record_active_question_turn(session, case_id)
         except Exception as err:
             import logging
 

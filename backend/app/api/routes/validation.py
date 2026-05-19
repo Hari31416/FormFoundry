@@ -9,6 +9,7 @@ from app.cases.models import CaseFilePayload, FieldStatePayload
 from app.cases.service import serialize_field_state
 from app.db import get_db_session
 from app.validation.models import (
+    BulkFieldRejectRequest,
     FieldConfirmRequest,
     FieldEditRequest,
     FieldRejectRequest,
@@ -82,7 +83,34 @@ async def reject_field_route(
         payload = FieldRejectRequest()
 
     field_state = await reject_field(session, case_id, field_path, payload)
+    from app.conversation.service import record_active_question_turn
+
+    await record_active_question_turn(session, case_id)
     return serialize_field_state(field_state)
+
+
+@router.post(
+    "/cases/{case_id}/fields/reject-bulk", response_model=list[FieldStatePayload]
+)
+async def bulk_reject_fields_route(
+    case_id: str,
+    payload: BulkFieldRejectRequest,
+    session: DBSession,
+) -> list[FieldStatePayload]:
+    field_states = []
+    for field_path in payload.field_paths:
+        field_state = await reject_field(
+            session,
+            case_id,
+            field_path,
+            FieldRejectRequest(rejected_by=payload.rejected_by),
+        )
+        field_states.append(field_state)
+
+    from app.conversation.service import record_active_question_turn
+
+    await record_active_question_turn(session, case_id)
+    return [serialize_field_state(field_state) for field_state in field_states]
 
 
 @router.post("/cases/{case_id}/approve", response_model=CaseFilePayload)
