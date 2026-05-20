@@ -58,21 +58,92 @@ function getValueByPath(payload: Record<string, unknown>, path: string): unknown
   return cursor
 }
 
-function isFieldActive(field: TemplateField, schemaState: Record<string, unknown>): boolean {
-  const conditions = field.conditions ?? {}
-  const dependsOn = conditions.depends_on
+function evaluateCondition(rule: any, schemaState: Record<string, unknown>): boolean {
+  if (!rule || typeof rule !== 'object' || Array.isArray(rule)) {
+    return Boolean(rule)
+  }
+
+  if ('operator' in rule) {
+    const op = String(rule.operator).toLowerCase()
+    const subRules = Array.isArray(rule.rules) ? rule.rules : []
+    if (op === 'and') {
+      return subRules.every((r: any) => evaluateCondition(r, schemaState))
+    }
+    if (op === 'or') {
+      return subRules.some((r: any) => evaluateCondition(r, schemaState))
+    }
+    if (op === 'not') {
+      if (subRules.length > 0) {
+        return !evaluateCondition(subRules[0], schemaState)
+      }
+      const ruleData = rule.rule
+      if (ruleData) {
+        return !evaluateCondition(ruleData, schemaState)
+      }
+      return true
+    }
+  }
+
+  const dependsOn = rule.depends_on
   if (!dependsOn) {
     return true
   }
 
   const actualValue = getValueByPath(schemaState, dependsOn)
-  if ('equals' in conditions) {
-    return actualValue === conditions.equals
+
+  if ('equals' in rule) {
+    return actualValue === rule.equals
   }
-  if ('not_equals' in conditions) {
-    return actualValue !== conditions.not_equals
+  if ('not_equals' in rule) {
+    return actualValue !== rule.not_equals
   }
+
+  if ('op' in rule || 'operator' in rule) {
+    const opVal = String(rule.op || rule.operator || '').toLowerCase()
+    const val = rule.value
+
+    if (opVal === 'equals' || opVal === 'eq') {
+      return actualValue === val
+    }
+    if (opVal === 'not_equals' || opVal === 'neq') {
+      return actualValue !== val
+    }
+    if (opVal === 'in' || opVal === 'contains') {
+      return Array.isArray(val) && val.includes(actualValue)
+    }
+    if (opVal === 'not_in' || opVal === 'not_contains') {
+      return Array.isArray(val) && !val.includes(actualValue)
+    }
+
+    if (actualValue !== null && actualValue !== undefined) {
+      const actNum = Number(actualValue)
+      const valNum = Number(val)
+      if (!isNaN(actNum) && !isNaN(valNum)) {
+        if (opVal === 'gt' || opVal === 'greater_than') {
+          return actNum > valNum
+        }
+        if (opVal === 'gte' || opVal === 'greater_than_or_equals') {
+          return actNum >= valNum
+        }
+        if (opVal === 'lt' || opVal === 'less_than') {
+          return actNum < valNum
+        }
+        if (opVal === 'lte' || opVal === 'less_than_or_equals') {
+          return actNum <= valNum
+        }
+      }
+    }
+  }
+
   return Boolean(actualValue)
+}
+
+function isFieldActive(field: TemplateField, schemaState: Record<string, unknown>): boolean {
+  const conditions = field.conditions
+  if (!conditions || Object.keys(conditions).length === 0) {
+    return true
+  }
+  return evaluateCondition(conditions, schemaState)
 }
 
 function isQuestionOutstanding(field: TemplateField, state: FieldState): boolean {

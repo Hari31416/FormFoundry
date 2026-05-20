@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Quote,
   Check,
+  Lock
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -146,10 +147,26 @@ export function FieldRow({
                 {field.required && (
                   <span className="text-[9px] font-bold text-red-500/60 px-1 border border-red-100 rounded leading-none pt-0.5">REQ</span>
                 )}
+                {field.calculation && (
+                  <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/10 border-amber-250 text-[9px] uppercase font-black px-1.5 h-4 flex items-center gap-1">
+                    <Lock className="w-2.5 h-2.5" />
+                    {t('field_calculated', { defaultValue: 'Calculated' })}
+                  </Badge>
+                )}
               </div>
-              <div className="text-[15px] font-bold text-slate-900 tabular-nums truncate">
+              <div className="text-[15px] font-bold text-slate-900 tabular-nums">
                 {hasResolvedValue(state?.resolved_value) ? (
-                  String(state?.resolved_value)
+                  Array.isArray(state?.resolved_value) ? (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {state.resolved_value.map((val: any, idx: number) => (
+                        <Badge key={idx} variant="secondary" className="bg-slate-100 text-slate-800 py-0.5 px-2 font-bold text-xs rounded-lg border-slate-200">
+                          {String(val)}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="truncate block">{String(state?.resolved_value)}</span>
+                  )
                 ) : (
                   <span className="text-slate-300 font-medium italic">{t('awaiting_data')}</span>
                 )}

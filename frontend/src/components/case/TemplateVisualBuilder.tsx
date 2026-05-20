@@ -42,9 +42,13 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
     enum_options: [],
     default_question: '',
     clarification_question: '',
-    help_text: ''
+    help_text: '',
+    validation_refs: [],
+    calculation: '',
+    conditions: {}
   })
   const [newEnumOption, setNewEnumOption] = React.useState<string>('')
+  const [newValidationRef, setNewValidationRef] = React.useState<string>('')
 
   React.useEffect(() => {
     setJsonText(JSON.stringify(draftTemplate, null, 2))
@@ -67,7 +71,13 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
   // Field Schema Visual Builder Helpers
   const startFieldEdit = (idx: number) => {
     setEditingFieldIdx(idx)
-    setFieldForm({ ...draftTemplate.schema[idx] })
+    const field = draftTemplate.schema[idx]
+    setFieldForm({
+      ...field,
+      validation_refs: field.validation_refs || [],
+      calculation: field.calculation || '',
+      conditions: field.conditions || {}
+    })
   }
 
   const saveFieldForm = () => {
@@ -82,7 +92,10 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
     const updatedField = {
       ...fieldForm,
       default_question: fieldForm.default_question || `What is the ${fieldForm.label.toLowerCase()}?`,
-      clarification_question: fieldForm.clarification_question || `Please provide details for the ${fieldForm.label.toLowerCase()}.`
+      clarification_question: fieldForm.clarification_question || `Please provide details for the ${fieldForm.label.toLowerCase()}.`,
+      calculation: fieldForm.calculation?.trim() || null,
+      validation_refs: fieldForm.validation_refs || [],
+      conditions: fieldForm.conditions && Object.keys(fieldForm.conditions).length > 0 ? fieldForm.conditions : undefined
     }
 
     updatedSchema[editingFieldIdx!] = updatedField
@@ -121,7 +134,10 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
       enum_options: [],
       default_question: '',
       clarification_question: '',
-      help_text: ''
+      help_text: '',
+      validation_refs: [],
+      calculation: '',
+      conditions: {}
     }
     setEditingFieldIdx(draftTemplate.schema.length)
     setFieldForm(newField)
@@ -141,6 +157,23 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
     setFieldForm(prev => ({
       ...prev,
       enum_options: (prev.enum_options || []).filter(o => o !== opt)
+    }))
+  }
+
+  const addValidationRef = () => {
+    if (!newValidationRef.trim()) return
+    if (fieldForm.validation_refs?.includes(newValidationRef.trim())) return
+    setFieldForm(prev => ({
+      ...prev,
+      validation_refs: [...(prev.validation_refs || []), newValidationRef.trim()]
+    }))
+    setNewValidationRef('')
+  }
+
+  const removeValidationRef = (ref: string) => {
+    setFieldForm(prev => ({
+      ...prev,
+      validation_refs: (prev.validation_refs || []).filter(r => r !== ref)
     }))
   }
 
@@ -497,6 +530,184 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                       </div>
                     </div>
                   )}
+
+                  {/* Dynamic Validation Support (Rank 1) */}
+                  <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Validation Rules</label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={newValidationRef}
+                        onChange={e => setNewValidationRef(e.target.value)}
+                        placeholder="e.g. email, phone, regex:^[0-9]{5}$"
+                        className="h-8 bg-slate-50 border-slate-200 rounded-lg text-xs"
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addValidationRef();
+                          }
+                        }}
+                      />
+                      <Button size="sm" variant="secondary" className="h-8 rounded-lg font-bold text-xs" onClick={addValidationRef}>Add</Button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {fieldForm.validation_refs?.map(ref => (
+                        <Badge key={ref} variant="secondary" className="bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1.5 py-0.5 px-2 text-xs">
+                          {ref}
+                          <X className="w-3 h-3 text-slate-400 hover:text-slate-600 cursor-pointer" onClick={() => removeValidationRef(ref)} />
+                        </Badge>
+                      ))}
+                      {(!fieldForm.validation_refs || fieldForm.validation_refs.length === 0) && (
+                        <span className="text-[10px] text-slate-400 font-semibold italic">No custom rules set.</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Calculated / Computed Fields (Rank 5) */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Calculated Formula (Expression)</label>
+                    <Input
+                      value={fieldForm.calculation || ''}
+                      onChange={e => setFieldForm(prev => ({ ...prev, calculation: e.target.value }))}
+                      placeholder="e.g. {invoice.subtotal} * 1.15"
+                      className="h-10 bg-white border-slate-200 rounded-xl font-mono text-xs"
+                    />
+                    <span className="text-[10px] text-slate-450 block leading-tight">
+                      Evaluates mathematical or string operations at resolution runtime. Lock is shown in the workspace.
+                    </span>
+                  </div>
+
+                  {/* Conditional Logic (Rank 4) */}
+                  <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3">
+                    <div className="flex justify-between items-center">
+                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Conditional Logic</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const isComplex = fieldForm.conditions && ('operator' in fieldForm.conditions) && ('rules' in fieldForm.conditions || Array.isArray((fieldForm.conditions as any).rules));
+                          if (isComplex) {
+                            setFieldForm(prev => ({ ...prev, conditions: { depends_on: '', op: 'eq', value: '' } }))
+                          } else {
+                            setFieldForm(prev => ({ ...prev, conditions: { operator: 'and', rules: [{ depends_on: '', op: 'eq', value: '' }] } }))
+                          }
+                        }}
+                        className="text-[9px] font-black text-blue-650 hover:text-blue-750 uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded cursor-pointer border-none bg-transparent"
+                      >
+                        {fieldForm.conditions && ('operator' in fieldForm.conditions) && ('rules' in fieldForm.conditions || Array.isArray((fieldForm.conditions as any).rules)) ? 'Switch to Simple' : 'Switch to Complex'}
+                      </button>
+                    </div>
+
+                    {!fieldForm.conditions || Object.keys(fieldForm.conditions).length === 0 ? (
+                      <div className="flex flex-col items-center py-2 text-center">
+                        <span className="text-[10px] text-slate-400 font-semibold mb-2">No visibility conditions set. Field is always active.</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          type="button"
+                          className="h-7 text-[10px] font-bold rounded-lg border-slate-200"
+                          onClick={() => setFieldForm(prev => ({ ...prev, conditions: { depends_on: '', op: 'eq', value: '' } }))}
+                        >
+                          + Add Visibility Rule
+                        </Button>
+                      </div>
+                    ) : (fieldForm.conditions && ('operator' in fieldForm.conditions) && ('rules' in fieldForm.conditions || Array.isArray((fieldForm.conditions as any).rules))) ? (
+                      <div className="space-y-1.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Raw JSON Conditions Definition</label>
+                        <textarea
+                          value={JSON.stringify(fieldForm.conditions, null, 2)}
+                          onChange={e => {
+                            try {
+                              const parsed = JSON.parse(e.target.value)
+                              setFieldForm(prev => ({ ...prev, conditions: parsed }))
+                            } catch (err) { }
+                          }}
+                          placeholder='{ "operator": "and", "rules": [...] }'
+                          className="w-full h-32 p-3 font-mono text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-900 bg-slate-50"
+                        />
+                        <span className="text-[9px] text-slate-400 block leading-tight">Must be valid JSON object with rules.</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Depends On Field Path</label>
+                            <Input
+                              value={(fieldForm.conditions as any)?.depends_on || ''}
+                              onChange={e => setFieldForm(prev => ({
+                                ...prev,
+                                conditions: { ...(prev.conditions || {}), depends_on: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '') }
+                              }))}
+                              placeholder="e.g. user.age"
+                              className="h-8 bg-slate-50 border-slate-250 rounded-lg text-xs"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Comparison Operator</label>
+                            <select
+                              value={(fieldForm.conditions as any)?.op || (fieldForm.conditions as any)?.operator || 'eq'}
+                              onChange={e => setFieldForm(prev => ({
+                                ...prev,
+                                conditions: { ...(prev.conditions || {}), op: e.target.value, operator: undefined }
+                              }))}
+                              className="w-full h-8 px-2 bg-slate-50 border border-slate-250 rounded-lg text-xs focus:outline-none"
+                            >
+                              <option value="eq">Equals (eq)</option>
+                              <option value="neq">Not Equals (neq)</option>
+                              <option value="gt">Greater Than (gt)</option>
+                              <option value="gte">Greater or Equal (gte)</option>
+                              <option value="lt">Less Than (lt)</option>
+                              <option value="lte">Less or Equal (lte)</option>
+                              <option value="in">In List (in)</option>
+                              <option value="not_in">Not In List (not_in)</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Comparison Value</label>
+                          <Input
+                            value={
+                              fieldForm.conditions && 'value' in fieldForm.conditions ? String(fieldForm.conditions.value) :
+                                fieldForm.conditions && 'equals' in fieldForm.conditions ? String(fieldForm.conditions.equals) :
+                                  fieldForm.conditions && 'not_equals' in fieldForm.conditions ? String(fieldForm.conditions.not_equals) : ''
+                            }
+                            onChange={e => {
+                              const val = e.target.value
+                              let parsedVal: any = val
+                              if (val.startsWith('[') && val.endsWith(']')) {
+                                try { parsedVal = JSON.parse(val) } catch (err) { }
+                              } else if (val === 'true') {
+                                parsedVal = true
+                              } else if (val === 'false') {
+                                parsedVal = false
+                              } else if (!isNaN(Number(val)) && val.trim() !== '') {
+                                parsedVal = Number(val)
+                              }
+                              setFieldForm(prev => {
+                                const baseCond = { ...(prev.conditions || {}) }
+                                delete baseCond.equals
+                                delete baseCond.not_equals
+                                return {
+                                  ...prev,
+                                  conditions: { ...baseCond, value: parsedVal }
+                                }
+                              })
+                            }}
+                            placeholder="e.g. 18, true, [val1, val2]"
+                            className="h-8 bg-slate-50 border-slate-250 rounded-lg text-xs"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          className="text-[9px] font-bold text-red-500 hover:text-red-650 block mt-2 border-none bg-transparent cursor-pointer"
+                          onClick={() => setFieldForm(prev => {
+                            const { conditions, ...rest } = prev
+                            return rest as any
+                          })}
+                        >
+                          Remove Visibility Rule
+                        </button>
+                      </div>
+                    )}
+                  </div>
 
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Help Text</label>
