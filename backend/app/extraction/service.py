@@ -132,6 +132,36 @@ def coerce_candidate_value(field: TemplateField, value: Any) -> Any | None:
     if value is None:
         return None
 
+    if field.repeated:
+        items = []
+        if isinstance(value, list):
+            items = value
+        elif isinstance(value, str):
+            val_str = value.strip()
+            if val_str.startswith("[") and val_str.endswith("]"):
+                try:
+                    import json
+
+                    parsed = json.loads(val_str)
+                    if isinstance(parsed, list):
+                        items = parsed
+                    else:
+                        items = [parsed]
+                except Exception:
+                    items = [val_str]
+            else:
+                items = [item.strip() for item in val_str.split(",") if item.strip()]
+        else:
+            items = [value]
+
+        coerced_items = []
+        for item in items:
+            single_field = field.model_copy(update={"repeated": False})
+            coerced = coerce_candidate_value(single_field, item)
+            if coerced is not None:
+                coerced_items.append(coerced)
+        return coerced_items if coerced_items else None
+
     if field.type == "string":
         text = str(value).strip()
         return text or None
@@ -173,6 +203,7 @@ def format_field_catalog(template: TemplateDefinition) -> str:
     lines: list[str] = []
     for field in template.template_schema:
         required = "required" if field.required else "optional"
+        repeated = " (repeated list)" if field.repeated else ""
         enum_options = (
             f" Allowed values: {', '.join(field.enum_options)}."
             if field.enum_options
@@ -180,7 +211,8 @@ def format_field_catalog(template: TemplateDefinition) -> str:
         )
         help_text = f" Help: {field.help_text}." if field.help_text else ""
         lines.append(
-            f"- {field.path}: {field.label} ({field.type}, {required}).{enum_options}{help_text}"
+            f"- {field.path}: {field.label} ({field.type}{repeated}, {required})."
+            f"{enum_options}{help_text}"
         )
     return "\n".join(lines)
 
@@ -206,7 +238,9 @@ async def extract_candidates_with_llm(
             "Only include candidates directly supported by the evidence text. "
             "IMPORTANT: Normalize all date values to YYYY-MM-DD format "
             "(e.g., '7 November 2014' or '07-11-2014' should be "
-            "extracted as '2014-11-07')."
+            "extracted as '2014-11-07'). "
+            "If a field is a repeated list (indicated in the catalog), "
+            "return candidate_value as a JSON array of parsed elements."
         ),
         user_prompt=(
             f"Template: {template.name}\n"

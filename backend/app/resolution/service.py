@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import ast
+import operator
+import re
 from collections import defaultdict
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 
@@ -21,9 +25,96 @@ from app.templates.models import TemplateDefinitionRecord
 
 
 def normalize_candidate_value(value: Any) -> str:
+    if isinstance(value, list):
+        import json
+
+        normalized_items = sorted(str(item).strip().lower() for item in value)
+        return json.dumps(normalized_items)
     if isinstance(value, str):
         return value.strip().lower()
     return str(value).strip().lower()
+
+
+# Supported AST operators
+operators = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.truediv,
+    ast.FloorDiv: operator.floordiv,
+    ast.Mod: operator.mod,
+    ast.Pow: operator.pow,
+    ast.USub: operator.neg,
+    ast.UAdd: operator.pos,
+    ast.Eq: operator.eq,
+    ast.NotEq: operator.ne,
+    ast.Lt: operator.lt,
+    ast.LtE: operator.le,
+    ast.Gt: operator.gt,
+    ast.GtE: operator.ge,
+}
+
+
+def evaluate_calculation(expr: str, schema_state: Mapping[str, Any]) -> Any | None:
+    vars_found = re.findall(r"\{([^}]+)\}", expr)
+    context = {}
+    replaced_expr = expr
+    for idx, path in enumerate(vars_found):
+        from app.templates.runtime import get_value_by_path
+
+        val = get_value_by_path(schema_state, path)
+        var_name = f"v_{idx}"
+        context[var_name] = val
+        replaced_expr = replaced_expr.replace(f"{{{path}}}", var_name)
+
+    try:
+        tree = ast.parse(replaced_expr, mode="eval")
+
+        def eval_node(node):
+            if isinstance(node, ast.Expression):
+                return eval_node(node.body)
+            if isinstance(node, ast.Num):
+                return node.n
+            if isinstance(node, ast.Str):
+                return node.s
+            if isinstance(node, ast.Constant):
+                return node.value
+            if isinstance(node, ast.Name):
+                if node.id in context:
+                    return context[node.id]
+                raise NameError(f"Undefined variable: {node.id}")
+            if isinstance(node, ast.BinOp):
+                left = eval_node(node.left)
+                right = eval_node(node.right)
+                if left is None or right is None:
+                    return None
+                return operators[type(node.op)](left, right)
+            if isinstance(node, ast.UnaryOp):
+                operand = eval_node(node.operand)
+                if operand is None:
+                    return None
+                return operators[type(node.op)](operand)
+            if isinstance(node, ast.Compare):
+                left = eval_node(node.left)
+                if left is None:
+                    return None
+                for op, comparator in zip(node.ops, node.comparators, strict=False):
+                    right = eval_node(comparator)
+                    if right is None:
+                        return None
+                    if not operators[type(op)](left, right):
+                        return False
+                    left = right
+                return True
+            raise TypeError(f"Unsupported syntax node: {type(node).__name__}")
+
+        return eval_node(tree)
+    except Exception as e:
+        import logging
+
+        logger = logging.getLogger("app.templates.calculation")
+        logger.warning(f"Failed to evaluate expression '{expr}': {e}")
+        return None
 
 
 def assign_nested_value(target: dict[str, Any], path: str, value: Any) -> None:
@@ -83,9 +174,13 @@ async def resolve_case_fields(session: AsyncSession, case_id: str) -> None:
     )
 
     schema_state: dict[str, Any] = {}
-    unresolved_required = False
     required_fields = {
         field["path"]: bool(field.get("required")) for field in template_record.schema
+    }
+    calculations_by_path = {
+        field["path"]: field.get("calculation")
+        for field in template_record.schema
+        if field.get("calculation") is not None
     }
 
     for field_state in field_states:
@@ -93,6 +188,13 @@ async def resolve_case_fields(session: AsyncSession, case_id: str) -> None:
             assign_nested_value(
                 schema_state, field_state.field_path, field_state.resolved_value
             )
+            continue
+
+        if calculations_by_path.get(field_state.field_path) is not None:
+            field_state.resolved_value = None
+            field_state.status = FieldStateStatus.MISSING
+            field_state.confidence = 0.0
+            assign_nested_value(schema_state, field_state.field_path, None)
             continue
 
         field_candidates = candidates_by_field.get(field_state.field_path, [])
@@ -180,12 +282,6 @@ async def resolve_case_fields(session: AsyncSession, case_id: str) -> None:
 
         assign_nested_value(schema_state, field_state.field_path, resolved_value)
 
-        if required_fields.get(field_state.field_path) and status in {
-            FieldStateStatus.MISSING,
-            FieldStateStatus.CONFLICTED,
-        }:
-            unresolved_required = True
-
         session.add(
             ResolutionAuditRecord(
                 case_id=case_id,
@@ -199,6 +295,39 @@ async def resolve_case_fields(session: AsyncSession, case_id: str) -> None:
                 summary=summary,
             )
         )
+
+    # Iterative calculation passes for computed fields
+    computed_fields = [
+        fs for fs in field_states if calculations_by_path.get(fs.field_path) is not None
+    ]
+    for _ in range(5):
+        any_changed = False
+        for fs in computed_fields:
+            expr = calculations_by_path[fs.field_path]
+            computed = evaluate_calculation(expr, schema_state)
+            if computed != fs.resolved_value:
+                fs.resolved_value = computed
+                if computed is not None:
+                    fs.status = FieldStateStatus.PROPOSED
+                    fs.confidence = 1.0
+                    fs.last_updated_by = "calculation"
+                    fs.last_updated_at = datetime.now(UTC)
+                else:
+                    fs.status = FieldStateStatus.MISSING
+                    fs.confidence = 0.0
+                assign_nested_value(schema_state, fs.field_path, computed)
+                any_changed = True
+        if not any_changed:
+            break
+
+    # Determine unresolved required status across all fields (including computed)
+    unresolved_required = False
+    for fs in field_states:
+        if required_fields.get(fs.field_path) and fs.status in {
+            FieldStateStatus.MISSING,
+            FieldStateStatus.CONFLICTED,
+        }:
+            unresolved_required = True
 
     case_record.current_schema_state = schema_state
     case_record.status = (

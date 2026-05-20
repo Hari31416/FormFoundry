@@ -128,77 +128,94 @@ async def refresh_validation_issues(
         if value in (None, "", []):
             continue
 
-        if template_field.type == "enum" and value not in template_field.enum_options:
-            add_issue(
-                field_path=field_path,
-                rule_id="enum",
-                message="Value is not in the allowed enum set.",
-                suggested_fix="Choose one of the allowed options.",
-            )
-        if template_field.type == "date" and not re.match(
-            r"^\d{4}-\d{2}-\d{2}$", str(value)
-        ):
-            add_issue(
-                field_path=field_path,
-                rule_id="date",
-                message="Date must use YYYY-MM-DD format.",
-            )
-        if template_field.type == "boolean" and not isinstance(value, bool):
-            add_issue(
-                field_path=field_path,
-                rule_id="boolean",
-                message="Value must be true or false.",
-            )
-        if template_field.type == "integer" and not isinstance(value, int):
-            add_issue(
-                field_path=field_path,
-                rule_id="integer",
-                message="Value must be an integer.",
-            )
-        if template_field.type == "number" and not isinstance(value, (int, float)):
-            add_issue(
-                field_path=field_path,
-                rule_id="number",
-                message="Value must be numeric.",
-            )
+        items_to_validate = (
+            value if template_field.repeated and isinstance(value, list) else [value]
+        )
 
-        for rule_ref in template_field.validation_refs:
-            if (
-                rule_ref == "email"
-                and value
-                and not re.match(r"^[^@]+@[^@]+\.[^@]+$", str(value))
+        for val in items_to_validate:
+            if template_field.type == "enum" and val not in template_field.enum_options:
+                add_issue(
+                    field_path=field_path,
+                    rule_id="enum",
+                    message="Value is not in the allowed enum set.",
+                    suggested_fix="Choose one of the allowed options.",
+                )
+            if template_field.type == "date" and not re.match(
+                r"^\d{4}-\d{2}-\d{2}$", str(val)
             ):
                 add_issue(
                     field_path=field_path,
-                    rule_id="email",
-                    message="Email format is invalid.",
+                    rule_id="date",
+                    message="Date must use YYYY-MM-DD format.",
                 )
-            if (
-                rule_ref == "phone"
-                and value
-                and not re.match(r"^[0-9+()\- ]{10,15}$", str(value))
-            ):
+            if template_field.type == "boolean" and not isinstance(val, bool):
                 add_issue(
                     field_path=field_path,
-                    rule_id="phone",
-                    message="Phone format is invalid.",
+                    rule_id="boolean",
+                    message="Value must be true or false.",
                 )
-            if rule_ref.startswith("min:") and isinstance(value, (int, float)):
-                threshold = float(rule_ref.split(":", maxsplit=1)[1])
-                if float(value) < threshold:
+            if template_field.type == "integer" and not isinstance(val, int):
+                add_issue(
+                    field_path=field_path,
+                    rule_id="integer",
+                    message="Value must be an integer.",
+                )
+            if template_field.type == "number" and not isinstance(val, (int, float)):
+                add_issue(
+                    field_path=field_path,
+                    rule_id="number",
+                    message="Value must be numeric.",
+                )
+
+            for rule_ref in template_field.validation_refs:
+                if (
+                    rule_ref == "email"
+                    and val
+                    and not re.match(r"^[^@]+@[^@]+\.[^@]+$", str(val))
+                ):
                     add_issue(
                         field_path=field_path,
-                        rule_id="min",
-                        message=f"Value must be at least {threshold}.",
+                        rule_id="email",
+                        message="Email format is invalid.",
                     )
-            if rule_ref.startswith("min_length:"):
-                threshold = int(rule_ref.split(":", maxsplit=1)[1])
-                if len(str(value).strip()) < threshold:
+                if (
+                    rule_ref == "phone"
+                    and val
+                    and not re.match(r"^[0-9+()\- ]{10,15}$", str(val))
+                ):
                     add_issue(
                         field_path=field_path,
-                        rule_id="min_length",
-                        message=f"Value must be at least {threshold} characters long.",
+                        rule_id="phone",
+                        message="Phone format is invalid.",
                     )
+                if rule_ref.startswith("regex:"):
+                    pattern = rule_ref.split(":", maxsplit=1)[1]
+                    try:
+                        compiled = re.compile(pattern)
+                        if val and not compiled.match(str(val)):
+                            add_issue(
+                                field_path=field_path,
+                                rule_id="regex",
+                                message="Field format is invalid.",
+                            )
+                    except re.error:
+                        pass
+                if rule_ref.startswith("min:") and isinstance(val, (int, float)):
+                    threshold = float(rule_ref.split(":", maxsplit=1)[1])
+                    if float(val) < threshold:
+                        add_issue(
+                            field_path=field_path,
+                            rule_id="min",
+                            message=f"Value must be at least {threshold}.",
+                        )
+                if rule_ref.startswith("min_length:"):
+                    threshold = int(rule_ref.split(":", maxsplit=1)[1])
+                    if len(str(val).strip()) < threshold:
+                        add_issue(
+                            field_path=field_path,
+                            rule_id="min_length",
+                            message=f"Value must be at least {threshold} characters long.",
+                        )
 
     session.add_all(issue_records)
     await session.commit()
@@ -247,14 +264,10 @@ async def edit_field(
     field_state.last_updated_by = payload.edited_by
     field_state.last_updated_at = datetime.now(UTC)
 
-    case_record = await session.get(CaseFileRecord, case_id)
-    if case_record is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Case not found"
-        )
-    schema_state = copy.deepcopy(case_record.current_schema_state)
-    assign_nested_value(schema_state, field_path, payload.value)
-    case_record.current_schema_state = schema_state
+    from app.resolution.service import resolve_case_fields
+
+    await resolve_case_fields(session, case_id)
+    await session.refresh(field_state)
     await session.commit()
     return field_state
 

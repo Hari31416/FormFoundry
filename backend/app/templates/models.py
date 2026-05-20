@@ -26,6 +26,7 @@ class TemplateField(BaseModel):
     validation_refs: list[str] = Field(default_factory=list)
     render_targets: list[str] = Field(default_factory=list)
     conditions: dict[str, Any] = Field(default_factory=dict)
+    calculation: str | None = None
 
 
 class TemplateFieldGroup(BaseModel):
