@@ -148,10 +148,10 @@ async def fake_generate_json(*, system_prompt: str, user_prompt: str) -> dict:
 
         if (
             "relevant fields: accused known to complainant" in lowered_prompt
-            and "user answer: yes" in lowered_prompt
+            and re.search(r"user answer:\s*yes\s*(?:\n|$)", lowered_prompt)
         ) or (
             "question asked: is the accused known to the complainant?" in lowered_prompt
-            and "user answer: yes" in lowered_prompt
+            and re.search(r"user answer:\s*yes\s*(?:\n|$)", lowered_prompt)
         ):
             candidates.append(
                 {
@@ -165,10 +165,10 @@ async def fake_generate_json(*, system_prompt: str, user_prompt: str) -> dict:
 
         if (
             "relevant fields: accused known to complainant" in lowered_prompt
-            and "user answer: no" in lowered_prompt
+            and re.search(r"user answer:\s*no\s*(?:\n|$)", lowered_prompt)
         ) or (
             "question asked: is the accused known to the complainant?" in lowered_prompt
-            and "user answer: no" in lowered_prompt
+            and re.search(r"user answer:\s*no\s*(?:\n|$)", lowered_prompt)
         ):
             candidates.append(
                 {
@@ -182,10 +182,10 @@ async def fake_generate_json(*, system_prompt: str, user_prompt: str) -> dict:
 
         if (
             "relevant fields: witnesses present" in lowered_prompt
-            and "user answer: yes" in lowered_prompt
+            and re.search(r"user answer:\s*yes\s*(?:\n|$)", lowered_prompt)
         ) or (
             "question asked: were any witnesses present?" in lowered_prompt
-            and "user answer: yes" in lowered_prompt
+            and re.search(r"user answer:\s*yes\s*(?:\n|$)", lowered_prompt)
         ):
             candidates.append(
                 {
@@ -199,10 +199,10 @@ async def fake_generate_json(*, system_prompt: str, user_prompt: str) -> dict:
 
         if (
             "relevant fields: witnesses present" in lowered_prompt
-            and "user answer: no" in lowered_prompt
+            and re.search(r"user answer:\s*no\s*(?:\n|$)", lowered_prompt)
         ) or (
             "question asked: were any witnesses present?" in lowered_prompt
-            and "user answer: no" in lowered_prompt
+            and re.search(r"user answer:\s*no\s*(?:\n|$)", lowered_prompt)
         ):
             candidates.append(
                 {
@@ -211,6 +211,35 @@ async def fake_generate_json(*, system_prompt: str, user_prompt: str) -> dict:
                     "confidence": 0.95,
                     "rationale": "Mapped negative answer to witnesses-present boolean.",
                     "source_quote": "user answer: no",
+                }
+            )
+
+        if "skip this" in lowered_prompt:
+            candidates.append(
+                {
+                    "field_path": "loss.estimated_value_in_inr",
+                    "candidate_value": "NA",
+                    "confidence": 1.0,
+                    "rationale": "User explicitly said to skip.",
+                    "source_quote": "skip this",
+                }
+            )
+            candidates.append(
+                {
+                    "field_path": "accused.details",
+                    "candidate_value": "NA",
+                    "confidence": 1.0,
+                    "rationale": "User explicitly said to skip.",
+                    "source_quote": "skip this",
+                }
+            )
+            candidates.append(
+                {
+                    "field_path": "accused.known_to_complainant",
+                    "candidate_value": "NA",
+                    "confidence": 1.0,
+                    "rationale": "User explicitly said to skip.",
+                    "source_quote": "skip this",
                 }
             )
 

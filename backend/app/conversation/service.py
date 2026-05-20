@@ -333,41 +333,6 @@ async def record_active_question_turn(
     )
 
 
-def is_refusal_or_dont_know(text: str) -> bool:
-    normalized = text.strip().lower().strip("?!.,\"'")
-    keywords = {
-        "don't know",
-        "dont know",
-        "do not know",
-        "no idea",
-        "no clue",
-        "have no idea",
-        "have no clue",
-        "refuse to answer",
-        "skip",
-        "not sure",
-        "unsure",
-        "i don't have",
-        "i dont have",
-        "cannot answer",
-        "cant answer",
-        "na",
-        "n/a",
-        "none",
-        "skip question",
-        "skip this",
-        "i do not have",
-        "don't want to",
-        "dont want to",
-    }
-    if normalized in keywords:
-        return True
-    for phrase in keywords:
-        if phrase in normalized:
-            return True
-    return False
-
-
 async def submit_conversation_turn(
     session: AsyncSession, case_id: str, payload: ConversationTurnRequest
 ) -> ConversationTurnResponse:
@@ -401,41 +366,6 @@ async def submit_conversation_turn(
     english_message = await process_incoming_text(payload.message, active_lang)
 
     next_question = await get_next_question(session, case_id, translate=False)
-
-    if next_question and is_refusal_or_dont_know(english_message):
-        from app.templates.service import get_template_definition
-
-        template = await get_template_definition(
-            session, case_record.template_id, case_record.template_version
-        )
-        if template:
-            field_lookup = {f.path: f for f in template.template_schema}
-            for path in next_question.field_paths:
-                field = field_lookup.get(path)
-                if field:
-                    if not field.required:
-                        # OPTIONAL field: save "NA" with 1.0 confidence
-                        from app.extraction.models import FieldCandidateRecord
-
-                        candidate = FieldCandidateRecord(
-                            case_id=case_id,
-                            field_path=path,
-                            candidate_value="NA",
-                            confidence=1.0,
-                            source_evidence_ids=[],
-                            source_refs=[{"refusal_handler": True}],
-                            extractor_type="refusal_handler",
-                            rationale=(
-                                "User stated they do not know or "
-                                "want to skip this optional field."
-                            ),
-                        )
-                        session.add(candidate)
-
-            await session.flush()
-            from app.resolution.service import resolve_case_fields
-
-            await resolve_case_fields(session, case_id)
 
     user_turn = await record_turn(
         session,

@@ -225,10 +225,10 @@ async def resolve_case_fields(session: AsyncSession, case_id: str) -> None:
         )
 
         if qualifying:
-            # Group candidates by their normalized value and sort by max confidence
+            # Group candidates by their normalized value and sort by max confidence, then frequency
             sorted_groups = sorted(
                 grouped.items(),
-                key=lambda x: max(c.confidence for c in x[1]),
+                key=lambda x: (max(c.confidence for c in x[1]), len(x[1])),
                 reverse=True,
             )
 

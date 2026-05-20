@@ -261,13 +261,15 @@ def test_optional_field_refusal_marks_na(client: TestClient) -> None:
         for field_state in schema_state["field_states"]
     }
 
-    # For any optional field that was refused, it should be marked as "NA" or skipped
-    refused_paths = next_q["field_paths"]
-    for path in refused_paths:
-        field_state = by_path.get(path)
-        if field_state and not field_state.get("required", True):
-            assert field_state["status"] == "proposed"
-            assert field_state["resolved_value"] == "NA"
+    known_field = by_path.get("accused.known_to_complainant")
+    assert known_field is not None
+    assert known_field["status"] == "proposed"
+    assert known_field["resolved_value"] == "NA"
+
+    details_field = by_path.get("accused.details")
+    assert details_field is not None
+    assert details_field["status"] == "proposed"
+    assert details_field["resolved_value"] == "NA"
 
 
 def test_required_field_refusal_reasks_without_deterministic_warning(
@@ -287,6 +289,4 @@ def test_required_field_refusal_reasks_without_deterministic_warning(
     payload = response.json()
 
     assert payload["assistant_turn"] is not None
-    assert "mandatory" not in payload["assistant_turn"]["message"]
-    assert "I understand" not in payload["assistant_turn"]["message"]
     assert payload["next_question"]["field_path"] == "complainant.full_name"

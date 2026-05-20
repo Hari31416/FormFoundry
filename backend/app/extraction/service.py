@@ -131,6 +131,8 @@ def normalize_enum_value(raw: Any, allowed_values: list[str]) -> str | None:
 def coerce_candidate_value(field: TemplateField, value: Any) -> Any | None:
     if value is None:
         return None
+    if value == "NA":
+        return "NA"
 
     if field.repeated:
         items = []
@@ -317,24 +319,27 @@ async def extract_candidates_with_llm(
         "source_text_chars": len(text),
     }
     logger.info("extraction.llm_candidates.started", extra=log_context)
+    import os
+
+    import jinja2
+
+    prompts_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "prompts"
+    )
+    env = jinja2.Environment(loader=jinja2.FileSystemLoader(prompts_dir))
+    system_template = env.get_template("extraction_system.jinja2")
+    user_template = env.get_template("extraction_user.jinja2")
+
+    system_prompt = system_template.render()
+    user_prompt = user_template.render(
+        template_name=template.name,
+        field_catalog=format_field_catalog(template),
+        source_text=text,
+    )
+
     response = await generate_json(
-        system_prompt=(
-            "You extract structured form field candidates from evidence text. "
-            'Return JSON only with the shape {"candidates": [...]} where each candidate contains '
-            "field_path, candidate_value, confidence, rationale, and optional source_quote. "
-            "Only include candidates directly supported by the evidence text. "
-            "IMPORTANT: Normalize all date values to YYYY-MM-DD format "
-            "(e.g., '7 November 2014' or '07-11-2014' should be "
-            "extracted as '2014-11-07'). "
-            "If a field is a repeated list (indicated in the catalog), "
-            "return candidate_value as a JSON array of parsed elements."
-        ),
-        user_prompt=(
-            f"Template: {template.name}\n"
-            f"Field catalog:\n{format_field_catalog(template)}\n\n"
-            "Source text:\n"
-            f"{text}"
-        ),
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
     )
     if response is None:
         logger.error(
@@ -364,33 +369,176 @@ async def extract_candidates_with_llm(
     skipped_non_object = 0
     skipped_unknown_field = 0
     skipped_uncoercible_value = 0
+
+    # Group candidate entries by their corresponding top-level template field path
+    grouped_candidates: dict[str, list[dict]] = (
+        {}
+    )  # top_level_path -> list of candidate entries
+
     for item in raw_candidates:
         if not isinstance(item, dict):
             skipped_non_object += 1
             continue
         field_path = str(item.get("field_path", "")).strip()
-        field = field_lookup.get(field_path)
-        if field is None:
-            skipped_unknown_field += 1
+        # Normalize bracket notation (e.g., path[idx].sub -> path.idx.sub)
+        field_path = field_path.replace("[", ".").replace("]", "")
+
+        # Check if direct match
+        if field_path in field_lookup:
+            grouped_candidates.setdefault(field_path, []).append(
+                {"type": "direct", "item": item}
+            )
             continue
 
-        coerced = coerce_candidate_value(field, item.get("candidate_value"))
+        # Check if nested prefix match
+        # Try to find the longest matching prefix in field_lookup
+        #  that is of type object/list_of_objects
+        parts = field_path.split(".")
+        matched = False
+        for i in range(len(parts) - 1, 0, -1):
+            prefix = ".".join(parts[:i])
+            if prefix in field_lookup:
+                parent_field = field_lookup[prefix]
+                if parent_field.type in ("object", "list_of_objects"):
+                    sub_path = ".".join(parts[i:])
+                    grouped_candidates.setdefault(prefix, []).append(
+                        {"type": "nested", "sub_path": sub_path, "item": item}
+                    )
+                    matched = True
+                    break
+        if not matched:
+            skipped_unknown_field += 1
+
+    # Process grouped candidate entries for each top-level template field
+    for top_path, entries in grouped_candidates.items():
+        field = field_lookup[top_path]
+
+        # Determine merged candidate value
+        merged_value = None
+        if field.type == "object":
+            merged_dict = {}
+            direct_items = [e for e in entries if e["type"] == "direct"]
+            for g in direct_items:
+                val = g["item"].get("candidate_value")
+                if isinstance(val, dict):
+                    merged_dict.update(val)
+                elif isinstance(val, str):
+                    try:
+                        import json
+
+                        parsed = json.loads(val)
+                        if isinstance(parsed, dict):
+                            merged_dict.update(parsed)
+                    except Exception:
+                        pass
+            nested_items = [e for e in entries if e["type"] == "nested"]
+            for g in nested_items:
+                sub_path = g["sub_path"]
+                val = g["item"].get("candidate_value")
+                sub_parts = sub_path.split(".")
+                curr = merged_dict
+                for part in sub_parts[:-1]:
+                    curr = curr.setdefault(part, {})
+                curr[sub_parts[-1]] = val
+            if merged_dict:
+                merged_value = merged_dict
+
+        elif field.type == "list_of_objects":
+            merged_list = []
+            direct_items = [e for e in entries if e["type"] == "direct"]
+            for g in direct_items:
+                val = g["item"].get("candidate_value")
+                if isinstance(val, list):
+                    merged_list.extend(val)
+                elif isinstance(val, str):
+                    try:
+                        import json
+
+                        parsed = json.loads(val)
+                        if isinstance(parsed, list):
+                            merged_list.extend(parsed)
+                    except Exception:
+                        pass
+            nested_items = [e for e in entries if e["type"] == "nested"]
+            list_objects_by_index = {}
+            indexless_objects = []
+            for g in nested_items:
+                sub_path = g["sub_path"]
+                val = g["item"].get("candidate_value")
+                match = re.match(r"^\[?(\d+)\]?\.?(.*)$", sub_path)
+                if match:
+                    idx_str, remaining_path = match.groups()
+                    idx = int(idx_str)
+                    if not remaining_path:
+                        if isinstance(val, dict):
+                            list_objects_by_index.setdefault(idx, {}).update(val)
+                    else:
+                        sub_parts = remaining_path.split(".")
+                        curr = list_objects_by_index.setdefault(idx, {})
+                        for part in sub_parts[:-1]:
+                            curr = curr.setdefault(part, {})
+                        curr[sub_parts[-1]] = val
+                else:
+                    sub_parts = sub_path.split(".")
+                    if not indexless_objects:
+                        indexless_objects.append({})
+                    curr = indexless_objects[0]
+                    for part in sub_parts[:-1]:
+                        curr = curr.setdefault(part, {})
+                    curr[sub_parts[-1]] = val
+            sorted_indices = sorted(list_objects_by_index.keys())
+            indexed_list = [list_objects_by_index[idx] for idx in sorted_indices]
+            merged_list.extend(indexed_list)
+            merged_list.extend(indexless_objects)
+            if merged_list:
+                merged_value = merged_list
+
+        else:
+            # Simple field
+            direct_items = [e for e in entries if e["type"] == "direct"]
+            if direct_items:
+                merged_value = direct_items[0]["item"].get("candidate_value")
+
+        if merged_value is None:
+            continue
+
+        coerced = coerce_candidate_value(field, merged_value)
         if coerced is None:
             skipped_uncoercible_value += 1
             continue
 
+        # Combine rationales, quotes, and confidences from contributing items
+        rationales = []
+        quotes = []
+        confidences = []
+        for e in entries:
+            item = e["item"]
+            rat = item.get("rationale")
+            if rat:
+                rationales.append(str(rat))
+            q = item.get("source_quote")
+            if q:
+                quotes.append(str(q))
+            conf = item.get("confidence")
+            if conf is not None:
+                confidences.append(clamp_confidence(conf, default=0.72))
+
+        rationale = (
+            " | ".join(dict.fromkeys(rationales))
+            if rationales
+            else "Extracted by litellm."
+        )
+        source_quote = " | ".join(dict.fromkeys(quotes)) if quotes else None
+        confidence = sum(confidences) / len(confidences) if confidences else 0.72
+
         proposals.append(
             CandidateProposal(
-                field_path=field_path,
+                field_path=top_path,
                 candidate_value=coerced,
-                confidence=clamp_confidence(item.get("confidence"), default=0.72),
-                rationale=str(item.get("rationale") or "Extracted by litellm."),
+                confidence=confidence,
+                rationale=rationale,
                 extractor_type="litellm",
-                source_quote=(
-                    str(item.get("source_quote")).strip()
-                    if item.get("source_quote")
-                    else None
-                ),
+                source_quote=source_quote,
             )
         )
 

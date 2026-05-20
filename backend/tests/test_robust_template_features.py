@@ -490,3 +490,161 @@ def test_integration_nested_fields_api(client: TestClient) -> None:
     val_resp = client.get(f"/api/v1/cases/{case_id}/validation")
     assert val_resp.status_code == 200
     assert len(val_resp.json()) == 0
+
+
+def test_nested_candidates_extraction_and_grouping(monkeypatch) -> None:
+    import asyncio
+    from datetime import UTC, datetime
+
+    import app.extraction.service as extraction_service
+    from app.extraction.service import extract_candidates_with_llm
+    from app.templates.models import TemplateDefinition, TemplateField
+
+    # Create dummy template with a nested object and list of objects
+    template = TemplateDefinition(
+        template_id="test-nested-extraction",
+        template_version=1,
+        name="Nested Test Template",
+        domain="test",
+        description="",
+        field_groups=[],
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+        template_schema=[
+            TemplateField(
+                path="complainant.address",
+                label="Complainant Address",
+                type="object",
+                required=True,
+                default_question="",
+                clarification_question="",
+                nested_schema=[
+                    TemplateField(
+                        path="street",
+                        label="Street",
+                        type="string",
+                        required=True,
+                        default_question="",
+                        clarification_question="",
+                    ),
+                    TemplateField(
+                        path="city",
+                        label="City",
+                        type="string",
+                        required=True,
+                        default_question="",
+                        clarification_question="",
+                    ),
+                ],
+            ),
+            TemplateField(
+                path="witnesses.witness_list",
+                label="Witness List",
+                type="list_of_objects",
+                required=False,
+                default_question="",
+                clarification_question="",
+                nested_schema=[
+                    TemplateField(
+                        path="full_name",
+                        label="Full Name",
+                        type="string",
+                        required=True,
+                        default_question="",
+                        clarification_question="",
+                    ),
+                    TemplateField(
+                        path="statement",
+                        label="Statement",
+                        type="string",
+                        required=True,
+                        default_question="",
+                        clarification_question="",
+                    ),
+                ],
+            ),
+        ],
+    )
+
+    # 1. Test case where LLM returns dotted nested candidate paths (the bug scenario)
+    fake_llm_response_dotted = {
+        "candidates": [
+            {
+                "field_path": "complainant.address.street",
+                "candidate_value": "8 Lakeview Colony",
+                "confidence": 0.99,
+                "rationale": "Explicitly stated street.",
+                "source_quote": "street is 8 Lakeview Colony",
+            },
+            {
+                "field_path": "complainant.address.city",
+                "candidate_value": "Hyderabad",
+                "confidence": 0.95,
+                "rationale": "Explicitly stated city.",
+                "source_quote": "city is Hyderabad",
+            },
+            {
+                "field_path": "witnesses.witness_list.0.full_name",
+                "candidate_value": "John Doe",
+                "confidence": 0.90,
+                "rationale": "First witness name.",
+                "source_quote": "witness John Doe",
+            },
+            {
+                "field_path": "witnesses.witness_list[0].statement",
+                "candidate_value": "Saw the incident.",
+                "confidence": 0.88,
+                "rationale": "First witness statement.",
+                "source_quote": "saw the incident",
+            },
+        ]
+    }
+
+    async def mock_generate_json_dotted(*args, **kwargs):
+        return fake_llm_response_dotted
+
+    monkeypatch.setattr(extraction_service, "generate_json", mock_generate_json_dotted)
+
+    proposals = asyncio.run(extract_candidates_with_llm(template, "dummy text"))
+    proposals_map = {p.field_path: p for p in proposals}
+
+    # Verify complainant.address was successfully merged and coerced
+    assert "complainant.address" in proposals_map
+    addr_val = proposals_map["complainant.address"].candidate_value
+    assert addr_val == {"street": "8 Lakeview Colony", "city": "Hyderabad"}
+    assert (
+        proposals_map["complainant.address"].confidence == 0.97
+    )  # Average of 0.99 and 0.95
+
+    # Verify witnesses.witness_list was successfully merged and coerced
+    assert "witnesses.witness_list" in proposals_map
+    witness_val = proposals_map["witnesses.witness_list"].candidate_value
+    assert witness_val == [{"full_name": "John Doe", "statement": "Saw the incident."}]
+
+    # 2. Test case where LLM returns fully formed objects (direct match scenario)
+    fake_llm_response_direct = {
+        "candidates": [
+            {
+                "field_path": "complainant.address",
+                "candidate_value": {"street": "123 Main St", "city": "Bengaluru"},
+                "confidence": 0.98,
+                "rationale": "Entire address details.",
+                "source_quote": "123 Main St, Bengaluru",
+            }
+        ]
+    }
+
+    async def mock_generate_json_direct(*args, **kwargs):
+        return fake_llm_response_direct
+
+    monkeypatch.setattr(extraction_service, "generate_json", mock_generate_json_direct)
+
+    proposals = asyncio.run(extract_candidates_with_llm(template, "dummy text"))
+    proposals_map = {p.field_path: p for p in proposals}
+
+    assert "complainant.address" in proposals_map
+    assert proposals_map["complainant.address"].candidate_value == {
+        "street": "123 Main St",
+        "city": "Bengaluru",
+    }
+    assert proposals_map["complainant.address"].confidence == 0.98
