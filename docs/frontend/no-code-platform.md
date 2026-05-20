@@ -2,7 +2,7 @@
 
 The FormFoundry frontend hosts a premium, dynamic **No-Code Custom Template Builder** that empowers administrators to design and deploy versioned form schemas directly from the web application.
 
-Once created, these custom templates dynamically hydrate the case workspace, automatically generating interactive form panels, real-time LLM-driven chat question guides, and programmatic fillable PDF assets on-the-fly.
+Once created, these custom templates dynamically hydrate the case workspace, automatically generating interactive form panels, real-time LLM-driven chat question guides, and dynamically-compiled professional PDF documents on demand.
 
 ---
 
@@ -45,7 +45,7 @@ sequenceDiagram
     participant API as FastAPI Backend
     participant PDF as PDF Engine (app.artifacts)
 
-    Admin->>UI: Design schema (Fields, Groups, Types)
+    Admin->>UI: Design schema (Fields, Groups, Types, Calculations)
     Admin->>UI: Click "Publish Template"
     UI->>API: POST /api/v1/templates (Payload JSON)
     API->>API: Commit Template Record (Version-Aware DB)
@@ -54,10 +54,9 @@ sequenceDiagram
     UI->>API: POST /api/v1/cases (template_id)
     API-->>UI: Returns Case Details
     UI->>UI: Render Case Workspace (Detailed & Chat views)
-    Note over UI, API: Generating PDF Artifact
+    Note over UI, API: Compiling PDF Artifact
     UI->>API: POST /api/v1/cases/{id}/artifacts
-    API->>API: Detect missing template_asset PDF
-    API->>PDF: Generate PDF on-the-fly (`assets/pdfs/{id}_v{ver}.pdf`)
+    API->>PDF: Dynamically compile PDF layout via ReportLab Platypus
     PDF-->>UI: Returns 201 Created & Downloadable Artifact
 ```
 
@@ -89,6 +88,6 @@ A generic component that adapts its input controls dynamically based on the fiel
 
 ## 4. Key Performance Optimizations
 
-1. **On-the-Fly PDF Asset Generation**: Eliminates the overhead of preparing static forms in advance. If `template_asset` is missing, the backend immediately builds a clean form from the custom schema.
-2. **Collision-Free Path Mapping**: Dot-notation paths are mapped to flat variable names (e.g., `complainant.full_name` is safely translated to `complainant_full_name` inside fillable forms), maintaining complete compatibility with third-party PDF form injection software.
+1. **Dynamic ReportLab PDF Compilation**: Eliminates the overhead of preparing and filling static forms entirely. Approved cases are compiled dynamically into beautiful PDF documents on demand.
+2. **Collision-Free Path Mapping**: Dot-notation paths are mapped to flat variable names (e.g., `complainant.full_name` is safely translated to `complainant_full_name` inside forms and reports), maintaining complete compatibility with third-party PDF form injection software.
 3. **Flexible Text Normalization**: Prevents repeated extraction loops on textual dates or optional skip keywords, instantly synchronizing resolved values to `"NA"` to keep the conversation flowing smoothly.

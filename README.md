@@ -35,7 +35,9 @@ graph TD
   - **Simplified Chat View**: A guided, chat-first UI featuring speech accessibility, strategists' reasoning insights, and quick inline field reviews.
   - **Detailed Workspace View**: A professional three-panel grid for concurrently analyzing uploaded evidence, reviewing structured field values, and auditing AI attribution.
 - **High-Performance Translation Caching**: Redis-backed translation cache using collision-free SHA-256 hashed keys, reducing API costs and latency to near-zero.
-- **Dynamic No-Code Template & PDF Form Builder**: Design, deploy, and version complex form intake templates directly from the React UI without writing backend code. The system automatically creates matching interactive PDF templates on-the-fly (`assets/pdfs/{template_id}_v{version}.pdf`), complete with programmatic field coordinates and target layouts.
+- **Dynamic No-Code Template & Schema Builder**: Design, deploy, and version complex form intake templates directly from the React UI without writing backend code. Built-in layout groups, validation constraints, and computed dependencies hydrate the client-side form immediately.
+- **ReportLab Platypus Dynamic PDF Compiler**: Decentralized from static PDF templates, approved cases are dynamically compiled on-the-fly into clean, elegant PDF reports featuring alternating row styling, organized group sections, and shaded card wells for long textual fields and repeated arrays.
+- **Robust Template Engine Features**: Native backend support for dynamic regex checks, primitive list validation and coercion, multi-select enums, recursive logical conditional logic, and AST-parsed mathematical/string computation evaluations that automatically trigger during field resolution.
 - **AI-Powered Extraction**: Uses vision-based OCR and LLM orchestration via `litellm` to extract candidate data with evidence attribution.
 - **Deterministic Conflict Resolution**: Resolves extracted candidates into field states with conflict detection and audit trails.
 - **Interactive Conversation turns**: Streams follow-up questions via SSE based on unresolved fields and template priority, automatically translated to the user's preferred language.
@@ -44,7 +46,7 @@ graph TD
 
 | Component              | Technology                                                                  |
 | :--------------------- | :-------------------------------------------------------------------------- |
-| **Backend**            | FastAPI, Python 3.12+, SQLAlchemy, Alembic, Pydantic, LiteLLM, `langdetect` |
+| **Backend**            | FastAPI, Python 3.12+, SQLAlchemy, Alembic, Pydantic, LiteLLM, ReportLab, `langdetect` |
 | **Frontend**           | React 18, TypeScript, Vite, shadcn/ui, Tailwind CSS, `react-i18next`        |
 | **Database**           | PostgreSQL 16                                                               |
 | **Caching/Jobs**       | Redis 7 (State, Jobs, and Translation caching)                              |
@@ -189,5 +191,5 @@ flowchart TD
 1. Click **Create Group Selection** / **Create Template** in the navigation header to open the schema designer.
 2. Define your schema fields (e.g. complainant name, type, required status, default questions) and custom group categories.
 3. Click **Publish** to instantly register the template in the database.
-4. The backend automatically generates a corresponding professional fillable PDF template on-the-fly (`assets/pdfs/{template_id}_v{version}.pdf`) with coordinate-mapped form fields.
-5. Create a new case under your custom template, fill the fields conversational/manually, and download your perfectly generated custom PDF!
+4. Once published, the template is fully registered and case workflows can be instantly launched for it.
+5. Create a new case under your custom template, fill the fields (conversationally or manually), approve the case, and download your beautifully styled, dynamically-compiled custom PDF report complete with your data laid out in neat, grouped tables and cards!

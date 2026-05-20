@@ -33,7 +33,7 @@ FastAPI's dependency injection system is used extensively, primarily for:
 - **`app.conversation`**: Interactive chat experience for missing data.
 - **`app.languages`**: Pluggable language detection, translation, speech services, and caching.
 - **`app.validation`**: Schema and logic validation engine.
-- **`app.artifacts`**: Final document generation, which automatically constructs interactive fillable PDF sheets on-the-fly if the template asset file is not pre-packaged.
+- **`app.artifacts`**: Professional document generation. Replaces static forms with a ReportLab Platypus page layout compiler that dynamically constructs structured case reports featuring clean tables with alternating row shading, grouped sections, and shaded card wells for long textual fields and repeated arrays.
 
 ## AI Orchestration
 

@@ -2,7 +2,7 @@
 
 ## 1. What this platform is
 
-**FormFoundry** is an enterprise-grade automated form-filling, multilingual intake, and artifact-generation platform. It leverages advanced AI to transform unstructured inputs—such as scanned documents, freeform notes, and conversational answers in regional languages—into validated, structured data and professional output artifacts (e.g., fillable PDFs).
+**FormFoundry** is an enterprise-grade automated form-filling, multilingual intake, and artifact-generation platform. It leverages advanced AI to transform unstructured inputs, such as scanned documents, freeform notes, and conversational answers in regional languages, into validated, structured data and professional output artifacts (e.g., dynamic PDFs and structured JSON exports).
 
 The platform combines a high-performance FastAPI orchestration layer, a pluggable multilingual & translation subsystem, a premium React-based workspace featuring a dual detailed/simplified chat-first UI, and production-ready infrastructure (PostgreSQL, Redis, Minio/S3) to automate complex administrative and intake workflows at scale.
 
@@ -11,7 +11,7 @@ The platform combines a high-performance FastAPI orchestration layer, a pluggabl
 - **Accelerated Service Delivery:** Move from raw intake to final document generation in minutes instead of hours or days, regardless of the input language.
 - **Democratized Access & Regional Outreach:** Support client-facing workflows in multiple regional languages (such as Hindi and English) using state-of-the-art translation and speech synthesis APIs.
 - **Unmatched Accuracy:** AI-driven extraction combined with deterministic resolution, validation, and real-time translation eliminates manual data-entry and language transcription errors.
-- **Dynamic No-Code Customization:** Empower non-technical administrators to design custom intake schemas, field groupings, and versioned forms entirely from the UI with zero code modifications, while the backend automatically builds matching interactive PDF assets on-the-fly.
+- **Dynamic No-Code Customization & Template Engine:** Empower non-technical administrators to design custom schemas, group fields, define custom regex/validation rules, write mathematical calculations, and version forms directly from the UI, while the backend dynamic layout compiler generates polished PDF reports on-the-fly.
 - **Operational Transparency:** Full audit trails for every field, showing exactly which piece of evidence supported an AI-driven extraction, complete with translation provenance.
 
 ## 3. Client-facing capabilities
@@ -24,8 +24,8 @@ The platform combines a high-performance FastAPI orchestration layer, a pluggabl
 | **Vision-AI Extraction**      | Automated data capture from complex, unstructured documents  | Vision-based OCR and LLMs (via LiteLLM) propose field candidates with evidence attribution             | Drastically reduces manual transcription effort and data entry costs            |
 | **Deterministic Resolution**  | High-confidence automated resolution with conflict detection | The engine selects the best candidates based on confidence and rules, flagging ambiguities             | Ensures high data integrity while highlighting only what needs human attention  |
 | **Rule-Based Validation**     | Automated checks for schema, logic, and cross-field rules    | Every case is validated against template rules to ensure completeness and accuracy                     | Minimizes downstream errors and re-work costs by catching issues at the source  |
-| **Artifact Generation**       | One-click production of professional, ready-to-use documents | Validated data is injected into official templates (e.g., PDFs) for instant download                   | Elevates professional services and speeds up final document delivery            |
-| **No-Code Templating**        | Dynamic intake schema design and versioned form builder      | Non-technical administrators define intake fields and groups in the UI; PDF sheets generate on-the-fly | Dramatically reduces deployment time for new intake types from weeks to minutes |
+| **Artifact Generation**       | One-click production of professional, ready-to-use documents | Validated data is dynamically compiled into clean, elegant PDF reports with alternating row colors and shaded wells | Elevates professional services and speeds up final document delivery            |
+| **No-Code Templating**        | Dynamic intake schema design and versioned form builder      | Non-technical administrators define fields, validation rules, calculations, and groups in the UI      | Dramatically reduces deployment time for new intake types from weeks to minutes |
 | **Audit & Governance**        | Clear traceability of every field value back to its source   | The system persists "Resolution Audit" records for every decision made by AI or humans                 | Supports regulatory compliance and improves transparency in decision-making     |
 
 ## 4. Security and governance posture
@@ -40,9 +40,9 @@ The platform combines a high-performance FastAPI orchestration layer, a pluggabl
 ### Core Stack
 
 - **Frontend:** React 18, TypeScript, Vite, shadcn/ui, Tailwind CSS, `react-i18next` (Internationalization)
-- **Backend:** FastAPI, Python 3.12, SQLAlchemy, LiteLLM (LLM Orchestration), `langdetect`, Pluggable Translation & TTS Interfaces
+- **Backend:** FastAPI, Python 3.12, SQLAlchemy, LiteLLM (LLM Orchestration), ReportLab (Dynamic PDF compilation), `langdetect`, Pluggable Translation & TTS Interfaces
 - **Infrastructure:** PostgreSQL (Metadata), Redis (Jobs/State/Translation Caching), Minio (S3 Storage), Qdrant (Vector DB)
-- **Ext. Services:** Google Translate API, Bhashini AI Pipeline API (National GovTech Translation Service)
+- **Ext. Services:** Google Translate API, Bhashini AI Pipeline API (National GovTech Translation Service), Sarvam AI API (Language Translation/TTS Service)
 
 ### High-Level Architecture Diagram
 
@@ -73,6 +73,7 @@ graph LR
         Minio[("Minio/S3 Artifact Store")]
         LLM["AI Providers (OpenAI/Anthropic/Gemini)"]
         Bhashini["Bhashini GovTech API (Translation/TTS)"]
+        Sarvam["Sarvam AI API (Translation/TTS)"]
         Google["Google Translate API"]
     end
 
@@ -85,6 +86,7 @@ graph LR
     API --> LangManager
     LangManager --> Redis
     LangManager --> Bhashini
+    LangManager --> Sarvam
     LangManager --> Google
     API --> Extraction
     API --> Resolution
@@ -133,7 +135,8 @@ The platform exposes a modern REST + SSE API for seamless integration with exist
 - **Extensive Documentation**: Comprehensive technical wiki (MkDocs) and ADRs (Architectural Decision Records).
 - **Quality Assurance**: Structured testing across unit, integration, and language API layers.
 - **Generalized Core**: A domain-agnostic engine that can be repurposed for any vertical without core changes.
-- **Zero-Configuration PDF Generation**: The platform dynamically builds PDF templates on-the-fly when templates are created or updated, parsing complex coordinate and dot-notation data maps automatically.
+- **Professional Dynamic PDF Compilation**: Decentralized from static PDF templates, the platform uses a ReportLab Platypus page layout compiler. When cases are approved, the system dynamically compiles case data into professionally styled PDFs featuring clean tables with alternating row shading, grouped sections, and shaded card wells for multi-line values or arrays.
+- **Robust Template Engine**: Advanced AST expression calculations, recursive conditional dependency checking (supporting logical operators and range comparisons), coercion and validation of primitive repeated lists, multi-select enums, and dynamic regex pattern rules.
 
 ## 9. Positioning Statement for Prospective Clients
 

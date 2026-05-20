@@ -49,6 +49,15 @@ The "brain" that resolves candidates into field values.
 - `resolve_field_state`: Logic for selecting the best candidate or flagging conflicts.
 - `recalculate_schema_state`: Aggregates all resolved field states into the main case JSON.
 
+### Artifact Service (`app/artifacts/service.py`)
+
+Handles dynamic compilation and exporting of approved case data into ready-to-use professional artifacts.
+
+- `generate_pdf_artifact`: Compiles case data using a ReportLab Platypus dynamic layout compiler. Groups fields by template sections, maps short strings to alternating-shaded tables, and formats arrays/long text into padded card wells.
+- `generate_json_artifact`: Serializes the final resolved case state into structured JSON, uploading it to Minio/S3.
+- `list_artifacts`: Returns all generated artifacts associated with a case.
+- `get_artifact_download_response`: Directs client downloads to S3 URLs or streams local files.
+
 ## Pattern Example
 
 ```python

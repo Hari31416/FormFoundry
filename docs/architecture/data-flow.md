@@ -95,6 +95,6 @@ If there are unresolved fields or validation issues, the assistant generates a f
 
 Once all fields are confirmed, verified, and approved:
 
-- **Rendering**: The case data is injected into official document templates (e.g., fillable PDFs).
+- **Rendering**: The case data is compiled into professional PDF and JSON artifacts. PDF rendering uses a ReportLab Platypus page layout compiler that dynamically formats schema fields into alternating-row tables and grouped sections with shaded cards for long inputs.
 - **Persistence**: The final document is stored in Minio.
 - **Metadata**: Artifact metadata is saved for instant client download.
