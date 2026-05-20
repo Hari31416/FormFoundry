@@ -36,6 +36,8 @@ def serialize_template(record: TemplateDefinitionRecord) -> TemplateDefinition:
 
 
 def save_template_config_to_file(payload: TemplateDefinitionCreate) -> None:
+    if get_settings().environment == "test":
+        return
     template_dir = get_settings().resolved_template_config_dir
     template_dir.mkdir(parents=True, exist_ok=True)
     file_name = f"{payload.template_id}_v{payload.template_version}.json"

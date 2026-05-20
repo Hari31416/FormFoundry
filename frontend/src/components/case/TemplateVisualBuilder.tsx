@@ -328,7 +328,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
               <div className="space-y-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Supported Output Formats</label>
                 <div className="flex gap-4 items-center h-11">
-                  {['json_export', 'fillable_pdf'].map(artifact => (
+                  {['json_export', 'pdf'].map(artifact => (
                     <label key={artifact} className="flex items-center gap-2 text-sm font-semibold text-slate-700 cursor-pointer">
                       <input
                         type="checkbox"
@@ -359,7 +359,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
               />
             </div>
 
-            {draftTemplate.supported_artifacts.includes('fillable_pdf') && (
+            {draftTemplate.supported_artifacts.includes('pdf') && (
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
                 <span className="text-sm font-bold text-slate-800 flex items-center gap-2">
                   <FileText className="w-4 h-4 text-blue-500" /> PDF Assembly Configuration

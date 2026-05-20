@@ -99,7 +99,7 @@
   },
   "supported_artifacts": [
     "json_export",
-    "fillable_pdf"
+    "pdf"
   ],
   "renderer_config": {
     "artifact_type": "json_export",

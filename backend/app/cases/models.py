@@ -96,7 +96,7 @@ class SchemaStateResponse(BaseModel):
 
 
 class ArtifactCreateRequest(BaseModel):
-    artifact_type: str = "fillable_pdf"
+    artifact_type: str = "pdf"
 
 
 class ArtifactPayload(BaseModel):

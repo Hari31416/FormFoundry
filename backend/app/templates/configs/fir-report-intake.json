@@ -282,11 +282,11 @@
     "max_grouped_fields": 3
   },
   "supported_artifacts": [
-    "fillable_pdf",
+    "pdf",
     "json_export"
   ],
   "renderer_config": {
-    "artifact_type": "fillable_pdf",
+    "artifact_type": "pdf",
     "template_asset": "assets/pdfs/fir_report_packet.pdf",
     "pdf_title": "Indian FIR Intake Report"
   }

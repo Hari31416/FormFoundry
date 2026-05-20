@@ -45,7 +45,7 @@ def test_approved_case_generates_downloadable_pdf(client: TestClient) -> None:
     artifact_response = client.post(f"/api/v1/cases/{case_id}/artifacts")
     assert artifact_response.status_code == 201
     artifact = artifact_response.json()
-    assert artifact["artifact_type"] == "fillable_pdf"
+    assert artifact["artifact_type"] == "pdf"
     assert artifact["status"] == "generated"
 
     list_response = client.get(f"/api/v1/cases/{case_id}/artifacts")
@@ -91,9 +91,9 @@ def test_custom_template_generates_pdf_without_template_asset(
                 "field_paths": ["complainant.full_name"],
             }
         ],
-        "supported_artifacts": ["fillable_pdf"],
+        "supported_artifacts": ["pdf"],
         "renderer_config": {
-            "artifact_type": "fillable_pdf",
+            "artifact_type": "pdf",
             "pdf_title": "Custom Test Intake PDF Report",
         },
     }
@@ -126,7 +126,7 @@ def test_custom_template_generates_pdf_without_template_asset(
     artifact_response = client.post(f"/api/v1/cases/{case_id}/artifacts")
     assert artifact_response.status_code == 201
     artifact = artifact_response.json()
-    assert artifact["artifact_type"] == "fillable_pdf"
+    assert artifact["artifact_type"] == "pdf"
     assert artifact["status"] == "generated"
 
     # 6. Verify downloadable file matches PDF signature

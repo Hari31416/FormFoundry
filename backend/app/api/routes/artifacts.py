@@ -28,7 +28,7 @@ async def generate_artifact_route(
     session: DBSession,
     payload: ArtifactCreateRequest | None = None,
 ) -> ArtifactPayload:
-    artifact_type = "fillable_pdf"
+    artifact_type = "pdf"
     if payload is not None:
         artifact_type = payload.artifact_type
 
