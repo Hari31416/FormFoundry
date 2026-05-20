@@ -24,8 +24,15 @@ from reportlab.platypus import (
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.cases.models import ArtifactPayload, ArtifactRecord, CaseFileRecord, CaseStatus
+from app.cases.models import (
+    ArtifactPayload,
+    ArtifactRecord,
+    CaseFileRecord,
+    CaseStatus,
+    FieldStateRecord,
+)
 from app.core.config import get_settings
+from app.intake.models import EvidenceRecord, EvidenceSourceType
 from app.jobs.queue import enqueue_job
 from app.storage.minio import get_storage_service
 from app.templates.models import TemplateDefinitionRecord
@@ -132,12 +139,16 @@ def get_field_value_by_path(payload: dict | None, path: str) -> Any:
     return current
 
 
-def format_field_value(field_def: dict, raw_val: Any) -> str:
-    if (
+def is_missing_value(raw_val: Any) -> bool:
+    return (
         raw_val is None
         or raw_val == ""
         or (isinstance(raw_val, list) and len(raw_val) == 0)
-    ):
+    )
+
+
+def format_field_value(field_def: dict, raw_val: Any) -> str:
+    if is_missing_value(raw_val):
         return "<font color='#64748b'><i>Not provided</i></font>"
 
     if field_def.get("repeated") or isinstance(raw_val, list):
@@ -153,6 +164,78 @@ def format_field_value(field_def: dict, raw_val: Any) -> str:
             return "No"
 
     return escape_text(raw_val)
+
+
+def summarize_evidence_snippet(raw_text: str | None, limit: int = 80) -> str:
+    if not raw_text:
+        return ""
+    condensed = " ".join(raw_text.split())
+    if len(condensed) <= limit:
+        return condensed
+    return condensed[:limit].rstrip() + "..."
+
+
+def format_evidence_citation(record: EvidenceRecord) -> str:
+    label_map = {
+        EvidenceSourceType.USER_TEXT.value: "User note",
+        EvidenceSourceType.CHAT_ANSWER.value: "Chat answer",
+        EvidenceSourceType.PDF_UPLOAD.value: "PDF upload",
+        EvidenceSourceType.IMAGE_UPLOAD.value: "Image upload",
+        EvidenceSourceType.FIELD_EDIT.value: "Manual edit",
+    }
+    label = label_map.get(
+        record.source_type, str(record.source_type).replace("_", " ").title()
+    )
+    details: list[str] = []
+    parsed_payload = record.parsed_payload or {}
+    if record.source_type in {
+        EvidenceSourceType.PDF_UPLOAD.value,
+        EvidenceSourceType.IMAGE_UPLOAD.value,
+    }:
+        filename = str(parsed_payload.get("filename") or "").strip()
+        if not filename and record.source_subtype:
+            filename = str(record.source_subtype).strip()
+        if filename:
+            details.append(filename)
+        page_count = parsed_payload.get("page_count")
+        if isinstance(page_count, int) and page_count > 0:
+            details.append(f"{page_count} pages")
+    elif record.source_type == EvidenceSourceType.CHAT_ANSWER.value:
+        details.append("conversation turn")
+    elif record.source_type == EvidenceSourceType.USER_TEXT.value:
+        details.append("freeform note")
+    elif record.source_type == EvidenceSourceType.FIELD_EDIT.value:
+        details.append("manual edit")
+    snippet = summarize_evidence_snippet(record.raw_text)
+    if snippet:
+        details.append(f'"{snippet}"')
+    if record.created_by:
+        details.append(f"by {record.created_by}")
+    if record.created_at:
+        details.append(record.created_at.strftime("%Y-%m-%d %H:%M"))
+    if details:
+        return f"{label} - " + " - ".join(details)
+    return label
+
+
+def format_citation_suffix(
+    raw_val: Any,
+    evidence_ids: list[str],
+    evidence_index: dict[str, int],
+) -> str:
+    if is_missing_value(raw_val):
+        return ""
+    markers = sorted(
+        {evidence_index[eid] for eid in evidence_ids if eid in evidence_index}
+    )
+    if markers:
+        marker_text = " ".join(
+            f"<a href='#source-{marker}'>[{marker}]</a>" for marker in markers
+        )
+        return f" <font size='7' color='#64748b'>{marker_text}</font>"
+    if evidence_ids:
+        return " <font size='7' color='#94a3b8'>[source missing]</font>"
+    return " <font size='7' color='#94a3b8'>[no source]</font>"
 
 
 async def generate_pdf_artifact(session: AsyncSession, case_id: str) -> ArtifactPayload:
@@ -192,6 +275,43 @@ async def generate_pdf_artifact(session: AsyncSession, case_id: str) -> Artifact
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Template renderer field mapping is missing.",
         )
+
+    field_state_records = (
+        (
+            await session.execute(
+                select(FieldStateRecord).where(FieldStateRecord.case_id == case_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    field_states_by_path = {record.field_path: record for record in field_state_records}
+    evidence_ids = sorted(
+        {
+            evidence_id
+            for record in field_state_records
+            for evidence_id in (record.source_evidence_ids or [])
+        }
+    )
+    evidence_records: list[EvidenceRecord] = []
+    if evidence_ids:
+        evidence_records = (
+            (
+                await session.execute(
+                    select(EvidenceRecord)
+                    .where(
+                        EvidenceRecord.case_id == case_id,
+                        EvidenceRecord.evidence_id.in_(evidence_ids),
+                    )
+                    .order_by(EvidenceRecord.created_at)
+                )
+            )
+            .scalars()
+            .all()
+        )
+    evidence_index = {
+        record.evidence_id: idx + 1 for idx, record in enumerate(evidence_records)
+    }
 
     renderer_config = template_record.renderer_config or {}
     template_path = resolve_template_asset_path(template_record)
@@ -331,6 +451,24 @@ async def generate_pdf_artifact(session: AsyncSession, case_id: str) -> Artifact
         textColor=colors.HexColor("#0f172a"),
     )
 
+    citation_index_style = ParagraphStyle(
+        name="CitationIndex",
+        parent=styles["Normal"],
+        fontName="Helvetica-Bold",
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor("#475569"),
+    )
+
+    citation_label_style = ParagraphStyle(
+        name="CitationLabel",
+        parent=styles["Normal"],
+        fontName="Helvetica",
+        fontSize=8,
+        leading=10,
+        textColor=colors.HexColor("#334155"),
+    )
+
     # Render top-level title and metadata card
     header_left = [
         Paragraph(pdf_title, title_style),
@@ -441,8 +579,19 @@ async def generate_pdf_artifact(session: AsyncSession, case_id: str) -> Artifact
 
         for field in group_fields:
             path = field["path"]
-            raw_val = get_field_value_by_path(case_record.current_schema_state, path)
+            field_state = field_states_by_path.get(path)
+            raw_val = (
+                field_state.resolved_value
+                if field_state is not None
+                else get_field_value_by_path(case_record.current_schema_state, path)
+            )
             formatted_val = format_field_value(field, raw_val)
+            citation_suffix = format_citation_suffix(
+                raw_val,
+                list(field_state.source_evidence_ids or []) if field_state else [],
+                evidence_index,
+            )
+            formatted_val = f"{formatted_val}{citation_suffix}"
 
             is_long = False
             raw_str = str(raw_val) if raw_val is not None else ""
@@ -513,6 +662,38 @@ async def generate_pdf_artifact(session: AsyncSession, case_id: str) -> Artifact
             story.append(Spacer(1, 6))
             story.append(KeepTogether([well_table]))
             story.append(Spacer(1, 10))
+
+    if evidence_records:
+        story.append(Spacer(1, 6))
+        story.append(Paragraph("Sources", group_title_style))
+        citation_rows = []
+        for record in evidence_records:
+            index = evidence_index[record.evidence_id]
+            citation_rows.append(
+                [
+                    Paragraph(
+                        f"<a name='source-{index}'/>[{index}]",
+                        citation_index_style,
+                    ),
+                    Paragraph(
+                        escape_text(format_evidence_citation(record)),
+                        citation_label_style,
+                    ),
+                ]
+            )
+        citation_table = Table(citation_rows, colWidths=[36, 504])
+        citation_table.setStyle(
+            TableStyle(
+                [
+                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+                ]
+            )
+        )
+        story.append(citation_table)
 
     doc.build(story, onFirstPage=draw_decorations, onLaterPages=draw_decorations)
 
