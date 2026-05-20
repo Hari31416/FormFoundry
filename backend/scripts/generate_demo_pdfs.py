@@ -28,16 +28,25 @@ DEMO_PDFS: list[DemoPdf] = [
         lines=[
             "Complainant name is Priya Sharma.",
             "Complainant phone number: 9876543210",
+            "Complainant email address is priya.sharma@example.com.",
             "Complainant address: 14 Residency Road, Bengaluru",
             "Incident date: 2026-04-17",
             "Incident time: 21:15",
             "Incident location: MG Road, Bengaluru",
             "Police station: Ashok Nagar Police Station",
             "Incident category: theft",
+            "Incident severity level: medium",
+            "Weapons used: none",
             "Incident summary: My phone was stolen from my handbag near MG Road market.",
             "Accused known to complainant: no",
+            "Number of accused suspects: 1",
             "Witnesses present: no",
             "Estimated loss in INR: 62000",
+            "GST/Tax rate multiplier: 0.18",
+            (
+                "Details of stolen/damaged property: "
+                "One iPhone 15 Pro, black color, serial number Apple98765."
+            ),
         ],
     ),
     DemoPdf(
@@ -46,16 +55,28 @@ DEMO_PDFS: list[DemoPdf] = [
         lines=[
             "Complainant name is Rahul Verma.",
             "Complainant phone number: 9988776655",
+            "Complainant email address is rahul.verma@example.com.",
             "Complainant address: 302 Seaside Apartments, Andheri West, Mumbai",
             "Incident date: 19/04/2026",
             "Incident time: 11:40",
             "Incident location: Andheri West, Mumbai",
             "Police station: Amboli Police Station",
             "Incident category: cyber_fraud",
-            "Incident summary: I was tricked into sharing OTP and INR 148500 was transferred.",
+            "Incident severity level: high",
+            "Weapons used: none",
+            (
+                "Incident summary: I was tricked into sharing OTP "
+                "and INR 148500 was transferred from my savings account."
+            ),
             "Accused known to complainant: unknown",
+            "Number of accused suspects: 2",
             "Witnesses present: no",
             "Estimated loss in INR: 148500",
+            "GST/Tax rate multiplier: 0.05",
+            (
+                "Details of stolen/damaged property: "
+                "Bank funds transfer from State Bank of India account."
+            ),
         ],
     ),
     DemoPdf(
@@ -64,18 +85,27 @@ DEMO_PDFS: list[DemoPdf] = [
         lines=[
             "Complainant name is Ananya Reddy.",
             "Complainant phone number: 9123456789",
+            "Complainant email address is ananya.reddy@example.com.",
             "Complainant address: 8 Lakeview Colony, Jubilee Hills, Hyderabad",
             "Incident date: 2026-04-12",
             "Incident time: 19:25",
             "Incident location: Road No. 45, Jubilee Hills",
             "Police station: Jubilee Hills Police Station",
             "Incident category: harassment",
+            "Incident severity level: critical",
+            "Weapons used: blunt_object",
             "Incident summary: A known person repeatedly threatened me near my residence.",
             "Accused known to complainant: yes",
             "Accused details: Name is Arjun Rao, lives nearby, seen on black scooter TS09AB1122.",
+            "Number of accused suspects: 1",
             "Witnesses present: yes",
             "Witnesses details: Neha Kapoor (9876500011), guard Ramesh Yadav (9811122233).",
-            "Estimated loss in INR: 0",
+            "Estimated loss in INR: 12000",
+            "GST/Tax rate multiplier: 0.12",
+            (
+                "Details of stolen/damaged property: "
+                "Damage to main residential wooden gate and external CCTV camera."
+            ),
         ],
     ),
     DemoPdf(

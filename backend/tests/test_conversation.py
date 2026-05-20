@@ -7,6 +7,7 @@ def create_case(client: TestClient) -> str:
         "/api/v1/cases",
         json={
             "template_id": "fir-report-intake",
+            "template_version": 1,
             "created_by": "conversation-test",
         },
     )
@@ -28,6 +29,7 @@ def test_case_creation_fails_without_llm_question(
         "/api/v1/cases",
         json={
             "template_id": "fir-report-intake",
+            "template_version": 1,
             "created_by": "conversation-test",
         },
     )

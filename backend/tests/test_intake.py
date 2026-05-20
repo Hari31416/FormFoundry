@@ -12,7 +12,11 @@ from app.intake.models import EvidenceSourceType
 def create_case(client: TestClient) -> str:
     response = client.post(
         "/api/v1/cases",
-        json={"template_id": "fir-report-intake", "created_by": "test-user"},
+        json={
+            "template_id": "fir-report-intake",
+            "template_version": 1,
+            "created_by": "test-user",
+        },
     )
     assert response.status_code == 201
     return response.json()["case_id"]

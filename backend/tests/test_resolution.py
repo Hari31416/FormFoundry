@@ -6,6 +6,7 @@ def create_case(client: TestClient) -> str:
         "/api/v1/cases",
         json={
             "template_id": "fir-report-intake",
+            "template_version": 1,
             "created_by": "resolver-test",
         },
     )

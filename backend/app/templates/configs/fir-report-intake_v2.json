@@ -1,0 +1,556 @@
+{
+  "template_id": "fir-report-intake",
+  "template_version": 2,
+  "name": "Indian FIR Report Intake",
+  "domain": "public-safety",
+  "description": "An advanced, configurable FIR intake workflow for capturing complainant details, incident facts, accused context, and witness information before generating a filled report packet.",
+  "schema": [
+    {
+      "path": "complainant.full_name",
+      "label": "Complainant full name",
+      "type": "string",
+      "required": true,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "What is the complainant's full name?",
+      "clarification_question": "Please confirm the complainant's full name exactly as it should appear in the FIR.",
+      "help_text": "Use the complainant's legal name if available.",
+      "sensitivity": "standard",
+      "validation_refs": [
+        "required"
+      ],
+      "render_targets": [
+        "complainant_full_name"
+      ],
+      "conditions": {},
+      "calculation": null
+    },
+    {
+      "path": "complainant.phone",
+      "label": "Complainant phone number",
+      "type": "string",
+      "required": true,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "What phone number should the police use to contact the complainant?",
+      "clarification_question": "Please confirm the complainant's phone number.",
+      "help_text": "",
+      "sensitivity": "standard",
+      "validation_refs": [
+        "required",
+        "phone"
+      ],
+      "render_targets": [
+        "complainant_phone"
+      ],
+      "conditions": {},
+      "calculation": null
+    },
+    {
+      "path": "complainant.email",
+      "label": "Complainant email address",
+      "type": "string",
+      "required": true,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "What is the complainant's email address?",
+      "clarification_question": "Please confirm the complainant's email address.",
+      "help_text": "Used for formal communications.",
+      "sensitivity": "standard",
+      "validation_refs": [
+        "required",
+        "email"
+      ],
+      "render_targets": [
+        "complainant_email"
+      ],
+      "conditions": {},
+      "calculation": null
+    },
+    {
+      "path": "complainant.address",
+      "label": "Complainant address",
+      "type": "string",
+      "required": true,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "What is the complainant's address?",
+      "clarification_question": "Please provide the complainant's full address.",
+      "help_text": "",
+      "sensitivity": "standard",
+      "validation_refs": [
+        "required"
+      ],
+      "render_targets": [
+        "complainant_address"
+      ],
+      "conditions": {},
+      "calculation": null
+    },
+    {
+      "path": "incident.date",
+      "label": "Incident date",
+      "type": "date",
+      "required": true,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "On what date did the incident happen?",
+      "clarification_question": "Please confirm the incident date in YYYY-MM-DD format.",
+      "help_text": "",
+      "sensitivity": "standard",
+      "validation_refs": [
+        "required",
+        "date"
+      ],
+      "render_targets": [
+        "incident_date"
+      ],
+      "conditions": {},
+      "calculation": null
+    },
+    {
+      "path": "incident.time",
+      "label": "Incident time",
+      "type": "string",
+      "required": true,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "At what time did the incident happen?",
+      "clarification_question": "Please confirm the incident time.",
+      "help_text": "",
+      "sensitivity": "standard",
+      "validation_refs": [
+        "required"
+      ],
+      "render_targets": [
+        "incident_time"
+      ],
+      "conditions": {},
+      "calculation": null
+    },
+    {
+      "path": "incident.location",
+      "label": "Incident location",
+      "type": "string",
+      "required": true,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "Where did the incident happen?",
+      "clarification_question": "Please confirm the incident location with enough detail for the FIR.",
+      "help_text": "",
+      "sensitivity": "standard",
+      "validation_refs": [
+        "required"
+      ],
+      "render_targets": [
+        "incident_location"
+      ],
+      "conditions": {},
+      "calculation": null
+    },
+    {
+      "path": "incident.police_station",
+      "label": "Police station",
+      "type": "string",
+      "required": true,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "Which police station should receive this FIR?",
+      "clarification_question": "Please confirm the police station name.",
+      "help_text": "",
+      "sensitivity": "standard",
+      "validation_refs": [
+        "required"
+      ],
+      "render_targets": [
+        "incident_police_station"
+      ],
+      "conditions": {},
+      "calculation": null
+    },
+    {
+      "path": "incident.category",
+      "label": "Incident category",
+      "type": "enum",
+      "required": true,
+      "repeated": false,
+      "enum_options": [
+        "theft",
+        "assault",
+        "cyber_fraud",
+        "missing_person",
+        "harassment",
+        "property_damage"
+      ],
+      "default_question": "What kind of incident is being reported?",
+      "clarification_question": "Please choose the closest incident category for the FIR.",
+      "help_text": "",
+      "sensitivity": "standard",
+      "validation_refs": [
+        "required",
+        "enum"
+      ],
+      "render_targets": [
+        "incident_category"
+      ],
+      "conditions": {},
+      "calculation": null
+    },
+    {
+      "path": "incident.severity_level",
+      "label": "Incident severity level",
+      "type": "enum",
+      "required": true,
+      "repeated": false,
+      "enum_options": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ],
+      "default_question": "What is the severity level of the incident?",
+      "clarification_question": "Please select the severity level for the incident.",
+      "help_text": "Determines priority of investigation.",
+      "sensitivity": "standard",
+      "validation_refs": [
+        "required",
+        "enum"
+      ],
+      "render_targets": [
+        "incident_severity_level"
+      ],
+      "conditions": {},
+      "calculation": null
+    },
+    {
+      "path": "incident.weapons_used",
+      "label": "Weapons used during incident",
+      "type": "enum",
+      "required": false,
+      "repeated": true,
+      "enum_options": [
+        "none",
+        "firearm",
+        "blunt_object",
+        "sharp_object",
+        "other"
+      ],
+      "default_question": "Were any weapons used? If so, select all that apply.",
+      "clarification_question": "Please select the weapons used, if any.",
+      "help_text": "Select 'none' or specific types.",
+      "sensitivity": "standard",
+      "validation_refs": [],
+      "render_targets": [
+        "incident_weapons_used"
+      ],
+      "conditions": {},
+      "calculation": null
+    },
+    {
+      "path": "incident.summary",
+      "label": "Incident summary",
+      "type": "string",
+      "required": true,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "Please describe what happened in a concise incident summary.",
+      "clarification_question": "Please provide a clear summary of the reported incident.",
+      "help_text": "",
+      "sensitivity": "standard",
+      "validation_refs": [
+        "required"
+      ],
+      "render_targets": [
+        "incident_summary"
+      ],
+      "conditions": {},
+      "calculation": null
+    },
+    {
+      "path": "incident.property_details",
+      "label": "Details of stolen/damaged property",
+      "type": "string",
+      "required": false,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "What are the details of the stolen or damaged property?",
+      "clarification_question": "Please provide details about the lost property.",
+      "help_text": "Describe brands, serial numbers, colors, etc.",
+      "sensitivity": "standard",
+      "validation_refs": [],
+      "render_targets": [
+        "incident_property_details"
+      ],
+      "conditions": {
+        "depends_on": "loss.estimated_value_in_inr",
+        "op": "gt",
+        "value": 0.0
+      },
+      "calculation": null
+    },
+    {
+      "path": "accused.known_to_complainant",
+      "label": "Accused known to complainant",
+      "type": "boolean",
+      "required": true,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "Is the accused known to the complainant?",
+      "clarification_question": "Please confirm whether the accused is known to the complainant.",
+      "help_text": "",
+      "sensitivity": "standard",
+      "validation_refs": [
+        "required",
+        "boolean"
+      ],
+      "render_targets": [
+        "accused_known_to_complainant"
+      ],
+      "conditions": {},
+      "calculation": null
+    },
+    {
+      "path": "accused.number_of_suspects",
+      "label": "Number of accused suspects",
+      "type": "integer",
+      "required": false,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "How many accused suspects were involved in the incident?",
+      "clarification_question": "Please confirm the number of accused suspects.",
+      "help_text": "Enter 1 or more if known.",
+      "sensitivity": "standard",
+      "validation_refs": [
+        "min:1"
+      ],
+      "render_targets": [
+        "accused_number_of_suspects"
+      ],
+      "conditions": {},
+      "calculation": null
+    },
+    {
+      "path": "accused.details",
+      "label": "Accused details",
+      "type": "string",
+      "required": false,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "What details do you have about the accused?",
+      "clarification_question": "Please share any identifying details for the accused.",
+      "help_text": "",
+      "sensitivity": "standard",
+      "validation_refs": [],
+      "render_targets": [
+        "accused_details"
+      ],
+      "conditions": {
+        "depends_on": "accused.known_to_complainant",
+        "equals": true
+      },
+      "calculation": null
+    },
+    {
+      "path": "witnesses.present",
+      "label": "Witnesses present",
+      "type": "boolean",
+      "required": true,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "Were any witnesses present?",
+      "clarification_question": "Please confirm whether any witnesses were present.",
+      "help_text": "",
+      "sensitivity": "standard",
+      "validation_refs": [
+        "required",
+        "boolean"
+      ],
+      "render_targets": [
+        "witnesses_present"
+      ],
+      "conditions": {},
+      "calculation": null
+    },
+    {
+      "path": "witnesses.details",
+      "label": "Witness details",
+      "type": "string",
+      "required": false,
+      "repeated": true,
+      "enum_options": [],
+      "default_question": "What witness details should be recorded?",
+      "clarification_question": "Please share the witness names or contact details that should be recorded.",
+      "help_text": "",
+      "sensitivity": "standard",
+      "validation_refs": [],
+      "render_targets": [
+        "witnesses_details"
+      ],
+      "conditions": {
+        "depends_on": "witnesses.present",
+        "equals": true
+      },
+      "calculation": null
+    },
+    {
+      "path": "loss.estimated_value_in_inr",
+      "label": "Estimated loss in INR",
+      "type": "number",
+      "required": false,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "What is the estimated loss amount in INR, if any?",
+      "clarification_question": "Please confirm the estimated loss amount in INR.",
+      "help_text": "",
+      "sensitivity": "standard",
+      "validation_refs": [
+        "number",
+        "min:0"
+      ],
+      "render_targets": [
+        "loss_estimated_value_in_inr"
+      ],
+      "conditions": {},
+      "calculation": null
+    },
+    {
+      "path": "loss.tax_rate",
+      "label": "GST/Tax rate multiplier",
+      "type": "number",
+      "required": false,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "What is the GST or tax rate multiplier for the loss (e.g. 0.18 for 18%)?",
+      "clarification_question": "Please confirm the tax rate multiplier.",
+      "help_text": "E.g., 0.18 for 18% GST.",
+      "sensitivity": "standard",
+      "validation_refs": [
+        "min:0"
+      ],
+      "render_targets": [
+        "loss_tax_rate"
+      ],
+      "conditions": {},
+      "calculation": null
+    },
+    {
+      "path": "loss.calculated_tax",
+      "label": "Calculated GST/Tax amount in INR",
+      "type": "number",
+      "required": false,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "",
+      "clarification_question": "",
+      "help_text": "Computed automatically: estimated value * tax rate",
+      "sensitivity": "standard",
+      "validation_refs": [],
+      "render_targets": [
+        "loss_calculated_tax"
+      ],
+      "conditions": {},
+      "calculation": "{loss.estimated_value_in_inr} * {loss.tax_rate}"
+    },
+    {
+      "path": "loss.total_loss_in_inr",
+      "label": "Total loss including tax in INR",
+      "type": "number",
+      "required": false,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "",
+      "clarification_question": "",
+      "help_text": "Computed automatically: estimated value + calculated tax",
+      "sensitivity": "standard",
+      "validation_refs": [],
+      "render_targets": [
+        "loss_total_loss_in_inr"
+      ],
+      "conditions": {},
+      "calculation": "{loss.estimated_value_in_inr} + {loss.calculated_tax}"
+    }
+  ],
+  "field_groups": [
+    {
+      "group_id": "complainant",
+      "label": "Complainant Details",
+      "description": "Identity and contact details for the complainant.",
+      "field_paths": [
+        "complainant.full_name",
+        "complainant.phone",
+        "complainant.email",
+        "complainant.address"
+      ]
+    },
+    {
+      "group_id": "incident",
+      "label": "Incident Details",
+      "description": "When, where, and what happened in the reported incident.",
+      "field_paths": [
+        "incident.date",
+        "incident.time",
+        "incident.location",
+        "incident.police_station",
+        "incident.category",
+        "incident.severity_level",
+        "incident.weapons_used",
+        "incident.summary",
+        "incident.property_details"
+      ]
+    },
+    {
+      "group_id": "accused",
+      "label": "Accused Information",
+      "description": "Whether the accused is known, counts, and identifying details.",
+      "field_paths": [
+        "accused.known_to_complainant",
+        "accused.number_of_suspects",
+        "accused.details"
+      ]
+    },
+    {
+      "group_id": "witnesses",
+      "label": "Witnesses And Loss",
+      "description": "Witness presence, property loss, tax, and calculations.",
+      "field_paths": [
+        "witnesses.present",
+        "witnesses.details",
+        "loss.estimated_value_in_inr",
+        "loss.tax_rate",
+        "loss.calculated_tax",
+        "loss.total_loss_in_inr"
+      ]
+    }
+  ],
+  "validation_rules": [
+    {
+      "rule_id": "required",
+      "type": "requiredness"
+    },
+    {
+      "rule_id": "phone",
+      "type": "format",
+      "pattern": "^[0-9+()\\- ]{10,15}$"
+    },
+    {
+      "rule_id": "email",
+      "type": "format",
+      "pattern": "^[^@]+@[^@]+\\.[^@]+$"
+    }
+  ],
+  "conversation_config": {
+    "tone": "professional and direct",
+    "explanation_style": "short",
+    "reask_cooldown_turns": 2,
+    "max_grouped_fields": 3
+  },
+  "supported_artifacts": [
+    "pdf",
+    "json_export"
+  ],
+  "renderer_config": {
+    "artifact_type": "pdf",
+    "template_asset": "assets/pdfs/fir_report_packet.pdf",
+    "pdf_title": "Indian FIR Intake Report"
+  }
+}

@@ -6,6 +6,7 @@ def test_case_creation_persists_empty_field_states(client: TestClient) -> None:
         "/api/v1/cases",
         json={
             "template_id": "fir-report-intake",
+            "template_version": 1,
             "created_by": "test-user",
             "metadata": {"intake_channel": "manual"},
         },
@@ -37,6 +38,7 @@ def test_update_case_preferred_language(client: TestClient) -> None:
         "/api/v1/cases",
         json={
             "template_id": "fir-report-intake",
+            "template_version": 1,
             "created_by": "test-user",
             "metadata": {"intake_channel": "manual"},
         },
@@ -67,6 +69,7 @@ def test_delete_case(client: TestClient) -> None:
         "/api/v1/cases",
         json={
             "template_id": "fir-report-intake",
+            "template_version": 1,
             "created_by": "test-user",
             "metadata": {"intake_channel": "manual"},
         },
