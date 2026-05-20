@@ -69,13 +69,13 @@
     },
     {
       "path": "complainant.address",
-      "label": "Complainant address",
-      "type": "string",
+      "label": "Complainant Address Details",
+      "type": "object",
       "required": true,
       "repeated": false,
       "enum_options": [],
-      "default_question": "What is the complainant's address?",
-      "clarification_question": "Please provide the complainant's full address.",
+      "default_question": "What is the complainant's full address details?",
+      "clarification_question": "Please provide the complainant's full street, city, state, and zip code.",
       "help_text": "",
       "sensitivity": "standard",
       "validation_refs": [
@@ -85,7 +85,41 @@
         "complainant_address"
       ],
       "conditions": {},
-      "calculation": null
+      "calculation": null,
+      "schema": [
+        {
+          "path": "street",
+          "label": "Street",
+          "type": "string",
+          "required": true,
+          "default_question": "",
+          "clarification_question": ""
+        },
+        {
+          "path": "city",
+          "label": "City",
+          "type": "string",
+          "required": true,
+          "default_question": "",
+          "clarification_question": ""
+        },
+        {
+          "path": "state",
+          "label": "State",
+          "type": "string",
+          "required": true,
+          "default_question": "",
+          "clarification_question": ""
+        },
+        {
+          "path": "zip_code",
+          "label": "Zip Code",
+          "type": "integer",
+          "required": false,
+          "default_question": "",
+          "clarification_question": ""
+        }
+      ]
     },
     {
       "path": "incident.date",
@@ -393,6 +427,53 @@
       "calculation": null
     },
     {
+      "path": "witnesses.witness_list",
+      "label": "List of Witnesses",
+      "type": "list_of_objects",
+      "required": false,
+      "repeated": false,
+      "enum_options": [],
+      "default_question": "Who were the witnesses to the incident?",
+      "clarification_question": "Please provide details about all witnesses.",
+      "help_text": "",
+      "sensitivity": "standard",
+      "validation_refs": [],
+      "render_targets": [
+        "witness_list"
+      ],
+      "conditions": {
+        "depends_on": "witnesses.present",
+        "equals": true
+      },
+      "calculation": null,
+      "schema": [
+        {
+          "path": "full_name",
+          "label": "Full Name",
+          "type": "string",
+          "required": true,
+          "default_question": "",
+          "clarification_question": ""
+        },
+        {
+          "path": "phone",
+          "label": "Phone Number",
+          "type": "string",
+          "required": false,
+          "default_question": "",
+          "clarification_question": ""
+        },
+        {
+          "path": "statement_summary",
+          "label": "Statement Summary",
+          "type": "string",
+          "required": true,
+          "default_question": "",
+          "clarification_question": ""
+        }
+      ]
+    },
+    {
       "path": "loss.estimated_value_in_inr",
       "label": "Estimated loss in INR",
       "type": "number",
@@ -515,6 +596,7 @@
       "field_paths": [
         "witnesses.present",
         "witnesses.details",
+        "witnesses.witness_list",
         "loss.estimated_value_in_inr",
         "loss.tax_rate",
         "loss.calculated_tax",

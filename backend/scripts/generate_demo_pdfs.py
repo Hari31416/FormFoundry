@@ -29,7 +29,10 @@ DEMO_PDFS: list[DemoPdf] = [
             "Complainant name is Priya Sharma.",
             "Complainant phone number: 9876543210",
             "Complainant email address is priya.sharma@example.com.",
-            "Complainant address: 14 Residency Road, Bengaluru",
+            (
+                "Complainant address details: street is 14 Residency Road, "
+                "city is Bengaluru, state is Karnataka, zip code is 560025."
+            ),
             "Incident date: 2026-04-17",
             "Incident time: 21:15",
             "Incident location: MG Road, Bengaluru",
@@ -56,7 +59,10 @@ DEMO_PDFS: list[DemoPdf] = [
             "Complainant name is Rahul Verma.",
             "Complainant phone number: 9988776655",
             "Complainant email address is rahul.verma@example.com.",
-            "Complainant address: 302 Seaside Apartments, Andheri West, Mumbai",
+            (
+                "Complainant address details: street is 302 Seaside Apartments, Andheri West, "
+                "city is Mumbai, state is Maharashtra, zip code is 400053."
+            ),
             "Incident date: 19/04/2026",
             "Incident time: 11:40",
             "Incident location: Andheri West, Mumbai",
@@ -86,7 +92,10 @@ DEMO_PDFS: list[DemoPdf] = [
             "Complainant name is Ananya Reddy.",
             "Complainant phone number: 9123456789",
             "Complainant email address is ananya.reddy@example.com.",
-            "Complainant address: 8 Lakeview Colony, Jubilee Hills, Hyderabad",
+            (
+                "Complainant address details: street is 8 Lakeview Colony, Jubilee Hills, "
+                "city is Hyderabad, state is Telangana, zip code is 500033."
+            ),
             "Incident date: 2026-04-12",
             "Incident time: 19:25",
             "Incident location: Road No. 45, Jubilee Hills",
@@ -100,6 +109,13 @@ DEMO_PDFS: list[DemoPdf] = [
             "Number of accused suspects: 1",
             "Witnesses present: yes",
             "Witnesses details: Neha Kapoor (9876500011), guard Ramesh Yadav (9811122233).",
+            (
+                "Witness list: "
+                "Witness #1 name is Neha Kapoor, phone is 9876500011, and statement summary "
+                "is 'Saw the accused holding a weapon outside the gate.' "
+                "Witness #2 name is Ramesh Yadav, phone is 9811122233, and statement summary "
+                "is 'Security guard who witnessed the shouting and property damage.'"
+            ),
             "Estimated loss in INR: 12000",
             "GST/Tax rate multiplier: 0.12",
             (
