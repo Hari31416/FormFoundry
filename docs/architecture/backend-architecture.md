@@ -61,11 +61,12 @@ This decoupling allows developers to register any translation service. Currently
 
 - **Google Translate Provider**: Fast, reliable general translation API.
 - **Bhashini Provider**: Specifically tailored for Indian regional languages, delivering state-of-the-art translation, detection, and Text-to-Speech (TTS) synthesis.
+- **Sarvam Provider**: Indian language detection, translation, and Text-to-Speech integration using Sarvam REST APIs with BCP-47 language-code mapping at the provider boundary.
 - **Langdetect Provider**: A local, zero-cost language detector used as a developer fallback.
 
 ### 2. High-Performance Translation Caching
 
-To minimize billing costs and network latency when calling external translation APIs (like Google or Bhashini), a high-performance **caching layer** is built directly into the service orchestrator (`app/languages/cache.py`):
+To minimize billing costs and network latency when calling external translation APIs (like Google, Bhashini, or Sarvam), a high-performance **caching layer** is built directly into the service orchestrator (`app/languages/cache.py`):
 
 - Uses **Redis** as a key-value store.
 - Generates collision-free **SHA-256 hashed keys** combining the source text, source language, and target language.

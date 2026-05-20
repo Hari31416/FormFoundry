@@ -23,13 +23,14 @@ graph TD
         LLM <--> OCR[Vision OCR - Vision Models]
         Backend <--> LangOrch[Language Manager Service]
         LangOrch <--> Bhashini[Bhashini GovTech API]
+        LangOrch <--> Sarvam[Sarvam AI API]
         LangOrch <--> Google[Google Translate API]
     end
 ```
 
 ## Key Features
 
-- **Pluggable Multilingual Orchestrator**: High-fidelity real-time language detection, translation, and text-to-speech (TTS) synthesis supporting **Google Translate** and **Bhashini** (the Indian national language portal for GovTech), with local `langdetect` fallback capability.
+- **Pluggable Multilingual Orchestrator**: High-fidelity real-time language detection, translation, and text-to-speech (TTS) synthesis supporting **Google Translate**, **Bhashini**, and **Sarvam**, with local `langdetect` fallback capability.
 - **Dual-Workspace UX**: Seamless frontend view toggle between:
   - **Simplified Chat View**: A guided, chat-first UI featuring speech accessibility, strategists' reasoning insights, and quick inline field reviews.
   - **Detailed Workspace View**: A professional three-panel grid for concurrently analyzing uploaded evidence, reviewing structured field values, and auditing AI attribution.
@@ -128,16 +129,22 @@ flowchart TD
    Open `.env` and configure the following parameters to enable translations:
 
    ```bash
-   # Enable Language Providers (e.g. google, bhashini, langdetect, or None)
+   # Enable Language Providers (e.g. google, bhashini, sarvam, langdetect, or None)
    LANGUAGE_DETECTION_SERVICE_PROVIDER=langdetect
-   LANGUAGE_TRANSLATION_SERVICE_PROVIDER=google  # or bhashini
-   TTS_SERVICE_PROVIDER=bhashini                 # Enables text-to-speech
+   LANGUAGE_TRANSLATION_SERVICE_PROVIDER=google  # or bhashini/sarvam
+   TTS_SERVICE_PROVIDER=bhashini                 # or sarvam for text-to-speech
    STT_SERVICE_PROVIDER=None
 
    # Bhashini GovTech API Credentials
    BHASHINI_API_KEY=your-bhashini-api-key
    BHASHINI_ENDPOINT_URL=https://dhruva-api.bhashini.gov.in/services/inference/pipeline
    BHASHINI_TRANSLATION_SERVICE_ID=ai4bharat/indictrans-v2-all-gpu--t4
+
+   # Sarvam API Credentials
+   SARVAM_API_KEY=your-sarvam-api-key
+   SARVAM_BASE_URL=https://api.sarvam.ai
+   SARVAM_TRANSLATION_MODEL=sarvam-translate:v1
+   SARVAM_TTS_MODEL=bulbul:v3
    ```
 
 3. **Infrastructure**:

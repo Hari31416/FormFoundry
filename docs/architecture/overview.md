@@ -23,6 +23,7 @@ graph TD
         LLM <--> OCR[Vision OCR - Vision Models]
         Backend <--> LangManager[Language Manager Service]
         LangManager <--> Bhashini[Bhashini GovTech API]
+        LangManager <--> Sarvam[Sarvam AI API]
         LangManager <--> Google[Google Translate API]
     end
 ```
@@ -50,7 +51,7 @@ The backend serves as the central orchestration layer. It manages case lifecycle
 ### 4. Extraction & Translation Engine
 
 - **Extraction Service**: Leverages `litellm` to interface with various LLM providers, performs OCR, and extracts structured data from unstructured inputs.
-- **Language Subsystem**: Orchestrates translation and speech synthesis using pluggable provider interfaces (Google, Bhashini, local fallbacks), allowing GovTech and enterprise products to adapt to local regional environments.
+- **Language Subsystem**: Orchestrates translation and speech synthesis using pluggable provider interfaces (Google, Bhashini, Sarvam, local fallbacks), allowing GovTech and enterprise products to adapt to local regional environments.
 
 ## Request Lifecycle
 

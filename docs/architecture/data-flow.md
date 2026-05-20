@@ -41,7 +41,7 @@ Data enters the system via three channels:
 When a user submits a conversational turn:
 
 1. If the locale in `payload.language` is provided, that language is used.
-2. If not, the backend `LanguageManager` runs language detection (via Google, Bhashini, or `langdetect`) on the raw message.
+2. If not, the backend `LanguageManager` runs language detection (via Google, Bhashini, Sarvam, or `langdetect`) on the raw message.
 3. If a change in language is detected (e.g. user replies in Hindi), the case's relational metadata is updated to store this `preferred_language`.
 4. This synchronizes the frontend and backend preferred language, persisting it across page refreshes.
 
@@ -52,7 +52,7 @@ When a user submits a conversational turn:
 If the incoming evidence or chat answer is in a regional language (e.g. Hindi), it is translated into English before going to the extraction engine:
 
 1. **Cache Lookup**: The `LanguageManager` hashes the text with SHA-256 and searches the Redis translation cache (`translation:hi:en:<hash>`).
-2. **Translation Service**: On a cache miss, the active translation provider (Google or Bhashini) translates the text to English.
+2. **Translation Service**: On a cache miss, the active translation provider (Google, Bhashini, or Sarvam) translates the text to English.
 3. **Cache Storage**: The resulting English translation is stored in Redis with a 24-hour TTL.
 4. **Attribution**: The English translation is stored in the database under `english_translation` in the turn metadata, while the raw Hindi is preserved for user review.
 
@@ -87,7 +87,7 @@ If there are unresolved fields or validation issues, the assistant generates a f
 2. **Read-only Preview**: `GET /conversation/next-question` computes the current question without inserting a conversation turn. This keeps polling and page reloads idempotent.
 3. **Canonical Timeline**: Assistant questions are persisted only during command flows: case creation, submitted user answers, evidence ingestion, and field rejection. `GET /conversation/turns` is the canonical chronological timeline rendered by the frontend.
 4. **Outgoing Translation**: If the case's `preferred_language` is not English (e.g. Hindi), the persisted assistant question is translated back to the target language (utilizing the Redis cache `translation:en:hi:<hash>` to avoid redundant translations).
-5. **Text-to-Speech (TTS)**: When the user views the question on the frontend (Simplified or Detailed), they can trigger real-time Text-to-Speech audio playback. The backend `/languages/tts` route handles generating MP3 audio bytes using Bhashini's speech pipelines, streaming the audio directly back to the React player.
+5. **Text-to-Speech (TTS)**: When the user views the question on the frontend (Simplified or Detailed), they can trigger real-time Text-to-Speech audio playback. The backend `/languages/tts` route handles generating MP3 audio bytes using the configured speech provider, such as Bhashini or Sarvam, and streams the audio directly back to the React player.
 
 ---
 

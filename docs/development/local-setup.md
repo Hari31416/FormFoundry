@@ -68,6 +68,25 @@ Ensure you have the following installed on your system:
    BHASHINI_LANG_DETECTION_SERVICE_ID=some-lang-detection-model-id  # Optional, falls back to standard pipelines
    ```
 
+   **Option D: Sarvam AI language and speech APIs**
+   To use Sarvam for Indian language detection, translation, and Text-to-Speech:
+
+   ```bash
+   LANGUAGE_DETECTION_SERVICE_PROVIDER=sarvam
+   LANGUAGE_TRANSLATION_SERVICE_PROVIDER=sarvam
+   TTS_SERVICE_PROVIDER=sarvam
+   STT_SERVICE_PROVIDER=None
+
+   # Sarvam credentials
+   SARVAM_API_KEY=your-api-key-here
+   SARVAM_BASE_URL=https://api.sarvam.ai
+   SARVAM_TRANSLATION_MODEL=sarvam-translate:v1
+   SARVAM_TRANSLATION_MODE=formal
+   SARVAM_TTS_MODEL=bulbul:v3
+   SARVAM_TTS_SPEAKER=shubh
+   SARVAM_TTS_AUDIO_CODEC=mp3
+   ```
+
 4. **Start Infrastructure**:
    Use the Makefile to spin up the required Docker containers (PostgreSQL, Minio, Redis, Qdrant).
 
@@ -109,6 +128,6 @@ Once running, you can verify the status of the services:
 - **LLM Errors**: Verify your `LLM_API_KEY` and `LLM_MODEL` settings.
 - **Translation Failures**:
   - Ensure **Redis** is running (`make ps`), as translation caching relies on an active Redis connection.
-  - Double-check external API keys (`BHASHINI_API_KEY` or standard Google keys) if provider translations are failing.
+  - Double-check external API keys (`BHASHINI_API_KEY`, `SARVAM_API_KEY`, or standard Google keys) if provider translations are failing.
   - Review backend logs (`make logs-backend`) to check for `LanguageManager` initialization warnings or connection failures.
 - **Frontend Build**: If you encounter issues with Vite or translation loaders, try clearing `frontend/node_modules` and re-running `make frontend-setup`.

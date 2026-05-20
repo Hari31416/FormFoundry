@@ -21,6 +21,11 @@ from app.languages.google import (
     GoogleTranslationProvider,
 )
 from app.languages.langdetect_provider import LangdetectLanguageDetectionProvider
+from app.languages.sarvam import (
+    SarvamLanguageDetectionProvider,
+    SarvamTranslationProvider,
+    SarvamTTSProvider,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,15 +34,18 @@ DETECTION_PROVIDERS: dict[str, type[BaseLanguageDetectionProvider]] = {
     "bhashini": BhashiniLanguageDetectionProvider,
     "google": GoogleLanguageDetectionProvider,
     "langdetect": LangdetectLanguageDetectionProvider,
+    "sarvam": SarvamLanguageDetectionProvider,
 }
 
 TRANSLATION_PROVIDERS: dict[str, type[BaseTranslationProvider]] = {
     "bhashini": BhashiniTranslationProvider,
     "google": GoogleTranslationProvider,
+    "sarvam": SarvamTranslationProvider,
 }
 
 TTS_PROVIDERS: dict[str, type[BaseTTSProvider]] = {
     "bhashini": BhashiniTTSProvider,
+    "sarvam": SarvamTTSProvider,
 }
 
 STT_PROVIDERS: dict[str, type[BaseSTTProvider]] = {

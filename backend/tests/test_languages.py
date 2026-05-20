@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import logging
 from unittest.mock import AsyncMock, MagicMock
 
@@ -19,6 +20,11 @@ from app.languages.google import (
 )
 from app.languages.langdetect_provider import LangdetectLanguageDetectionProvider
 from app.languages.manager import LanguageManager
+from app.languages.sarvam import (
+    SarvamLanguageDetectionProvider,
+    SarvamTranslationProvider,
+    SarvamTTSProvider,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +101,23 @@ async def test_manager_provider_instantiation(monkeypatch: pytest.MonkeyPatch) -
 
 
 @pytest.mark.asyncio
+async def test_manager_instantiates_sarvam_providers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    settings = get_settings()
+    monkeypatch.setattr(settings, "language_detection_service_provider", "Sarvam")
+    monkeypatch.setattr(settings, "language_translation_service_provider", "Sarvam")
+    monkeypatch.setattr(settings, "tts_service_provider", "Sarvam")
+    manager_module._manager = None
+
+    mgr = LanguageManager()
+
+    assert isinstance(mgr._detection_provider, SarvamLanguageDetectionProvider)
+    assert isinstance(mgr._translation_provider, SarvamTranslationProvider)
+    assert isinstance(mgr._tts_provider, SarvamTTSProvider)
+
+
+@pytest.mark.asyncio
 async def test_googletrans_detection_success(monkeypatch: pytest.MonkeyPatch) -> None:
     class MockDetectorResponse:
         def __init__(self) -> None:
@@ -156,6 +179,123 @@ async def test_bhashini_translation_success(monkeypatch: pytest.MonkeyPatch) -> 
 
     assert res == "Hello"
     assert mock_post.called
+
+
+class MockSarvamResponse:
+    def __init__(self, payload: dict[str, object]) -> None:
+        self._payload = payload
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict[str, object]:
+        return self._payload
+
+
+class MockSarvamAsyncClient:
+    calls: list[dict[str, object]] = []
+    response_payload: dict[str, object] = {}
+
+    def __init__(self, timeout: float) -> None:
+        self.timeout = timeout
+
+    async def __aenter__(self) -> MockSarvamAsyncClient:
+        return self
+
+    async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
+        return None
+
+    async def post(
+        self, url: str, headers: dict[str, str], json: dict[str, object]
+    ) -> MockSarvamResponse:
+        self.calls.append({"url": url, "headers": headers, "json": json})
+        return MockSarvamResponse(self.response_payload)
+
+
+@pytest.fixture
+def mock_sarvam_client(monkeypatch: pytest.MonkeyPatch) -> type[MockSarvamAsyncClient]:
+    MockSarvamAsyncClient.calls = []
+    MockSarvamAsyncClient.response_payload = {}
+    monkeypatch.setattr("app.languages.sarvam.httpx.AsyncClient", MockSarvamAsyncClient)
+    return MockSarvamAsyncClient
+
+
+@pytest.mark.asyncio
+async def test_sarvam_translation_success(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_sarvam_client: type[MockSarvamAsyncClient],
+) -> None:
+    monkeypatch.setenv("SARVAM_API_KEY", "mock_sarvam_key")
+    monkeypatch.setenv("SARVAM_BASE_URL", "https://mock.sarvam.ai")
+    get_settings.cache_clear()
+    mock_sarvam_client.response_payload = {"translated_text": "Hello"}
+
+    provider = SarvamTranslationProvider()
+    result = await provider.translate("नमस्ते", "hi", "en")
+
+    assert result == "Hello"
+    assert mock_sarvam_client.calls[0]["url"] == "https://mock.sarvam.ai/translate"
+    assert mock_sarvam_client.calls[0]["headers"] == {
+        "api-subscription-key": "mock_sarvam_key",
+        "Content-Type": "application/json",
+    }
+    assert mock_sarvam_client.calls[0]["json"] == {
+        "input": "नमस्ते",
+        "source_language_code": "hi-IN",
+        "target_language_code": "en-IN",
+        "mode": "formal",
+        "model": "sarvam-translate:v1",
+        "numerals_format": "international",
+    }
+
+
+@pytest.mark.asyncio
+async def test_sarvam_language_detection_maps_bcp47_to_app_code(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_sarvam_client: type[MockSarvamAsyncClient],
+) -> None:
+    monkeypatch.setenv("SARVAM_API_KEY", "mock_sarvam_key")
+    get_settings.cache_clear()
+    mock_sarvam_client.response_payload = {
+        "language_code": "hi-IN",
+        "script_code": "Deva",
+    }
+
+    provider = SarvamLanguageDetectionProvider()
+    result = await provider.detect_language("यह हिंदी है।")
+
+    assert result == "hi"
+    assert mock_sarvam_client.calls[0]["url"] == "https://api.sarvam.ai/text-lid"
+    assert mock_sarvam_client.calls[0]["json"] == {"input": "यह हिंदी है।"}
+
+
+@pytest.mark.asyncio
+async def test_sarvam_tts_decodes_audio(
+    monkeypatch: pytest.MonkeyPatch,
+    mock_sarvam_client: type[MockSarvamAsyncClient],
+) -> None:
+    monkeypatch.setenv("SARVAM_API_KEY", "mock_sarvam_key")
+    get_settings.cache_clear()
+    audio_bytes = b"fake-mp3"
+    mock_sarvam_client.response_payload = {
+        "audios": [base64.b64encode(audio_bytes).decode("ascii")]
+    }
+
+    provider = SarvamTTSProvider()
+    result = await provider.text_to_speech("Hello", "en", "female")
+
+    assert result == audio_bytes
+    assert mock_sarvam_client.calls[0]["url"] == "https://api.sarvam.ai/text-to-speech"
+    assert mock_sarvam_client.calls[0]["json"] == {
+        "text": "Hello",
+        "target_language_code": "en-IN",
+        "speaker": "shubh",
+        "pace": 1.0,
+        "speech_sample_rate": 24000,
+        "model": "bulbul:v3",
+        "output_audio_codec": "mp3",
+        "temperature": 0.6,
+    }
 
 
 @pytest.mark.asyncio

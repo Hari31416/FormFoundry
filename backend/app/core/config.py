@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.1
     pdf_ocr_max_pages: int = 10
 
-    # Language Service Providers (Bhashini, Google, langdetect, None)
+    # Language Service Providers (Bhashini, Sarvam, Google, langdetect, None)
     language_detection_service_provider: str | None = Field(
         default=None, alias="LANGUAGE_DETECTION_SERVICE_PROVIDER"
     )
@@ -87,6 +87,34 @@ class Settings(BaseSettings):
         default="ai4bharat/indictrans-v2-all-gpu--t4",
         alias="BHASHINI_TRANSLATION_SERVICE_ID",
     )
+
+    # Sarvam API Configuration
+    sarvam_api_key: str | None = Field(default=None, alias="SARVAM_API_KEY")
+    sarvam_base_url: str = Field(
+        default="https://api.sarvam.ai",
+        alias="SARVAM_BASE_URL",
+    )
+    sarvam_translation_model: str = Field(
+        default="sarvam-translate:v1",
+        alias="SARVAM_TRANSLATION_MODEL",
+    )
+    sarvam_translation_mode: str = Field(
+        default="formal", alias="SARVAM_TRANSLATION_MODE"
+    )
+    sarvam_numerals_format: str = Field(
+        default="international",
+        alias="SARVAM_NUMERALS_FORMAT",
+    )
+    sarvam_tts_model: str = Field(default="bulbul:v3", alias="SARVAM_TTS_MODEL")
+    sarvam_tts_speaker: str = Field(default="shubh", alias="SARVAM_TTS_SPEAKER")
+    sarvam_tts_audio_codec: str = Field(default="mp3", alias="SARVAM_TTS_AUDIO_CODEC")
+    sarvam_tts_sample_rate: int = Field(default=24000, alias="SARVAM_TTS_SAMPLE_RATE")
+    sarvam_tts_pace: float = Field(default=1.0, alias="SARVAM_TTS_PACE")
+    sarvam_tts_temperature: float = Field(
+        default=0.6,
+        alias="SARVAM_TTS_TEMPERATURE",
+    )
+    sarvam_timeout_seconds: float = Field(default=15.0, alias="SARVAM_TIMEOUT_SECONDS")
 
     @property
     def decoded_postgres_password(self) -> str:
