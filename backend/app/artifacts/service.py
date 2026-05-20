@@ -147,9 +147,38 @@ def is_missing_value(raw_val: Any) -> bool:
     )
 
 
+def format_html_object(obj: Any, indent: int = 0) -> str:
+    if isinstance(obj, dict):
+        lines = []
+        margin = "&nbsp;" * (indent * 4)
+        for k, v in obj.items():
+            k_title = str(k).replace("_", " ").title()
+            v_str = format_html_object(v, indent + 1)
+            lines.append(f"{margin}<b>{escape_text(k_title)}:</b> {v_str}")
+        return "<br/>".join(lines)
+    elif isinstance(obj, list):
+        lines = []
+        margin = "&nbsp;" * (indent * 4)
+        is_dict_list = all(isinstance(item, dict) for item in obj)
+        for item in obj:
+            item_str = format_html_object(item, indent + 1)
+            if is_dict_list:
+                lines.append(f"{margin}&bull; {item_str}")
+            else:
+                lines.append(f"{margin}&bull; {item_str}")
+        if is_dict_list:
+            return "<br/><br/>".join(lines)
+        return "<br/>".join(lines)
+    else:
+        return escape_text(obj)
+
+
 def format_field_value(field_def: dict, raw_val: Any) -> str:
     if is_missing_value(raw_val):
         return "<font color='#64748b'><i>Not provided</i></font>"
+
+    if field_def.get("type") in ("object", "list_of_objects"):
+        return format_html_object(raw_val)
 
     if field_def.get("repeated") or isinstance(raw_val, list):
         if not isinstance(raw_val, list):
@@ -595,7 +624,9 @@ async def generate_pdf_artifact(session: AsyncSession, case_id: str) -> Artifact
 
             is_long = False
             raw_str = str(raw_val) if raw_val is not None else ""
-            if field.get("repeated") or isinstance(raw_val, list):
+            if field.get("type") in ("object", "list_of_objects"):
+                is_long = True
+            elif field.get("repeated") or isinstance(raw_val, list):
                 is_long = True
             elif "\n" in raw_str:
                 is_long = True

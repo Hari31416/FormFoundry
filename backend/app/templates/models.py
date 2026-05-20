@@ -9,10 +9,21 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
 
-FieldType = Literal["string", "date", "enum", "boolean", "integer", "number"]
+FieldType = Literal[
+    "string",
+    "date",
+    "enum",
+    "boolean",
+    "integer",
+    "number",
+    "object",
+    "list_of_objects",
+]
 
 
 class TemplateField(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     path: str
     label: str
     type: FieldType
@@ -27,6 +38,9 @@ class TemplateField(BaseModel):
     render_targets: list[str] = Field(default_factory=list)
     conditions: dict[str, Any] = Field(default_factory=dict)
     calculation: str | None = None
+    nested_schema: list[TemplateField] | None = Field(
+        default=None, alias="schema", serialization_alias="schema"
+    )
 
 
 class TemplateFieldGroup(BaseModel):
@@ -104,3 +118,6 @@ class TemplateDefinitionRecord(Base):
         onupdate=lambda: datetime.now(UTC),
         nullable=False,
     )
+
+
+TemplateField.model_rebuild()

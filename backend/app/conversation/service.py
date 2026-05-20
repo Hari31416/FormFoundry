@@ -123,25 +123,33 @@ def build_question_candidates(detail: CaseDetail) -> list[QuestionCandidate]:
     return sorted(candidates, key=lambda item: (item.priority, item.order))
 
 
+def format_conversation_field_description(field: TemplateField, indent: int = 0) -> str:
+    indent_str = "  " * indent
+    help_text = f" Help: {field.help_text}" if field.help_text else ""
+    enum_text = (
+        f" Allowed values: {', '.join(field.enum_options)}"
+        if field.enum_options
+        else ""
+    )
+    desc = f"{indent_str}- {field.label} ({field.path}, {field.type}){help_text}{enum_text}"
+    nested_schema = field.nested_schema or []
+    if field.type in ("object", "list_of_objects") and nested_schema:
+        lines = [desc]
+        lines.append(f"{indent_str}  Properties for {field.path}:")
+        for sub in nested_schema:
+            lines.append(format_conversation_field_description(sub, indent + 2))
+        return "\n".join(lines)
+    return desc
+
+
 async def generate_grouped_question(
     detail: CaseDetail,
     selected_fields: list[QuestionCandidate],
 ) -> str:
     field_lines: list[str] = []
     for candidate in selected_fields:
-        help_text = (
-            f" Help: {candidate.field.help_text}" if candidate.field.help_text else ""
-        )
-        enum_text = (
-            f" Allowed values: {', '.join(candidate.field.enum_options)}"
-            if candidate.field.enum_options
-            else ""
-        )
-        field_lines.append(
-            f"- {candidate.field.label} "
-            f"({candidate.field.path}, {candidate.field.type}, {candidate.reason})"
-            f"{help_text}{enum_text}"
-        )
+        desc = format_conversation_field_description(candidate.field)
+        field_lines.append(f"{desc} (Reason to ask: {candidate.reason})")
 
     field_details = "\n".join(field_lines)
     response = await generate_json(

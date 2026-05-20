@@ -50,6 +50,10 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
   const [newEnumOption, setNewEnumOption] = React.useState<string>('')
   const [newValidationRef, setNewValidationRef] = React.useState<string>('')
 
+  // Sub-field inline editor state
+  const [editingSubFieldIdx, setEditingSubFieldIdx] = React.useState<number | null>(null)
+  const [subFieldForm, setSubFieldForm] = React.useState<TemplateField | null>(null)
+
   React.useEffect(() => {
     setJsonText(JSON.stringify(draftTemplate, null, 2))
   }, [draftTemplate])
@@ -174,6 +178,85 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
     setFieldForm(prev => ({
       ...prev,
       validation_refs: (prev.validation_refs || []).filter(r => r !== ref)
+    }))
+  }
+
+  // Nested sub-schema helper actions
+  const startSubFieldAdd = () => {
+    const parentPath = fieldForm.path ? `${fieldForm.path}.` : ''
+    setEditingSubFieldIdx((fieldForm.schema || []).length)
+    setSubFieldForm({
+      path: parentPath,
+      label: '',
+      type: 'string',
+      required: false,
+      repeated: false,
+      enum_options: [],
+      default_question: '',
+      clarification_question: '',
+      help_text: '',
+      validation_refs: [],
+      calculation: '',
+      conditions: {}
+    })
+  }
+
+  const startSubFieldEdit = (idx: number) => {
+    setEditingSubFieldIdx(idx)
+    const subField = (fieldForm.schema || [])[idx]
+    setSubFieldForm({
+      ...subField,
+      enum_options: subField.enum_options || [],
+      validation_refs: subField.validation_refs || [],
+      conditions: subField.conditions || {}
+    })
+  }
+
+  const saveSubFieldForm = () => {
+    if (!subFieldForm || !subFieldForm.path || !subFieldForm.label) {
+      alert("Sub-field path and label are required.")
+      return
+    }
+
+    const currentSchema = [...(fieldForm.schema || [])]
+    const updatedSubField = {
+      ...subFieldForm,
+      default_question: subFieldForm.default_question || `What is the ${subFieldForm.label.toLowerCase()}?`,
+      clarification_question: subFieldForm.clarification_question || `Please provide details for the ${subFieldForm.label.toLowerCase()}.`,
+    }
+
+    currentSchema[editingSubFieldIdx!] = updatedSubField
+
+    setFieldForm(prev => ({
+      ...prev,
+      schema: currentSchema
+    }))
+    setEditingSubFieldIdx(null)
+    setSubFieldForm(null)
+  }
+
+  const deleteSubField = (idx: number) => {
+    const currentSchema = (fieldForm.schema || []).filter((_, i) => i !== idx)
+    setFieldForm(prev => ({
+      ...prev,
+      schema: currentSchema
+    }))
+  }
+
+  const reorderSubField = (idx: number, direction: 'up' | 'down') => {
+    const currentSchema = [...(fieldForm.schema || [])]
+    if (direction === 'up' && idx > 0) {
+      const temp = currentSchema[idx]
+      currentSchema[idx] = currentSchema[idx - 1]
+      currentSchema[idx - 1] = temp
+    } else if (direction === 'down' && idx < currentSchema.length - 1) {
+      const temp = currentSchema[idx]
+      currentSchema[idx] = currentSchema[idx + 1]
+      currentSchema[idx + 1] = temp
+    }
+    setFieldForm(prev => ({
+      ...prev,
+      schema: currentSchema
     }))
   }
 
@@ -418,6 +501,16 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                         <Badge variant="outline" className="text-[10px] uppercase font-bold text-slate-400 border-slate-200">{field.type}</Badge>
                         {field.required && <Badge className="text-[9px] uppercase font-black bg-red-50 text-red-500 border border-red-100">Required</Badge>}
                         {field.repeated && <Badge className="text-[9px] uppercase font-black bg-purple-50 text-purple-500 border border-purple-100">List</Badge>}
+                        {field.type === 'object' && (
+                          <Badge className="text-[9px] uppercase font-black bg-indigo-50 text-indigo-650 border border-indigo-150">
+                            {field.schema?.length || 0} Properties
+                          </Badge>
+                        )}
+                        {field.type === 'list_of_objects' && (
+                          <Badge className="text-[9px] uppercase font-black bg-indigo-50 text-indigo-650 border border-indigo-150">
+                            List of ({field.schema?.length || 0} Properties)
+                          </Badge>
+                        )}
                       </div>
                       <code className="text-xs text-indigo-600 font-mono block mb-2">{field.path}</code>
                       <p className="text-xs text-slate-500">{field.help_text || 'No description help text provided.'}</p>
@@ -474,7 +567,12 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                       <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Field Data Type</label>
                       <select
                         value={fieldForm.type}
-                        onChange={e => setFieldForm(prev => ({ ...prev, type: e.target.value as any, enum_options: e.target.value === 'enum' ? prev.enum_options || [] : [] }))}
+                        onChange={e => setFieldForm(prev => {
+                          const type = e.target.value as any
+                          const schema = (type === 'object' || type === 'list_of_objects') ? (prev.schema || []) : undefined
+                          const enum_options = type === 'enum' ? (prev.enum_options || []) : []
+                          return { ...prev, type, schema, enum_options }
+                        })}
                         className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900"
                       >
                         <option value="string">String (Text)</option>
@@ -483,6 +581,8 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                         <option value="boolean">Boolean (Yes/No)</option>
                         <option value="integer">Integer (Number)</option>
                         <option value="number">Decimal Number</option>
+                        <option value="object">Object (Nested structure)</option>
+                        <option value="list_of_objects">List of Objects</option>
                       </select>
                     </div>
                     <div className="flex gap-4 items-center h-16 pt-3">
@@ -528,6 +628,212 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                           </Badge>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {(fieldForm.type === 'object' || fieldForm.type === 'list_of_objects') && (
+                    <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-3">
+                      <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                        <div>
+                          <label className="text-xs font-bold text-slate-800 uppercase tracking-wider block">Nested Properties Schema</label>
+                          <span className="text-[10px] text-slate-400">Define sub-fields for this complex field.</span>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          type="button"
+                          className="h-7 text-[10px] font-bold rounded-lg border-slate-200 text-slate-700 hover:bg-slate-50"
+                          onClick={startSubFieldAdd}
+                        >
+                          <Plus className="w-3 h-3 mr-1" /> Add Property
+                        </Button>
+                      </div>
+
+                      {/* Sub-field list */}
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {(fieldForm.schema || []).map((sub, sIdx) => (
+                          <div key={sIdx} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg border border-slate-100 text-xs">
+                            <div className="min-w-0 flex-grow pr-2">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-slate-800 truncate">{sub.label}</span>
+                                <Badge variant="outline" className="text-[8px] px-1 py-0 border-slate-200 text-slate-400 uppercase font-bold">{sub.type}</Badge>
+                                {sub.required && <Badge className="text-[7px] uppercase font-black bg-red-50 text-red-500 border border-red-100 py-0 px-1">REQ</Badge>}
+                              </div>
+                              <code className="text-[9px] text-indigo-650 font-mono truncate block">{sub.path}</code>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                disabled={sIdx === 0}
+                                onClick={() => reorderSubField(sIdx, 'up')}
+                                className="p-1 text-slate-450 hover:text-slate-700 hover:bg-slate-200 rounded disabled:opacity-30 cursor-pointer border-none bg-transparent"
+                              >
+                                ▲
+                              </button>
+                              <button
+                                type="button"
+                                disabled={sIdx === (fieldForm.schema || []).length - 1}
+                                onClick={() => reorderSubField(sIdx, 'down')}
+                                className="p-1 text-slate-455 hover:text-slate-700 hover:bg-slate-200 rounded disabled:opacity-30 cursor-pointer border-none bg-transparent"
+                              >
+                                ▼
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => startSubFieldEdit(sIdx)}
+                                className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-slate-200 rounded cursor-pointer border-none bg-transparent"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => deleteSubField(sIdx)}
+                                className="p-1 text-slate-400 hover:text-red-500 hover:bg-slate-200 rounded cursor-pointer border-none bg-transparent"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        {(!fieldForm.schema || fieldForm.schema.length === 0) && (
+                          <div className="text-center py-4 text-slate-400 italic text-[10px]">
+                            No sub-fields defined. Add at least one property.
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Inline Sub-field Editor Dialog/Panel */}
+                      {subFieldForm && (
+                        <div className="p-3 border border-indigo-100 bg-indigo-50/20 rounded-xl space-y-3 mt-2">
+                          <div className="flex justify-between items-center pb-1 border-b border-indigo-50">
+                            <span className="text-[10px] font-black text-indigo-900 uppercase">
+                              {editingSubFieldIdx === (fieldForm.schema || []).length ? 'Add Sub-Field' : 'Edit Sub-Field'}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => { setSubFieldForm(null); setEditingSubFieldIdx(null); }}
+                              className="text-slate-400 hover:text-slate-600 border-none bg-transparent cursor-pointer"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-0.5">
+                              <label className="text-[9px] font-black text-slate-450 uppercase">Sub Path</label>
+                              <Input
+                                value={subFieldForm.path}
+                                onChange={e => setSubFieldForm(prev => prev ? ({ ...prev, path: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '') }) : null)}
+                                placeholder="e.g. street"
+                                className="h-7 text-xs bg-white border-slate-200 rounded-lg"
+                              />
+                            </div>
+                            <div className="space-y-0.5">
+                              <label className="text-[9px] font-black text-slate-455 uppercase">Label</label>
+                              <Input
+                                value={subFieldForm.label}
+                                onChange={e => setSubFieldForm(prev => prev ? ({ ...prev, label: e.target.value }) : null)}
+                                placeholder="e.g. Street Address"
+                                className="h-7 text-xs bg-white border-slate-200 rounded-lg"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-0.5">
+                              <label className="text-[9px] font-black text-slate-450 uppercase">Type</label>
+                              <select
+                                value={subFieldForm.type}
+                                onChange={e => setSubFieldForm(prev => prev ? ({ ...prev, type: e.target.value as any, enum_options: e.target.value === 'enum' ? prev.enum_options || [] : [] }) : null)}
+                                className="w-full h-7 px-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none"
+                              >
+                                <option value="string">String (Text)</option>
+                                <option value="date">Date</option>
+                                <option value="enum">Enum (Options)</option>
+                                <option value="boolean">Boolean (Yes/No)</option>
+                                <option value="integer">Integer</option>
+                                <option value="number">Decimal Number</option>
+                                <option value="object">Object (Nested)</option>
+                                <option value="list_of_objects">List of Objects</option>
+                              </select>
+                            </div>
+                            <div className="flex items-center pt-3 pl-2">
+                              <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={subFieldForm.required}
+                                  onChange={e => setSubFieldForm(prev => prev ? ({ ...prev, required: e.target.checked }) : null)}
+                                  className="rounded border-slate-300 text-blue-650"
+                                />
+                                Required
+                              </label>
+                            </div>
+                          </div>
+
+                          {subFieldForm.type === 'enum' && (
+                            <div className="space-y-1.5">
+                              <label className="text-[8px] font-black text-slate-450 uppercase block">Enum Options</label>
+                              <div className="flex gap-1">
+                                <Input
+                                  value={newEnumOption}
+                                  onChange={e => setNewEnumOption(e.target.value)}
+                                  placeholder="e.g. primary"
+                                  className="h-6 text-[10px] bg-white border-slate-200 rounded"
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                      e.preventDefault();
+                                      if (newEnumOption.trim() && !subFieldForm.enum_options?.includes(newEnumOption.trim())) {
+                                        setSubFieldForm(prev => prev ? ({ ...prev, enum_options: [...(prev.enum_options || []), newEnumOption.trim()] }) : null);
+                                        setNewEnumOption('');
+                                      }
+                                    }
+                                  }}
+                                />
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-6 text-[9px] px-2 rounded font-bold"
+                                  onClick={() => {
+                                    if (newEnumOption.trim() && !subFieldForm.enum_options?.includes(newEnumOption.trim())) {
+                                      setSubFieldForm(prev => prev ? ({ ...prev, enum_options: [...(prev.enum_options || []), newEnumOption.trim()] }) : null);
+                                      setNewEnumOption('');
+                                    }
+                                  }}
+                                >
+                                  Add
+                                </Button>
+                              </div>
+                              <div className="flex flex-wrap gap-1 pt-1">
+                                {subFieldForm.enum_options?.map(opt => (
+                                  <Badge key={opt} variant="secondary" className="bg-slate-100 text-slate-650 flex items-center gap-1.5 py-0.5 px-2 text-[9px]">
+                                    {opt}
+                                    <X
+                                      className="w-2.5 h-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                      onClick={() => setSubFieldForm(prev => prev ? ({ ...prev, enum_options: (prev.enum_options || []).filter(o => o !== opt) }) : null)}
+                                    />
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Subfield sub-schema (recursive info) */}
+                          {(subFieldForm.type === 'object' || subFieldForm.type === 'list_of_objects') && (
+                            <div className="p-2 border border-dashed border-indigo-200 rounded-lg bg-indigo-50/10 text-[10px] text-indigo-700">
+                              ℹ️ This sub-field can also contain child schema properties! Direct JSON edits or visual tree builder support nested properties recursively.
+                            </div>
+                          )}
+
+                          <Button
+                            size="sm"
+                            type="button"
+                            className="w-full h-8 bg-indigo-650 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs"
+                            onClick={saveSubFieldForm}
+                          >
+                            Save Sub-Property
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
 

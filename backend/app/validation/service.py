@@ -4,6 +4,7 @@ import copy
 import json
 import re
 from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 from fastapi import HTTPException, status
@@ -49,6 +50,170 @@ def serialize_issue(record: ValidationIssueRecord) -> ValidationIssuePayload:
         metadata=record.issue_metadata,
         created_at=record.created_at,
     )
+
+
+def validate_nested_value(
+    parent_path: str,
+    field: TemplateField,
+    value: Any,
+    add_issue_callback,
+) -> None:
+    if value in (None, "", []):
+        return
+
+    if field.type == "list_of_objects":
+        if not isinstance(value, list):
+            add_issue_callback(
+                field_path=parent_path,
+                rule_id="type_mismatch",
+                message="Value must be a list of objects.",
+            )
+            return
+
+        object_helper_field = field.model_copy(update={"type": "object"})
+        for item in value:
+            validate_nested_value(
+                parent_path=parent_path,
+                field=object_helper_field,
+                value=item,
+                add_issue_callback=add_issue_callback,
+            )
+        return
+
+    if field.type == "object":
+        if not isinstance(value, dict):
+            add_issue_callback(
+                field_path=parent_path,
+                rule_id="type_mismatch",
+                message="Value must be an object.",
+            )
+            return
+
+        nested_schema = field.nested_schema or []
+        for sub_field in nested_schema:
+            sub_key = sub_field.path
+            leaf_key = sub_key.split(".")[-1]
+
+            sub_val = None
+            for k in [sub_key, leaf_key]:
+                if k in value:
+                    sub_val = value[k]
+                    break
+
+            if sub_field.required and (sub_val in (None, "", [])):
+                add_issue_callback(
+                    field_path=parent_path,
+                    rule_id="required",
+                    message=f"[{sub_field.label}] Required field is missing.",
+                    suggested_fix=sub_field.default_question,
+                )
+                continue
+
+            if sub_val in (None, "", []):
+                continue
+
+            items_to_validate = (
+                sub_val
+                if sub_field.repeated and isinstance(sub_val, list)
+                else [sub_val]
+            )
+
+            for val in items_to_validate:
+                if sub_field.type == "enum" and val not in sub_field.enum_options:
+                    msg = f"[{sub_field.label}] Value '{val}' is not in the allowed enum set."
+                    add_issue_callback(
+                        field_path=parent_path,
+                        rule_id="enum",
+                        message=msg,
+                        suggested_fix=f"Choose one of: {', '.join(sub_field.enum_options)}",
+                    )
+                elif sub_field.type == "date" and not re.match(
+                    r"^\d{4}-\d{2}-\d{2}$", str(val)
+                ):
+                    add_issue_callback(
+                        field_path=parent_path,
+                        rule_id="date",
+                        message=f"[{sub_field.label}] Date must use YYYY-MM-DD format.",
+                    )
+                elif sub_field.type == "boolean" and not isinstance(val, bool):
+                    add_issue_callback(
+                        field_path=parent_path,
+                        rule_id="boolean",
+                        message=f"[{sub_field.label}] Value must be true or false.",
+                    )
+                elif sub_field.type == "integer" and not isinstance(val, int):
+                    add_issue_callback(
+                        field_path=parent_path,
+                        rule_id="integer",
+                        message=f"[{sub_field.label}] Value must be an integer.",
+                    )
+                elif sub_field.type == "number" and not isinstance(val, (int, float)):
+                    add_issue_callback(
+                        field_path=parent_path,
+                        rule_id="number",
+                        message=f"[{sub_field.label}] Value must be numeric.",
+                    )
+                elif sub_field.type in ("object", "list_of_objects"):
+                    validate_nested_value(
+                        parent_path=parent_path,
+                        field=sub_field,
+                        value=val,
+                        add_issue_callback=add_issue_callback,
+                    )
+
+                for rule_ref in sub_field.validation_refs:
+                    if (
+                        rule_ref == "email"
+                        and val
+                        and not re.match(r"^[^@]+@[^@]+\.[^@]+$", str(val))
+                    ):
+                        add_issue_callback(
+                            field_path=parent_path,
+                            rule_id="email",
+                            message=f"[{sub_field.label}] Email format is invalid.",
+                        )
+                    elif (
+                        rule_ref == "phone"
+                        and val
+                        and not re.match(r"^[0-9+()\- ]{10,15}$", str(val))
+                    ):
+                        add_issue_callback(
+                            field_path=parent_path,
+                            rule_id="phone",
+                            message=f"[{sub_field.label}] Phone format is invalid.",
+                        )
+                    elif rule_ref.startswith("regex:"):
+                        pattern = rule_ref.split(":", maxsplit=1)[1]
+                        try:
+                            compiled = re.compile(pattern)
+                            if val and not compiled.match(str(val)):
+                                add_issue_callback(
+                                    field_path=parent_path,
+                                    rule_id="regex",
+                                    message=f"[{sub_field.label}] Field format is invalid.",
+                                )
+                        except re.error:
+                            pass
+                    elif rule_ref.startswith("min:") and isinstance(val, (int, float)):
+                        threshold = float(rule_ref.split(":", maxsplit=1)[1])
+                        if float(val) < threshold:
+                            add_issue_callback(
+                                field_path=parent_path,
+                                rule_id="min",
+                                message=f"[{sub_field.label}] Value must be at least {threshold}.",
+                            )
+                    elif rule_ref.startswith("min_length:"):
+                        threshold = int(rule_ref.split(":", maxsplit=1)[1])
+                        if len(str(val).strip()) < threshold:
+                            msg = (
+                                f"[{sub_field.label}] Value must be at "
+                                f"least {threshold} characters long."
+                            )
+                            add_issue_callback(
+                                field_path=parent_path,
+                                rule_id="min_length",
+                                message=msg,
+                            )
 
 
 async def refresh_validation_issues(
@@ -130,6 +295,10 @@ async def refresh_validation_issues(
             )
             continue
         if value in (None, "", []):
+            continue
+
+        if template_field.type in ("object", "list_of_objects"):
+            validate_nested_value(field_path, template_field, value, add_issue)
             continue
 
         items_to_validate = (
@@ -261,6 +430,24 @@ async def edit_field(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Field not found"
         )
+
+    # Coerce the edited value using the template schema definition if available
+    case_record = await session.get(CaseFileRecord, case_id)
+    if case_record is not None:
+        from app.templates.service import get_template, serialize_template
+
+        template_record = await get_template(
+            session, case_record.template_id, case_record.template_version
+        )
+        if template_record is not None:
+            template = serialize_template(template_record)
+            target_field = next(
+                (f for f in template.template_schema if f.path == field_path), None
+            )
+            if target_field is not None:
+                from app.extraction.service import coerce_candidate_value
+
+                payload.value = coerce_candidate_value(target_field, payload.value)
 
     storage = get_storage_service()
     if isinstance(payload.value, (dict, list)):

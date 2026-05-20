@@ -31,7 +31,7 @@ export type JobStatus = 'queued' | 'running' | 'completed' | 'failed'
 export interface TemplateField {
   path: string
   label: string
-  type: 'string' | 'date' | 'enum' | 'boolean' | 'integer' | 'number'
+  type: 'string' | 'date' | 'enum' | 'boolean' | 'integer' | 'number' | 'object' | 'list_of_objects'
   required: boolean
   repeated: boolean
   enum_options: string[]
@@ -41,6 +41,7 @@ export interface TemplateField {
   conditions?: Record<string, any>
   validation_refs?: string[]
   calculation?: string | null
+  schema?: TemplateField[]
 }
 
 export interface TemplateFieldGroup {

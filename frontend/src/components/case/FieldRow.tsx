@@ -23,6 +23,84 @@ import {
 } from '@/lib/api'
 import { useTranslation } from 'react-i18next'
 
+export function RenderNestedObject({ value, schema }: { value: unknown; schema?: TemplateField[] }) {
+  if (value === null || value === undefined || typeof value !== 'object') {
+    return <span className="text-slate-400 italic">Empty object</span>
+  }
+
+  const obj = value as Record<string, unknown>
+  const schemaFields = schema || []
+
+  // If no schema fields are defined, just render raw key-value pairs
+  const keysToRender = schemaFields.length > 0
+    ? schemaFields.map(f => ({ path: f.path, label: f.label, leaf: f.path.split('.').pop() || '', field: f }))
+    : Object.keys(obj).map(k => ({ path: k, label: k.replace(/_/g, ' '), leaf: k, field: undefined }))
+
+  return (
+    <div className="pl-3 py-2 border-l border-slate-100/80 space-y-1.5 bg-slate-50/50 rounded-r-xl pr-3 my-1">
+      {keysToRender.map(({ path, label, leaf, field }) => {
+        const subVal = obj[path] !== undefined ? obj[path] : obj[leaf]
+        const hasVal = subVal !== undefined && subVal !== null && subVal !== ''
+
+        return (
+          <div key={path} className="flex flex-col text-[11px] leading-tight">
+            <div className="flex items-center space-x-1.5">
+              <span className="font-extrabold text-slate-500 text-[10px] tracking-wide uppercase">{label}:</span>
+              {!hasVal && <span className="text-slate-300 italic text-[10px]">(not provided)</span>}
+            </div>
+            {hasVal && (
+              <div className="pl-2 mt-0.5 text-slate-800 font-bold font-mono">
+                {field && (field.type === 'object' || field.type === 'list_of_objects') ? (
+                  field.type === 'object' ? (
+                    <RenderNestedObject value={subVal} schema={field.schema} />
+                  ) : (
+                    <RenderListOfObjects value={subVal} schema={field.schema} />
+                  )
+                ) : Array.isArray(subVal) ? (
+                  <div className="flex flex-wrap gap-1 mt-0.5">
+                    {subVal.map((item, i) => (
+                      <span key={i} className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[9px] font-extrabold">
+                        {String(item)}
+                      </span>
+                    ))}
+                  </div>
+                ) : typeof subVal === 'boolean' ? (
+                  <span className={subVal ? "text-green-600 font-extrabold text-[10px] uppercase" : "text-slate-500 font-extrabold text-[10px] uppercase"}>
+                    {subVal ? 'true' : 'false'}
+                  </span>
+                ) : (
+                  <span className="text-slate-800 text-[11px] font-sans break-all">{String(subVal)}</span>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+export function RenderListOfObjects({ value, schema }: { value: unknown; schema?: TemplateField[] }) {
+  if (!Array.isArray(value) || value.length === 0) {
+    return <span className="text-slate-400 italic">Empty list</span>
+  }
+
+  return (
+    <div className="space-y-2 mt-1">
+      {value.map((item, idx) => (
+        <div key={idx} className="relative border border-slate-100 bg-white rounded-xl shadow-xs p-2 overflow-hidden hover:border-blue-100 transition-colors">
+          <div className="absolute top-0 right-0 bg-slate-50 border-bl border-slate-100 text-[8px] font-black text-slate-400 px-2 py-0.5 rounded-bl-lg uppercase tracking-wider">
+            Item #{idx + 1}
+          </div>
+          <div className="mt-1">
+            <RenderNestedObject value={item} schema={schema} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // Helper: check if field has resolved value
 export function hasResolvedValue(value: unknown): boolean {
   if (value === null || value === undefined) {
@@ -111,6 +189,9 @@ function getReadablePattern(pattern: string): string {
 function formatDraftValue(field: TemplateField, value: unknown): string {
   if (value === null || value === undefined) {
     return ''
+  }
+  if (field.type === 'object' || field.type === 'list_of_objects') {
+    return JSON.stringify(value, null, 2)
   }
   if (field.repeated && Array.isArray(value)) {
     return value.map((item) => String(item)).join(', ')
@@ -336,6 +417,24 @@ export function FieldRow({
 
   const normalizeDraftValue = (): { value: any; error: string | null } => {
     const raw = draftValue.trim()
+    if (field.type === 'object' || field.type === 'list_of_objects') {
+      if (!raw) {
+        return { value: field.type === 'object' ? {} : [], error: field.required ? t('validation_required', { defaultValue: 'This field is required.' }) : null }
+      }
+      try {
+        const parsed = JSON.parse(raw)
+        if (field.type === 'object' && (typeof parsed !== 'object' || Array.isArray(parsed) || parsed === null)) {
+          return { value: null, error: t('validation_must_be_object', { defaultValue: 'Value must be a valid JSON object.' }) }
+        }
+        if (field.type === 'list_of_objects' && !Array.isArray(parsed)) {
+          return { value: null, error: t('validation_must_be_array', { defaultValue: 'Value must be a valid JSON array.' }) }
+        }
+        return { value: parsed, error: null }
+      } catch (err: any) {
+        return { value: null, error: t('validation_invalid_json', { defaultValue: `Invalid JSON: ${err.message}` }) }
+      }
+    }
+
     if (field.repeated) {
       const tokens = raw ? raw.split(',').map((t) => t.trim()).filter(Boolean) : []
       const parsed: any[] = []
@@ -418,7 +517,11 @@ export function FieldRow({
               </div>
               <div className="text-[15px] font-bold text-slate-900 tabular-nums">
                 {hasResolvedValue(state?.resolved_value) ? (
-                  Array.isArray(state?.resolved_value) ? (
+                  field.type === 'object' ? (
+                    <RenderNestedObject value={state?.resolved_value} schema={field.schema} />
+                  ) : field.type === 'list_of_objects' ? (
+                    <RenderListOfObjects value={state?.resolved_value} schema={field.schema} />
+                  ) : Array.isArray(state?.resolved_value) ? (
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {state.resolved_value.map((val: any, idx: number) => (
                         <Badge key={idx} variant="secondary" className="bg-slate-100 text-slate-800 py-0.5 px-2 font-bold text-xs rounded-lg border-slate-200">
@@ -436,7 +539,19 @@ export function FieldRow({
 
               {isEditing && (
                 <div className="mt-3 space-y-2">
-                  {field.type === 'enum' && !field.repeated ? (
+                  {field.type === 'object' || field.type === 'list_of_objects' ? (
+                    <textarea
+                      value={draftValue}
+                      onChange={(e) => setDraftValue(e.target.value)}
+                      placeholder={t('edit_json_placeholder', { defaultValue: 'Enter valid JSON' })}
+                      aria-invalid={!!editError}
+                      rows={6}
+                      className={cn(
+                        "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-200",
+                        editError && "border-red-300 focus:ring-red-200"
+                      )}
+                    />
+                  ) : field.type === 'enum' && !field.repeated ? (
                     <select
                       className={cn(
                         "h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-200",

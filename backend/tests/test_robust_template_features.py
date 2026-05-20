@@ -312,3 +312,181 @@ def test_integration_features_via_api(client: TestClient) -> None:
     # "hi" in repeated tags is shorter than min_length=3
     assert "tags" in issues2_map
     assert issues2_map["tags"]["rule_id"] == "min_length"
+
+
+def test_nested_objects_coercion_and_validation() -> None:
+    # 1. Coercion of nested object
+    nested_fields = [
+        TemplateField(
+            path="street",
+            label="Street Address",
+            type="string",
+            required=True,
+            default_question="",
+            clarification_question="",
+        ),
+        TemplateField(
+            path="zip",
+            label="Zip Code",
+            type="integer",
+            required=True,
+            default_question="",
+            clarification_question="",
+        ),
+        TemplateField(
+            path="is_primary",
+            label="Is Primary",
+            type="boolean",
+            required=False,
+            default_question="",
+            clarification_question="",
+        ),
+    ]
+
+    object_field = TemplateField(
+        path="address",
+        label="Address",
+        type="object",
+        schema=nested_fields,
+        default_question="What is the address?",
+        clarification_question="What is the address?",
+    )
+
+    # Test coercion with dict
+    input_dict = {"street": "123 Main St", "zip": "10001", "is_primary": "yes"}
+    expected_coerced = {"street": "123 Main St", "zip": 10001, "is_primary": True}
+    assert coerce_candidate_value(object_field, input_dict) == expected_coerced
+
+    # Test coercion with JSON string
+    import json
+
+    input_json = json.dumps(input_dict)
+    assert coerce_candidate_value(object_field, input_json) == expected_coerced
+
+
+def test_list_of_objects_coercion() -> None:
+    # Coercion of list of objects
+    nested_fields = [
+        TemplateField(
+            path="item_name",
+            label="Item Name",
+            type="string",
+            required=True,
+            default_question="",
+            clarification_question="",
+        ),
+        TemplateField(
+            path="quantity",
+            label="Quantity",
+            type="integer",
+            required=True,
+            default_question="",
+            clarification_question="",
+        ),
+    ]
+
+    list_field = TemplateField(
+        path="line_items",
+        label="Line Items",
+        type="list_of_objects",
+        schema=nested_fields,
+        default_question="What are the items?",
+        clarification_question="What are the items?",
+    )
+
+    input_list = [
+        {"item_name": "Widget A", "quantity": "10"},
+        {"item_name": "Widget B", "quantity": 5},
+    ]
+    expected_coerced = [
+        {"item_name": "Widget A", "quantity": 10},
+        {"item_name": "Widget B", "quantity": 5},
+    ]
+    assert coerce_candidate_value(list_field, input_list) == expected_coerced
+
+
+def test_integration_nested_fields_api(client: TestClient) -> None:
+    import uuid
+
+    t_id = f"test-nested-{uuid.uuid4().hex[:8]}"
+
+    template_payload = {
+        "template_id": t_id,
+        "template_version": 1,
+        "name": "Nested Test Template",
+        "domain": "testing",
+        "description": "Integration testing template for nested fields.",
+        "schema": [
+            {
+                "path": "billing_address",
+                "label": "Billing Address",
+                "type": "object",
+                "required": True,
+                "default_question": "Enter billing address",
+                "clarification_question": "Clarify billing address",
+                "schema": [
+                    {
+                        "path": "street",
+                        "label": "Street",
+                        "type": "string",
+                        "required": True,
+                        "default_question": "",
+                        "clarification_question": "",
+                    },
+                    {
+                        "path": "zip",
+                        "label": "Zip",
+                        "type": "integer",
+                        "required": True,
+                        "default_question": "",
+                        "clarification_question": "",
+                    },
+                ],
+            }
+        ],
+        "field_groups": [
+            {
+                "group_id": "main",
+                "label": "Main",
+                "field_paths": ["billing_address"],
+            }
+        ],
+    }
+
+    # Create custom template with nested fields
+    create_resp = client.post("/api/v1/templates", json=template_payload)
+    assert create_resp.status_code == 201
+
+    # Create case
+    create_case_resp = client.post(
+        "/api/v1/cases",
+        json={"template_id": t_id, "created_by": "test-runner"},
+    )
+    assert create_case_resp.status_code == 201
+    case_id = create_case_resp.json()["case_id"]
+
+    # initially missing
+    case_detail_resp = client.get(f"/api/v1/cases/{case_id}")
+    fields_map = {f["field_path"]: f for f in case_detail_resp.json()["field_states"]}
+    assert fields_map["billing_address"]["status"] == "missing"
+
+    # Edit with valid address
+    valid_address = {"street": "456 Oak Rd", "zip": "90210"}
+    edit_resp = client.post(
+        f"/api/v1/cases/{case_id}/fields/billing_address/edit",
+        json={"value": valid_address, "edited_by": "tester"},
+    )
+    assert edit_resp.status_code == 200
+
+    # Verify coerced value inside case detail
+    case_detail_resp2 = client.get(f"/api/v1/cases/{case_id}")
+    fields_map2 = {f["field_path"]: f for f in case_detail_resp2.json()["field_states"]}
+    assert fields_map2["billing_address"]["resolved_value"] == {
+        "street": "456 Oak Rd",
+        "zip": 90210,
+    }
+
+    # Check validation - should be valid
+    val_resp = client.get(f"/api/v1/cases/{case_id}/validation")
+    assert val_resp.status_code == 200
+    assert len(val_resp.json()) == 0

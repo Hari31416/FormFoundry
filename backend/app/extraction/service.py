@@ -196,24 +196,111 @@ def coerce_candidate_value(field: TemplateField, value: Any) -> Any | None:
             return None
     if field.type == "enum":
         return normalize_enum_value(value, field.enum_options)
+    if field.type == "object":
+        dict_val = None
+        if isinstance(value, dict):
+            dict_val = value
+        elif isinstance(value, str):
+            val_str = value.strip()
+            try:
+                import json
+
+                parsed = json.loads(val_str)
+                if isinstance(parsed, dict):
+                    dict_val = parsed
+            except Exception:
+                pass
+
+        if not isinstance(dict_val, dict):
+            return None
+
+        result = {}
+        nested_schema = field.nested_schema or []
+        for sub_field in nested_schema:
+            sub_key = sub_field.path
+            leaf_key = sub_key.split(".")[-1]
+
+            sub_val = None
+            found_key = None
+            for k in [sub_key, leaf_key]:
+                if k in dict_val:
+                    sub_val = dict_val[k]
+                    found_key = k
+                    break
+
+            coerced_sub = coerce_candidate_value(sub_field, sub_val)
+            result_key = found_key if found_key is not None else leaf_key
+            result[result_key] = coerced_sub
+
+        # Preserve other keys
+        defined_keys = {sub_field.path for sub_field in nested_schema} | {
+            sub_field.path.split(".")[-1] for sub_field in nested_schema
+        }
+        for k, v in dict_val.items():
+            if k not in defined_keys:
+                result[k] = v
+        return result
+
+    if field.type == "list_of_objects":
+        list_val = None
+        if isinstance(value, list):
+            list_val = value
+        elif isinstance(value, str):
+            val_str = value.strip()
+            try:
+                import json
+
+                parsed = json.loads(val_str)
+                if isinstance(parsed, list):
+                    list_val = parsed
+            except Exception:
+                pass
+
+        if not isinstance(list_val, list):
+            return None
+
+        coerced_list = []
+        object_helper_field = field.model_copy(
+            update={"type": "object", "repeated": False}
+        )
+        for item in list_val:
+            coerced_item = coerce_candidate_value(object_helper_field, item)
+            if coerced_item is not None:
+                coerced_list.append(coerced_item)
+        return coerced_list
+
     return value
+
+
+def format_field_catalog_item(field: TemplateField, indent: int = 0) -> str:
+    indent_str = "  " * indent
+    required = "required" if field.required else "optional"
+    repeated = " (repeated list)" if field.repeated else ""
+    enum_options = (
+        f" Allowed values: {', '.join(field.enum_options)}."
+        if field.enum_options
+        else ""
+    )
+    help_text = f" Help: {field.help_text}." if field.help_text else ""
+
+    desc = f"{field.label} ({field.type}{repeated}, {required})"
+    line = f"{indent_str}- {field.path}: {desc}.{enum_options}{help_text}"
+
+    nested_schema = field.nested_schema or []
+    if field.type in ("object", "list_of_objects") and nested_schema:
+        sub_lines = [line]
+        sub_lines.append(f"{indent_str}  Properties structure for {field.path}:")
+        for sub_field in nested_schema:
+            sub_lines.append(format_field_catalog_item(sub_field, indent + 2))
+        return "\n".join(sub_lines)
+
+    return line
 
 
 def format_field_catalog(template: TemplateDefinition) -> str:
     lines: list[str] = []
     for field in template.template_schema:
-        required = "required" if field.required else "optional"
-        repeated = " (repeated list)" if field.repeated else ""
-        enum_options = (
-            f" Allowed values: {', '.join(field.enum_options)}."
-            if field.enum_options
-            else ""
-        )
-        help_text = f" Help: {field.help_text}." if field.help_text else ""
-        lines.append(
-            f"- {field.path}: {field.label} ({field.type}{repeated}, {required})."
-            f"{enum_options}{help_text}"
-        )
+        lines.append(format_field_catalog_item(field))
     return "\n".join(lines)
 
 
