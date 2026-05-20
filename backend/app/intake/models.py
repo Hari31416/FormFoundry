@@ -18,6 +18,7 @@ class EvidenceSourceType(StrEnum):
     CHAT_ANSWER = "chat_answer"
     PDF_UPLOAD = "pdf_upload"
     IMAGE_UPLOAD = "image_upload"
+    FIELD_EDIT = "field_edit"
 
 
 class EvidencePayload(BaseModel):

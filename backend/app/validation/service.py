@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import copy
+import json
 import re
 from datetime import UTC, datetime
+from uuid import uuid4
 
 from fastapi import HTTPException, status
 from sqlalchemy import delete, select
@@ -18,8 +20,10 @@ from app.cases.models import (
 )
 from app.cases.service import get_case_detail, serialize_case
 from app.extraction.models import FieldCandidateRecord
+from app.intake.models import EvidenceRecord, EvidenceSourceType
 from app.intake.service import list_case_evidence
 from app.resolution.service import assign_nested_value
+from app.storage.minio import get_storage_service
 from app.templates.models import TemplateDefinitionRecord, TemplateField
 from app.templates.runtime import is_field_active
 from app.validation.models import (
@@ -258,6 +262,37 @@ async def edit_field(
             status_code=status.HTTP_404_NOT_FOUND, detail="Field not found"
         )
 
+    storage = get_storage_service()
+    if isinstance(payload.value, (dict, list)):
+        rendered_value = json.dumps(payload.value, ensure_ascii=True)
+    else:
+        rendered_value = str(payload.value)
+    raw_text = f"Manual edit: {field_path} = {rendered_value}"
+    object_key = f"cases/{case_id}/edits/{uuid4()}-{payload.edited_by}-field-edit.txt"
+    stored = await storage.store_bytes(
+        object_key=object_key,
+        payload=raw_text.encode("utf-8"),
+        content_type="text/plain",
+    )
+    record = EvidenceRecord(
+        case_id=case_id,
+        source_type=EvidenceSourceType.FIELD_EDIT,
+        source_subtype="manual_edit",
+        storage_uri=stored.storage_uri,
+        raw_text=raw_text,
+        parsed_payload={"field_path": field_path, "value": payload.value},
+        evidence_metadata={"content_type": stored.content_type},
+        source_refs=[],
+        created_by=payload.edited_by,
+    )
+    session.add(record)
+    await session.flush()
+
+    existing_ids = list(field_state.source_evidence_ids or [])
+    field_state.source_evidence_ids = [
+        record.evidence_id,
+        *[eid for eid in existing_ids if eid != record.evidence_id],
+    ]
     field_state.resolved_value = payload.value
     field_state.status = FieldStateStatus.CONFIRMED
     field_state.confidence = 1.0

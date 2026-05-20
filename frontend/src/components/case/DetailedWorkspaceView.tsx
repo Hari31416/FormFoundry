@@ -40,6 +40,7 @@ interface DetailedWorkspaceViewProps {
   confirmFieldMutation: any
   rejectFieldMutation: any
   bulkConfirmMutation: any
+  onEditField: (path: string, value: any) => Promise<void>
   isEvidenceModalOpen: boolean
   setIsEvidenceModalOpen: (open: boolean) => void
   uploadFileMutation: any
@@ -77,6 +78,7 @@ export function DetailedWorkspaceView({
   confirmFieldMutation,
   rejectFieldMutation,
   bulkConfirmMutation,
+  onEditField,
   isEvidenceModalOpen,
   setIsEvidenceModalOpen,
   uploadFileMutation,
@@ -103,6 +105,7 @@ export function DetailedWorkspaceView({
   unreviewedProposedCount
 }: DetailedWorkspaceViewProps) {
   const { t } = useTranslation()
+  const validationRules = caseDetail?.template.validation_rules ?? []
   return (
     <>
       <section className="flex-1 min-h-0 flex flex-col bg-white overflow-hidden">
@@ -191,6 +194,8 @@ export function DetailedWorkspaceView({
                               allEvidence={evidence || []}
                               onConfirm={(p) => confirmFieldMutation.mutate(p)}
                               onReject={(p) => onLocalReject(p)}
+                              onEdit={onEditField}
+                              validationRules={validationRules}
                               isLocallyRejected={localRejectedFields.has(path)}
                               onUndoReject={onUndoLocalReject}
                             />

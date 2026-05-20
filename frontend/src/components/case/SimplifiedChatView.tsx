@@ -55,6 +55,7 @@ interface SimplifiedChatViewProps {
   confirmFieldMutation: any
   rejectFieldMutation: any
   bulkConfirmMutation: any
+  onEditField: (path: string, value: any) => Promise<void>
   isApproveReady: boolean
   approveCaseMutation: any
   artifacts: any[] | undefined
@@ -92,6 +93,7 @@ export function SimplifiedChatView({
   confirmFieldMutation,
   rejectFieldMutation,
   bulkConfirmMutation,
+  onEditField,
   isApproveReady,
   approveCaseMutation,
   artifacts,
@@ -110,6 +112,7 @@ export function SimplifiedChatView({
   unreviewedProposedCount
 }: SimplifiedChatViewProps) {
   const { t } = useTranslation()
+  const validationRules = caseDetail?.template.validation_rules ?? []
   // Find the index of the latest assistant message to attach active question decorations
   const lastAssistantIdx = React.useMemo(() => {
     for (let i = mergedMessages.length - 1; i >= 0; i--) {
@@ -352,6 +355,8 @@ export function SimplifiedChatView({
                           allEvidence={evidence || []}
                           onConfirm={(p) => confirmFieldMutation.mutate(p)}
                           onReject={(p) => onLocalReject(p)}
+                          onEdit={onEditField}
+                          validationRules={validationRules}
                           isLocallyRejected={localRejectedFields.has(path)}
                           onUndoReject={onUndoLocalReject}
                         />

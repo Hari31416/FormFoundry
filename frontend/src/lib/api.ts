@@ -50,6 +50,12 @@ export interface TemplateFieldGroup {
   field_paths: string[]
 }
 
+export interface ValidationRule {
+  rule_id: string
+  type: string
+  pattern?: string
+}
+
 export interface TemplateDefinition {
   template_id: string
   template_version: number
@@ -70,11 +76,7 @@ export interface TemplateDefinition {
     template_asset?: string
     pdf_title?: string
   }
-  validation_rules?: Array<{
-    rule_id: string
-    type: string
-    pattern?: string
-  }>
+  validation_rules?: ValidationRule[]
 }
 
 export interface FieldState {

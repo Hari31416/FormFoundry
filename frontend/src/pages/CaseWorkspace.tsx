@@ -21,6 +21,7 @@ import {
   approveCase,
   bulkRejectFields,
   confirmField,
+  editField,
   generateArtifact,
   getArtifacts,
   getCase,
@@ -401,6 +402,27 @@ export default function CaseWorkspace() {
     },
   })
 
+  const editFieldMutation = useMutation({
+    mutationFn: ({ fieldPath, value }: { fieldPath: string; value: any }) =>
+      editField(caseId!, fieldPath, value),
+    onSuccess: (_, variables) => {
+      setLocalRejectedFields((prev) => {
+        const next = new Set(prev)
+        next.delete(variables.fieldPath)
+        return next
+      })
+      queryClient.invalidateQueries({ queryKey: ['case', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['turns', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['validation', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['next-question', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['evidence', caseId] })
+    },
+  })
+
+  const handleEditField = async (fieldPath: string, value: any) => {
+    await editFieldMutation.mutateAsync({ fieldPath, value })
+  }
+
   const bulkConfirmMutation = useMutation({
     mutationFn: async (fieldPaths: string[]) => {
       await Promise.all(fieldPaths.map((path) => confirmField(caseId!, path)))
@@ -672,6 +694,7 @@ export default function CaseWorkspace() {
             approveCaseMutation={approveMutation}
             artifacts={artifacts}
             generateArtifactMutation={generateMutation}
+            onEditField={handleEditField}
             chatInput={chatInput}
             setChatInput={setChatInput}
             submitTurnMutation={submitTurnMutation}
@@ -697,6 +720,7 @@ export default function CaseWorkspace() {
               confirmFieldMutation={confirmFieldMutation}
               rejectFieldMutation={rejectFieldMutation}
               bulkConfirmMutation={bulkConfirmMutation}
+              onEditField={handleEditField}
               isEvidenceModalOpen={isEvidenceModalOpen}
               setIsEvidenceModalOpen={setIsEvidenceModalOpen}
               uploadFileMutation={uploadFileMutation}

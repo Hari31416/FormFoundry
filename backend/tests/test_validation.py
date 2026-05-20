@@ -36,6 +36,27 @@ def fill_required_fields(client: TestClient, case_id: str) -> None:
         assert response.status_code == 200
 
 
+def test_edit_field_updates_source_provenance(client: TestClient) -> None:
+    case_id = create_case(client)
+    field_path = "complainant.full_name"
+    edit_response = client.post(
+        f"/api/v1/cases/{case_id}/fields/{field_path}/edit",
+        json={"value": "Priya Sharma", "edited_by": "validation-test"},
+    )
+    assert edit_response.status_code == 200
+    field_state = edit_response.json()
+    evidence_ids = field_state["source_evidence_ids"]
+    assert evidence_ids
+
+    evidence_response = client.get(f"/api/v1/cases/{case_id}/evidence")
+    assert evidence_response.status_code == 200
+    evidence_map = {item["evidence_id"]: item for item in evidence_response.json()}
+    evidence = evidence_map[evidence_ids[0]]
+    assert evidence["source_type"] == "field_edit"
+    assert evidence["source_subtype"] == "manual_edit"
+    assert field_path in (evidence.get("raw_text") or "")
+
+
 def test_validation_and_review_show_blocking_issues(client: TestClient) -> None:
     case_id = create_case(client)
 

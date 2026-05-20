@@ -5,9 +5,11 @@ import {
   CheckCircle2,
   Quote,
   Check,
-  Lock
+  Lock,
+  Pencil
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -16,7 +18,8 @@ import {
   TemplateField,
   FieldState,
   FieldStatus,
-  Evidence
+  Evidence,
+  ValidationRule
 } from '@/lib/api'
 import { useTranslation } from 'react-i18next'
 
@@ -95,6 +98,29 @@ export function EvidenceQuote({ ev }: { ev: Evidence }) {
   )
 }
 
+function getReadablePattern(pattern: string): string {
+  if (pattern === '^\\d{4}-\\d{2}-\\d{2}$') {
+    return 'YYYY-MM-DD'
+  }
+  if (pattern === '^\\d{2}-\\d{2}-\\d{4}$') {
+    return 'DD-MM-YYYY'
+  }
+  return pattern
+}
+
+function formatDraftValue(field: TemplateField, value: unknown): string {
+  if (value === null || value === undefined) {
+    return ''
+  }
+  if (field.repeated && Array.isArray(value)) {
+    return value.map((item) => String(item)).join(', ')
+  }
+  if (typeof value === 'boolean') {
+    return value ? 'true' : 'false'
+  }
+  return String(value)
+}
+
 interface FieldRowProps {
   field: TemplateField
   state: FieldState | undefined
@@ -102,6 +128,8 @@ interface FieldRowProps {
   allEvidence: Evidence[]
   onConfirm: (path: string) => void
   onReject: (path: string) => void
+  onEdit: (path: string, value: any) => Promise<void>
+  validationRules?: ValidationRule[]
   isLocallyRejected?: boolean
   onUndoReject?: (path: string) => void
 }
@@ -113,6 +141,8 @@ export function FieldRow({
   allEvidence,
   onConfirm,
   onReject,
+  onEdit,
+  validationRules = [],
   isLocallyRejected = false,
   onUndoReject
 }: FieldRowProps) {
@@ -120,11 +150,243 @@ export function FieldRow({
   if (!field) return null
   const confidence = state?.confidence ?? 0
   const proposedState = state?.status === 'proposed' ? state : undefined
+  const [isEditing, setIsEditing] = useState(false)
+  const [draftValue, setDraftValue] = useState<string>(
+    formatDraftValue(field, state?.resolved_value),
+  )
+  const [editError, setEditError] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const canEdit = !field.calculation
+
+  const validationRuleMap = React.useMemo(() => {
+    const map = new Map<string, ValidationRule>()
+    validationRules.forEach((rule) => {
+      if (rule.rule_id) {
+        map.set(rule.rule_id, rule)
+      }
+    })
+    return map
+  }, [validationRules])
+
+  const isDatePicker = field.type === 'date' && !field.repeated
+
+  const emailPattern = React.useMemo(() => {
+    return validationRuleMap.get('email')?.pattern || '^[^@]+@[^@]+\\.[^@]+$'
+  }, [validationRuleMap])
+
+  const phonePattern = React.useMemo(() => {
+    return validationRuleMap.get('phone')?.pattern || '^[0-9+()\\- ]{10,15}$'
+  }, [validationRuleMap])
+
+  const validationRefs = field.validation_refs ?? []
+  const regexPatterns = validationRefs
+    .filter((ref) => ref.startsWith('regex:'))
+    .map((ref) => ref.split(':', 2)[1])
+    .filter(Boolean)
+  const rulePatterns = validationRefs
+    .map((ref) => validationRuleMap.get(ref)?.pattern)
+    .filter((pattern): pattern is string => Boolean(pattern))
+  const combinedPatterns = Array.from(new Set([...regexPatterns, ...rulePatterns]))
+
+  const formatHint = React.useMemo(() => {
+    if (field.type === 'date') {
+      return 'YYYY-MM-DD'
+    }
+    if (combinedPatterns.length > 0) {
+      return getReadablePattern(combinedPatterns[0])
+    }
+    if (validationRefs.includes('email')) {
+      return getReadablePattern(emailPattern)
+    }
+    if (validationRefs.includes('phone')) {
+      return getReadablePattern(phonePattern)
+    }
+    return null
+  }, [combinedPatterns, emailPattern, field.type, phonePattern, validationRefs])
+
+  React.useEffect(() => {
+    if (!isEditing) {
+      setDraftValue(formatDraftValue(field, state?.resolved_value))
+    }
+  }, [field, isEditing, state?.resolved_value])
 
   // Resolve source evidence
   const sourceEvidence = (state?.source_evidence_ids || [])
     .map((id) => allEvidence.find((ev) => ev.evidence_id === id))
     .filter((ev): ev is Evidence => !!ev && !!getEvidenceDisplayText(ev))
+
+  const validateValue = (value: any): string | null => {
+    const isEmpty =
+      value === null ||
+      value === undefined ||
+      (typeof value === 'string' && value.trim() === '') ||
+      (Array.isArray(value) && value.length === 0)
+    if (field.required && isEmpty) {
+      return t('validation_required', { defaultValue: 'This field is required.' })
+    }
+    if (isEmpty) {
+      return null
+    }
+
+    const items = field.repeated && Array.isArray(value) ? value : [value]
+    for (const item of items) {
+      if (field.type === 'enum' && !field.enum_options.includes(String(item))) {
+        return t('validation_enum', { defaultValue: 'Select a valid option.' })
+      }
+      if (field.type === 'date') {
+        const dateRegex = new RegExp('^\\d{4}-\\d{2}-\\d{2}$')
+        if (!dateRegex.test(String(item))) {
+          return t('validation_date', { defaultValue: 'Date format is invalid.' })
+        }
+      }
+      if (field.type === 'boolean' && typeof item !== 'boolean') {
+        return t('validation_boolean', { defaultValue: 'Select true or false.' })
+      }
+      if (field.type === 'integer' && !Number.isInteger(item)) {
+        return t('validation_integer', { defaultValue: 'Enter a valid integer.' })
+      }
+      if (field.type === 'number' && (typeof item !== 'number' || Number.isNaN(item))) {
+        return t('validation_number', { defaultValue: 'Enter a valid number.' })
+      }
+
+      for (const ref of validationRefs) {
+        if (ref === 'email') {
+          const emailRegex = new RegExp(emailPattern)
+          if (!emailRegex.test(String(item))) {
+            return t('validation_email', { defaultValue: 'Email format is invalid.' })
+          }
+        }
+        if (ref === 'phone') {
+          const phoneRegex = new RegExp(phonePattern)
+          if (!phoneRegex.test(String(item))) {
+            return t('validation_phone', { defaultValue: 'Phone format is invalid.' })
+          }
+        }
+        if (ref.startsWith('regex:')) {
+          const pattern = ref.split(':', 2)[1]
+          try {
+            const regex = new RegExp(pattern)
+            if (!regex.test(String(item))) {
+              return t('validation_format', { defaultValue: 'Invalid format.' })
+            }
+          } catch {
+            // ignore invalid regex
+          }
+        }
+        if (ref.startsWith('min:')) {
+          const threshold = Number(ref.split(':', 2)[1])
+          if (typeof item === 'number' && !Number.isNaN(threshold) && item < threshold) {
+            return t('validation_min', {
+              defaultValue: `Value must be at least ${threshold}.`,
+              threshold,
+            })
+          }
+        }
+        if (ref.startsWith('min_length:')) {
+          const threshold = Number(ref.split(':', 2)[1])
+          if (String(item).trim().length < threshold) {
+            return t('validation_min_length', {
+              defaultValue: `Value must be at least ${threshold} characters long.`,
+              threshold,
+            })
+          }
+        }
+        const rulePattern = validationRuleMap.get(ref)?.pattern
+        if (rulePattern) {
+          try {
+            const regex = new RegExp(rulePattern)
+            if (!regex.test(String(item))) {
+              return t('validation_format', { defaultValue: 'Invalid format.' })
+            }
+          } catch {
+            // ignore invalid regex
+          }
+        }
+      }
+    }
+
+    return null
+  }
+
+  const parseScalarValue = (raw: string): { value: any; error: string | null } => {
+    if (!raw) {
+      return { value: null, error: null }
+    }
+    if (field.type === 'integer') {
+      const parsed = Number(raw)
+      if (!Number.isInteger(parsed)) {
+        return { value: null, error: t('validation_integer', { defaultValue: 'Enter a valid integer.' }) }
+      }
+      return { value: parsed, error: null }
+    }
+    if (field.type === 'number') {
+      const parsed = Number(raw)
+      if (Number.isNaN(parsed)) {
+        return { value: null, error: t('validation_number', { defaultValue: 'Enter a valid number.' }) }
+      }
+      return { value: parsed, error: null }
+    }
+    if (field.type === 'boolean') {
+      if (raw === 'true') return { value: true, error: null }
+      if (raw === 'false') return { value: false, error: null }
+      return { value: null, error: t('validation_boolean', { defaultValue: 'Select true or false.' }) }
+    }
+    return { value: raw, error: null }
+  }
+
+  const normalizeDraftValue = (): { value: any; error: string | null } => {
+    const raw = draftValue.trim()
+    if (field.repeated) {
+      const tokens = raw ? raw.split(',').map((t) => t.trim()).filter(Boolean) : []
+      const parsed: any[] = []
+      for (const token of tokens) {
+        const parsedToken = parseScalarValue(token)
+        if (parsedToken.error) {
+          return { value: null, error: parsedToken.error }
+        }
+        parsed.push(parsedToken.value)
+      }
+      return { value: parsed, error: validateValue(parsed) }
+    }
+
+    const parsed = parseScalarValue(raw)
+    if (parsed.error) {
+      return { value: null, error: parsed.error }
+    }
+    return { value: parsed.value, error: validateValue(parsed.value) }
+  }
+
+  const handleStartEdit = () => {
+    setDraftValue(formatDraftValue(field, state?.resolved_value))
+    setEditError(null)
+    setIsEditing(true)
+  }
+
+  const handleCancelEdit = () => {
+    setEditError(null)
+    setIsEditing(false)
+  }
+
+  const handleSaveEdit = async () => {
+    const normalized = normalizeDraftValue()
+    if (normalized.error) {
+      setEditError(normalized.error)
+      return
+    }
+    setEditError(null)
+    setIsSaving(true)
+    try {
+      await onEdit(field.path, normalized.value)
+      setIsEditing(false)
+    } catch (err: any) {
+      const detail =
+        err?.response?.data?.detail ||
+        t('edit_save_failed', { defaultValue: 'Failed to save changes.' })
+      setEditError(String(detail))
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   return (
     <div className="group relative flex flex-col space-y-2">
@@ -172,6 +434,74 @@ export function FieldRow({
                 )}
               </div>
 
+              {isEditing && (
+                <div className="mt-3 space-y-2">
+                  {field.type === 'enum' && !field.repeated ? (
+                    <select
+                      className={cn(
+                        "h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-200",
+                        editError && "border-red-300 focus:ring-red-200",
+                      )}
+                      value={draftValue}
+                      onChange={(e) => setDraftValue(e.target.value)}
+                    >
+                      <option value="">{t('select_value', { defaultValue: 'Select a value' })}</option>
+                      {field.enum_options.map((opt) => (
+                        <option key={opt} value={opt}>
+                          {opt}
+                        </option>
+                      ))}
+                    </select>
+                  ) : field.type === 'boolean' && !field.repeated ? (
+                    <select
+                      className={cn(
+                        "h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-200",
+                        editError && "border-red-300 focus:ring-red-200",
+                      )}
+                      value={draftValue}
+                      onChange={(e) => setDraftValue(e.target.value)}
+                    >
+                      <option value="">{t('select_value', { defaultValue: 'Select a value' })}</option>
+                      <option value="true">{t('yes', { defaultValue: 'Yes' })}</option>
+                      <option value="false">{t('no', { defaultValue: 'No' })}</option>
+                    </select>
+                  ) : (
+                    <Input
+                      value={draftValue}
+                      onChange={(e) => setDraftValue(e.target.value)}
+                      placeholder={t('edit_value_placeholder', { defaultValue: 'Enter value' })}
+                      aria-invalid={!!editError}
+                      className={cn("text-sm", editError && "border-red-300")}
+                      type={
+                        isDatePicker
+                          ? 'date'
+                          : field.type === 'number' || field.type === 'integer'
+                            ? 'number'
+                            : 'text'
+                      }
+                      step={
+                        field.type === 'integer'
+                          ? 1
+                          : field.type === 'number'
+                            ? 'any'
+                            : undefined
+                      }
+                    />
+                  )}
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-400 font-semibold uppercase tracking-widest">
+                    {formatHint && (
+                      <span>{t('expected_format', { defaultValue: `Expected format: ${formatHint}`, format: formatHint })}</span>
+                    )}
+                    {field.repeated && (
+                      <span>{t('comma_separated', { defaultValue: 'Comma-separated values' })}</span>
+                    )}
+                  </div>
+                  {editError && (
+                    <p className="text-[11px] text-red-600 font-semibold">{editError}</p>
+                  )}
+                </div>
+              )}
+
               {confidence > 0 && state?.status !== 'confirmed' && (
                 <div className="mt-3 flex items-center space-x-3">
                   <div className="w-20 h-1 bg-slate-100 rounded-full overflow-hidden">
@@ -189,7 +519,7 @@ export function FieldRow({
             </div>
 
             <div className="flex items-center space-x-2 shrink-0">
-              {proposedState && !isLocallyRejected && (
+              {proposedState && !isLocallyRejected && !isEditing && (
                 <>
                   <Button
                     size="sm"
@@ -208,7 +538,7 @@ export function FieldRow({
                   </Button>
                 </>
               )}
-              {proposedState && isLocallyRejected && (
+              {proposedState && isLocallyRejected && !isEditing && (
                 <>
                   <Button
                     size="sm"
@@ -224,6 +554,38 @@ export function FieldRow({
                     onClick={() => onConfirm(proposedState.field_path)}
                   >
                     {t('confirm_match')}
+                  </Button>
+                </>
+              )}
+              {canEdit && !isEditing && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-700 text-[10px] font-black uppercase tracking-widest h-8 px-3 rounded-xl transition-all active:scale-95 cursor-pointer"
+                  onClick={handleStartEdit}
+                >
+                  <Pencil className="w-3 h-3 mr-1.5" />
+                  {t('edit_field', { defaultValue: 'Edit' })}
+                </Button>
+              )}
+              {isEditing && (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-700 text-[10px] font-black uppercase tracking-widest h-8 px-3 rounded-xl transition-all active:scale-95 cursor-pointer"
+                    onClick={handleCancelEdit}
+                    disabled={isSaving}
+                  >
+                    {t('cancel')}
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest h-8 px-3 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95 cursor-pointer"
+                    onClick={handleSaveEdit}
+                    disabled={isSaving}
+                  >
+                    {isSaving ? t('saving', { defaultValue: 'Saving...' }) : t('save', { defaultValue: 'Save' })}
                   </Button>
                 </>
               )}
