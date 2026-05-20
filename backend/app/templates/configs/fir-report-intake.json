@@ -193,6 +193,7 @@
       "label": "Witness details",
       "type": "string",
       "required": false,
+      "repeated": true,
       "default_question": "What witness details should be recorded?",
       "clarification_question": "Please share the witness names or contact details that should be recorded.",
       "render_targets": [
