@@ -383,47 +383,47 @@ export function DetailedWorkspaceView({
                   </div>
                 </motion.div>
               ) : isConversationComplete ? (
-                  unreviewedProposedCount > 0 ? (
-                    <div className="bg-amber-50/50 border border-amber-100 p-4 rounded-2xl">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
-                        <p className="text-[13px] font-bold text-amber-900 leading-tight">
-                          {t('review_in_progress', { defaultValue: 'Review in Progress' })}
-                        </p>
-                      </div>
-                      <p className="text-[11px] text-amber-600/70 font-medium leading-relaxed">
-                        {t('review_in_progress_side_desc', { defaultValue: `Please approve or reject all proposed fields. ${unreviewedProposedCount} fields remaining.` })}
+                unreviewedProposedCount > 0 ? (
+                  <div className="bg-amber-50/50 border border-amber-100 p-4 rounded-2xl">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                      <p className="text-[13px] font-bold text-amber-900 leading-tight">
+                        {t('review_in_progress', { defaultValue: 'Review in Progress' })}
                       </p>
                     </div>
-                  ) : localRejectedFields.size > 0 ? (
-                    <div className="bg-blue-50/50 border border-blue-100 p-4 rounded-2xl space-y-3">
-                      <p className="text-[13px] font-bold text-blue-900 leading-tight">
-                        {t('rejections_pending', { defaultValue: 'Review Completed with Rejections' })}
+                    <p className="text-[11px] text-amber-600/70 font-medium leading-relaxed">
+                      {t('review_in_progress_side_desc', { defaultValue: `Please approve or reject all proposed fields. ${unreviewedProposedCount} fields remaining.` })}
+                    </p>
+                  </div>
+                ) : localRejectedFields.size > 0 ? (
+                  <div className="bg-blue-50/50 border border-blue-100 p-4 rounded-2xl space-y-3">
+                    <p className="text-[13px] font-bold text-blue-900 leading-tight">
+                      {t('rejections_pending', { defaultValue: 'Review Completed with Rejections' })}
+                    </p>
+                    <p className="text-[11px] text-blue-600/70 font-medium leading-relaxed">
+                      {t('rejections_pending_desc', { defaultValue: 'You have rejected some fields. Start the intake chat again to clarify these details.' })}
+                    </p>
+                    <Button
+                      size="sm"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[9px] rounded-xl h-8 shadow-sm cursor-pointer mt-2"
+                      onClick={() => bulkRejectMutation.mutate(Array.from(localRejectedFields))}
+                      disabled={bulkRejectMutation.isPending}
+                    >
+                      {bulkRejectMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1.5" /> : <Zap className="w-3 h-3 mr-1.5" />}
+                      {t('start_qa_for_rejections', { count: localRejectedFields.size, defaultValue: `Start QA (${localRejectedFields.size})` })}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="bg-emerald-50/50 border border-emerald-100 p-4 rounded-2xl">
+                    <p className="text-[13px] font-bold text-emerald-900 mb-1 leading-tight">{completionMessage}</p>
+                    <p className="text-[11px] text-emerald-600/70 font-medium">{t('auto_extraction_complete')}</p>
+                    {hiddenConditionalFieldCount > 0 && (
+                      <p className="text-[10px] text-emerald-600/50 mt-3 font-bold uppercase tracking-tighter italic">
+                        {t(hiddenConditionalFieldCount === 1 ? 'conditional_paths_skipped' : 'conditional_paths_skipped_plural', { count: hiddenConditionalFieldCount })}
                       </p>
-                      <p className="text-[11px] text-blue-600/70 font-medium leading-relaxed">
-                        {t('rejections_pending_desc', { defaultValue: 'You have rejected some fields. Start the intake chat again to clarify these details.' })}
-                      </p>
-                      <Button
-                        size="sm"
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black uppercase tracking-widest text-[9px] rounded-xl h-8 shadow-sm cursor-pointer mt-2"
-                        onClick={() => bulkRejectMutation.mutate(Array.from(localRejectedFields))}
-                        disabled={bulkRejectMutation.isPending}
-                      >
-                        {bulkRejectMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1.5" /> : <Zap className="w-3 h-3 mr-1.5" />}
-                        {t('start_qa_for_rejections', { count: localRejectedFields.size, defaultValue: `Start QA (${localRejectedFields.size})` })}
-                      </Button>
-                    </div>
-                  ) : (
-                        <div className="bg-emerald-50/50 border border-emerald-100 p-4 rounded-2xl">
-                          <p className="text-[13px] font-bold text-emerald-900 mb-1 leading-tight">{completionMessage}</p>
-                          <p className="text-[11px] text-emerald-600/70 font-medium">{t('auto_extraction_complete')}</p>
-                          {hiddenConditionalFieldCount > 0 && (
-                            <p className="text-[10px] text-emerald-600/50 mt-3 font-bold uppercase tracking-tighter italic">
-                              {t(hiddenConditionalFieldCount === 1 ? 'conditional_paths_skipped' : 'conditional_paths_skipped_plural', { count: hiddenConditionalFieldCount })}
-                            </p>
-                          )}
-                        </div>
-                      )
+                    )}
+                  </div>
+                )
               ) : (
                 <div className="flex flex-col items-center justify-center py-10 opacity-40">
                   <Clock className="w-10 h-10 text-slate-200 mb-2" />

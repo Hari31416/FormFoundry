@@ -412,26 +412,26 @@ export function SimplifiedChatView({
                     </>
                   ) : (
                     <>
-                          <div className="p-3 bg-emerald-50 text-emerald-500 rounded-2xl">
-                            <CheckCircle2 className="w-6 h-6" />
-                          </div>
-                          <div>
-                            <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">{t('final_verification_complete')}</h4>
-                            <p className="text-[11px] text-slate-400 mt-1 max-w-md leading-relaxed font-bold">
-                              {t('final_verification_desc')}
-                            </p>
-                          </div>
-                          <Button
-                            className={cn(
-                              "bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[10px] rounded-xl h-10 px-8 transition-all shadow-lg shadow-emerald-600/10 cursor-pointer",
-                              isApproveReady && "animate-bounce"
-                            )}
-                            onClick={() => approveCaseMutation.mutate()}
-                            disabled={approveCaseMutation.isPending}
-                          >
-                            {approveCaseMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-2" />}
-                            {t('approve_and_close_case')}
-                          </Button>
+                      <div className="p-3 bg-emerald-50 text-emerald-500 rounded-2xl">
+                        <CheckCircle2 className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">{t('final_verification_complete')}</h4>
+                        <p className="text-[11px] text-slate-400 mt-1 max-w-md leading-relaxed font-bold">
+                          {t('final_verification_desc')}
+                        </p>
+                      </div>
+                      <Button
+                        className={cn(
+                          "bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-widest text-[10px] rounded-xl h-10 px-8 transition-all shadow-lg shadow-emerald-600/10 cursor-pointer",
+                          isApproveReady && "animate-bounce"
+                        )}
+                        onClick={() => approveCaseMutation.mutate()}
+                        disabled={approveCaseMutation.isPending}
+                      >
+                        {approveCaseMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin mr-2" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-2" />}
+                        {t('approve_and_close_case')}
+                      </Button>
                     </>
                   )}
                 </div>
