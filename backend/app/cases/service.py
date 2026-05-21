@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from typing import Any
 
@@ -20,6 +21,8 @@ from app.cases.models import (
     SchemaStateResponse,
 )
 from app.templates.service import get_template, serialize_template
+
+logger = logging.getLogger(__name__)
 
 
 def assign_nested_value(target: dict[str, Any], path: str, value: Any) -> None:
@@ -67,10 +70,25 @@ def serialize_field_state(record: FieldStateRecord) -> FieldStatePayload:
 
 
 async def create_case(session: AsyncSession, payload: CaseCreateRequest) -> CaseDetail:
+    logger.info(
+        "cases.create.started",
+        extra={
+            "template_id": payload.template_id,
+            "template_version": payload.template_version,
+            "created_by": payload.created_by,
+        },
+    )
     template_record = await get_template(
         session, payload.template_id, payload.template_version
     )
     if template_record is None:
+        logger.warning(
+            "cases.create.failed_template_not_found",
+            extra={
+                "template_id": payload.template_id,
+                "template_version": payload.template_version,
+            },
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Template not found"
         )
@@ -107,6 +125,16 @@ async def create_case(session: AsyncSession, payload: CaseCreateRequest) -> Case
     await session.commit()
     await session.refresh(case_record)
 
+    logger.info(
+        "cases.create.completed",
+        extra={
+            "case_id": case_record.case_id,
+            "template_id": case_record.template_id,
+            "template_version": case_record.template_version,
+            "field_count": len(field_paths),
+        },
+    )
+
     return CaseDetail(
         **serialize_case(case_record).model_dump(),
         template=serialize_template(template_record),
@@ -115,8 +143,10 @@ async def create_case(session: AsyncSession, payload: CaseCreateRequest) -> Case
 
 
 async def get_case_detail(session: AsyncSession, case_id: str) -> CaseDetail:
+    logger.info("cases.get.started", extra={"case_id": case_id})
     case_record = await session.get(CaseFileRecord, case_id)
     if case_record is None:
+        logger.warning("cases.get.not_found", extra={"case_id": case_id})
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Case not found"
         )
@@ -125,6 +155,14 @@ async def get_case_detail(session: AsyncSession, case_id: str) -> CaseDetail:
         session, case_record.template_id, case_record.template_version
     )
     if template_record is None:
+        logger.error(
+            "cases.get.template_missing",
+            extra={
+                "case_id": case_id,
+                "template_id": case_record.template_id,
+                "template_version": case_record.template_version,
+            },
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Template missing"
         )
@@ -141,6 +179,24 @@ async def get_case_detail(session: AsyncSession, case_id: str) -> CaseDetail:
         .all()
     )
 
+    logger.info(
+        "cases.get.completed",
+        extra={
+            "case_id": case_record.case_id,
+            "status": (
+                case_record.status.value
+                if hasattr(case_record.status, "value")
+                else case_record.status
+            ),
+            "review_status": (
+                case_record.review_status.value
+                if hasattr(case_record.review_status, "value")
+                else case_record.review_status
+            ),
+            "field_state_count": len(field_states),
+        },
+    )
+
     return CaseDetail(
         **serialize_case(case_record).model_dump(),
         template=serialize_template(template_record),
@@ -154,12 +210,25 @@ async def list_cases(
     limit: int = 100,
     offset: int = 0,
 ) -> list[CaseFilePayload]:
+    logger.info(
+        "cases.list.started",
+        extra={"template_id": template_id, "limit": limit, "offset": offset},
+    )
     stmt = select(CaseFileRecord).order_by(CaseFileRecord.created_at.desc())
     if template_id:
         stmt = stmt.where(CaseFileRecord.template_id == template_id)
 
     stmt = stmt.limit(limit).offset(offset)
     records = (await session.execute(stmt)).scalars().all()
+    logger.info(
+        "cases.list.completed",
+        extra={
+            "template_id": template_id,
+            "limit": limit,
+            "offset": offset,
+            "returned_count": len(records),
+        },
+    )
     return [serialize_case(record) for record in records]
 
 

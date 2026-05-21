@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from sqlalchemy import Select, desc, select
@@ -13,6 +14,8 @@ from app.templates.models import (
     TemplateField,
     TemplateFieldGroup,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def serialize_template(record: TemplateDefinitionRecord) -> TemplateDefinition:
@@ -52,6 +55,15 @@ def save_template_config_to_file(payload: TemplateDefinitionCreate) -> None:
 async def create_template(
     session: AsyncSession, payload: TemplateDefinitionCreate
 ) -> TemplateDefinition:
+    logger.info(
+        "templates.create.started",
+        extra={
+            "template_id": payload.template_id,
+            "template_version": payload.template_version,
+            "template_name": payload.name,
+            "field_count": len(payload.template_schema),
+        },
+    )
     record = TemplateDefinitionRecord(
         template_id=payload.template_id,
         template_version=payload.template_version,
@@ -71,12 +83,31 @@ async def create_template(
 
     try:
         save_template_config_to_file(payload)
+        logger.info(
+            "templates.disk_save.completed",
+            extra={
+                "template_id": payload.template_id,
+                "template_version": payload.template_version,
+            },
+        )
     except Exception as e:
-        import logging
+        logger.warning(
+            "templates.disk_save.failed",
+            extra={
+                "template_id": payload.template_id,
+                "template_version": payload.template_version,
+                "error": str(e),
+            },
+        )
 
-        logger = logging.getLogger("app.templates.service")
-        logger.warning(f"Failed to save template to disk: {e}")
-
+    logger.info(
+        "templates.create.completed",
+        extra={
+            "template_id": payload.template_id,
+            "template_version": payload.template_version,
+            "template_name": payload.name,
+        },
+    )
     return serialize_template(record)
 
 
@@ -162,6 +193,7 @@ async def upsert_template_record(
 
 
 async def ensure_seed_templates(session: AsyncSession) -> None:
+    logger.info("templates.seed_sync.started")
     configured_templates = load_template_configs()
     configured_keys = {
         (template.template_id, template.template_version)
@@ -171,11 +203,23 @@ async def ensure_seed_templates(session: AsyncSession) -> None:
         (await session.execute(select(TemplateDefinitionRecord))).scalars().all()
     )
 
+    deleted_count = 0
     for record in existing_records:
         if (record.template_id, record.template_version) not in configured_keys:
             await session.delete(record)
+            deleted_count += 1
 
+    upserted_count = 0
     for payload in configured_templates:
         await upsert_template_record(session, payload)
+        upserted_count += 1
 
     await session.commit()
+    logger.info(
+        "templates.seed_sync.completed",
+        extra={
+            "deleted_count": deleted_count,
+            "upserted_count": upserted_count,
+            "total_configured": len(configured_templates),
+        },
+    )

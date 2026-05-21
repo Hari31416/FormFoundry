@@ -55,3 +55,16 @@ def configure_logging() -> None:
     root.handlers.clear()
     root.addHandler(handler)
     root.setLevel(logging.INFO)
+
+    # Route third-party/system loggers to the JSON handler
+    for logger_name in (
+        "uvicorn",
+        "uvicorn.error",
+        "uvicorn.access",
+        "sqlalchemy",
+        "minio",
+    ):
+        l_temp = logging.getLogger(logger_name)
+        l_temp.handlers.clear()
+        l_temp.addHandler(handler)
+        l_temp.propagate = False

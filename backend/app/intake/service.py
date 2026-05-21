@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -21,6 +22,8 @@ from app.intake.models import (
 )
 from app.jobs.queue import enqueue_job, get_job_payload
 from app.storage.minio import get_storage_service
+
+logger = logging.getLogger(__name__)
 
 
 def serialize_evidence(record: EvidenceRecord) -> EvidencePayload:
@@ -56,6 +59,10 @@ async def create_chat_answer_evidence(
     created_by: str,
     metadata: dict[str, Any] | None = None,
 ) -> EvidenceIntakeResponse:
+    logger.info(
+        "intake.chat_answer.started",
+        extra={"case_id": case_id, "created_by": created_by, "text_chars": len(text)},
+    )
     await ensure_case_exists(session, case_id)
     storage = get_storage_service()
     object_key = f"cases/{case_id}/conversation/{uuid4()}-{created_by}-answer.txt"
@@ -93,6 +100,15 @@ async def create_chat_answer_evidence(
         )
     await session.commit()
     refreshed_job = await get_job_payload(session, job.job_id)
+    logger.info(
+        "intake.chat_answer.completed",
+        extra={
+            "case_id": case_id,
+            "evidence_id": record.evidence_id,
+            "job_id": job.job_id,
+            "auto_run": get_settings().auto_run_jobs,
+        },
+    )
     return EvidenceIntakeResponse(
         evidence=serialize_evidence(record), job=refreshed_job or job
     )
@@ -101,6 +117,14 @@ async def create_chat_answer_evidence(
 async def create_text_evidence(
     session: AsyncSession, case_id: str, payload: TextEvidenceRequest
 ) -> EvidenceIntakeResponse:
+    logger.info(
+        "intake.text.started",
+        extra={
+            "case_id": case_id,
+            "created_by": payload.created_by,
+            "text_chars": len(payload.text),
+        },
+    )
     await ensure_case_exists(session, case_id)
     storage = get_storage_service()
     object_key = f"cases/{case_id}/evidence/{uuid4()}-{payload.created_by}-note.txt"
@@ -156,16 +180,34 @@ async def create_text_evidence(
 
             await record_active_question_turn(session, case_id)
         except Exception as err:
-            import logging
-
-            logging.error(f"Failed to record assistant turn after text evidence: {err}")
+            logger.error(
+                "intake.text.assistant_turn_failed",
+                extra={"case_id": case_id, "error": str(err)},
+            )
     await session.commit()
     refreshed_job = await get_job_payload(session, job.job_id)
     if refreshed_job is not None and refreshed_job.status == "failed":
+        logger.warning(
+            "intake.text.failed",
+            extra={
+                "case_id": case_id,
+                "evidence_id": record.evidence_id,
+                "job_id": job.job_id,
+                "error": refreshed_job.error_summary,
+            },
+        )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=refreshed_job.error_summary or "OCR and data extraction failed.",
         )
+    logger.info(
+        "intake.text.completed",
+        extra={
+            "case_id": case_id,
+            "evidence_id": record.evidence_id,
+            "job_id": job.job_id,
+        },
+    )
     return EvidenceIntakeResponse(
         evidence=serialize_evidence(record), job=refreshed_job or job
     )
@@ -179,9 +221,22 @@ async def create_upload_evidence(
     created_by: str,
     metadata: dict[str, Any] | None = None,
 ) -> EvidenceIntakeResponse:
+    logger.info(
+        "intake.upload.started",
+        extra={
+            "case_id": case_id,
+            "upload_filename": upload.filename,
+            "content_type": upload.content_type,
+            "created_by": created_by,
+        },
+    )
     await ensure_case_exists(session, case_id)
     payload = await upload.read()
     if not payload:
+        logger.warning(
+            "intake.upload.empty_file",
+            extra={"case_id": case_id, "upload_filename": upload.filename},
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Uploaded file is empty.",
@@ -193,6 +248,14 @@ async def create_upload_evidence(
     is_pdf = content_type == "application/pdf" or suffix.lower() == ".pdf"
     is_image = content_type.startswith("image/")
     if not is_pdf and not is_image:
+        logger.warning(
+            "intake.upload.unsupported_format",
+            extra={
+                "case_id": case_id,
+                "upload_filename": upload.filename,
+                "content_type": content_type,
+            },
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Only image and PDF uploads are supported.",
@@ -208,6 +271,14 @@ async def create_upload_evidence(
                 payload, max_pages=settings.pdf_ocr_max_pages
             )
         except PdfValidationError as exc:
+            logger.warning(
+                "intake.upload.pdf_validation_failed",
+                extra={
+                    "case_id": case_id,
+                    "upload_filename": upload.filename,
+                    "error": str(exc),
+                },
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=str(exc),
@@ -276,18 +347,36 @@ async def create_upload_evidence(
 
             await record_active_question_turn(session, case_id)
         except Exception as err:
-            import logging
-
-            logging.error(
-                f"Failed to record assistant turn after upload evidence: {err}"
+            logger.error(
+                "intake.upload.assistant_turn_failed",
+                extra={"case_id": case_id, "error": str(err)},
             )
     await session.commit()
     refreshed_job = await get_job_payload(session, job.job_id)
     if refreshed_job is not None and refreshed_job.status == "failed":
+        logger.warning(
+            "intake.upload.failed",
+            extra={
+                "case_id": case_id,
+                "evidence_id": record.evidence_id,
+                "job_id": job.job_id,
+                "error": refreshed_job.error_summary,
+            },
+        )
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=refreshed_job.error_summary or "OCR and data extraction failed.",
         )
+    logger.info(
+        "intake.upload.completed",
+        extra={
+            "case_id": case_id,
+            "evidence_id": record.evidence_id,
+            "job_id": job.job_id,
+            "upload_filename": upload.filename,
+            "size_bytes": len(payload),
+        },
+    )
     return EvidenceIntakeResponse(
         evidence=serialize_evidence(record), job=refreshed_job or job
     )
@@ -296,6 +385,7 @@ async def create_upload_evidence(
 async def list_case_evidence(
     session: AsyncSession, case_id: str
 ) -> list[EvidencePayload]:
+    logger.info("intake.list.started", extra={"case_id": case_id})
     await ensure_case_exists(session, case_id)
     records = (
         (
@@ -307,5 +397,8 @@ async def list_case_evidence(
         )
         .scalars()
         .all()
+    )
+    logger.info(
+        "intake.list.completed", extra={"case_id": case_id, "count": len(records)}
     )
     return [serialize_evidence(record) for record in records]

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import logging
 import re
 from datetime import UTC, datetime
 from typing import Any
@@ -35,6 +36,8 @@ from app.validation.models import (
     ValidationIssuePayload,
     ValidationIssueRecord,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def serialize_issue(record: ValidationIssueRecord) -> ValidationIssuePayload:
@@ -392,6 +395,16 @@ async def refresh_validation_issues(
 
     session.add_all(issue_records)
     await session.commit()
+    blocking_count = sum(1 for r in issue_records if r.blocking)
+    logger.info(
+        "validation.issues.refreshed",
+        extra={
+            "case_id": case_id,
+            "total_issues": len(issue_records),
+            "blocking_count": blocking_count,
+            "non_blocking_count": len(issue_records) - blocking_count,
+        },
+    )
     return [serialize_issue(record) for record in issue_records]
 
 
@@ -491,6 +504,15 @@ async def edit_field(
     await resolve_case_fields(session, case_id)
     await session.refresh(field_state)
     await session.commit()
+    logger.info(
+        "validation.field.edited",
+        extra={
+            "case_id": case_id,
+            "field_path": field_path,
+            "edited_by": payload.edited_by,
+            "payload_size": len(raw_text),
+        },
+    )
     return field_state
 
 
@@ -514,6 +536,14 @@ async def confirm_field(
     field_state.last_updated_by = payload.confirmed_by
     field_state.last_updated_at = datetime.now(UTC)
     await session.commit()
+    logger.info(
+        "validation.field.confirmed",
+        extra={
+            "case_id": case_id,
+            "field_path": field_path,
+            "confirmed_by": payload.confirmed_by,
+        },
+    )
     return field_state
 
 
@@ -565,6 +595,14 @@ async def reject_field(
     case_record.review_status = ReviewStatus.NOT_READY
 
     await session.commit()
+    logger.info(
+        "validation.field.rejected",
+        extra={
+            "case_id": case_id,
+            "field_path": field_path,
+            "rejected_by": payload.rejected_by,
+        },
+    )
     return field_state
 
 
@@ -633,4 +671,11 @@ async def approve_case(session: AsyncSession, case_id: str) -> CaseFilePayload:
     case_record.review_status = ReviewStatus.APPROVED
     case_record.approved_at = datetime.now(UTC)
     await session.commit()
+    logger.info(
+        "validation.case.approved",
+        extra={
+            "case_id": case_id,
+            "approved_at": case_record.approved_at.isoformat(),
+        },
+    )
     return serialize_case(case_record)

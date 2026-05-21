@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import ast
+import logging
 import operator
 import re
+import time
 from collections import defaultdict
 from collections.abc import Mapping
 from datetime import UTC, datetime
@@ -22,6 +24,8 @@ from app.core.config import get_settings
 from app.extraction.models import FieldCandidateRecord
 from app.resolution.models import ResolutionAuditRecord
 from app.templates.models import TemplateDefinitionRecord
+
+logger = logging.getLogger(__name__)
 
 
 def normalize_candidate_value(value: Any) -> str:
@@ -110,10 +114,10 @@ def evaluate_calculation(expr: str, schema_state: Mapping[str, Any]) -> Any | No
 
         return eval_node(tree)
     except Exception as e:
-        import logging
-
-        logger = logging.getLogger("app.templates.calculation")
-        logger.warning(f"Failed to evaluate expression '{expr}': {e}")
+        logger.warning(
+            "templates.calculation.failed",
+            extra={"expr": expr, "error": str(e)},
+        )
         return None
 
 
@@ -165,6 +169,18 @@ async def resolve_case_fields(session: AsyncSession, case_id: str) -> None:
         .scalars()
         .all()
     )
+
+    start_time = time.perf_counter()
+    logger.info(
+        "resolution.fields.started",
+        extra={
+            "case_id": case_id,
+            "template_id": case_record.template_id,
+            "template_version": case_record.template_version,
+            "candidate_count": len(candidates),
+        },
+    )
+
     candidates_by_field: dict[str, list[FieldCandidateRecord]] = defaultdict(list)
     for candidate in candidates:
         candidates_by_field[candidate.field_path].append(candidate)
@@ -282,6 +298,34 @@ async def resolve_case_fields(session: AsyncSession, case_id: str) -> None:
 
         assign_nested_value(schema_state, field_state.field_path, resolved_value)
 
+        if status == FieldStateStatus.PROPOSED:
+            logger.info(
+                "resolution.field_resolution.selected",
+                extra={
+                    "case_id": case_id,
+                    "field_path": field_state.field_path,
+                    "resolved_value": str(resolved_value),
+                    "confidence": confidence,
+                },
+            )
+        elif status == FieldStateStatus.CONFLICTED:
+            logger.info(
+                "resolution.field_resolution.conflicted",
+                extra={
+                    "case_id": case_id,
+                    "field_path": field_state.field_path,
+                },
+            )
+        else:  # MISSING
+            logger.info(
+                "resolution.field_resolution.missing",
+                extra={
+                    "case_id": case_id,
+                    "field_path": field_state.field_path,
+                    "required": required_fields.get(field_state.field_path, False),
+                },
+            )
+
         session.add(
             ResolutionAuditRecord(
                 case_id=case_id,
@@ -300,6 +344,14 @@ async def resolve_case_fields(session: AsyncSession, case_id: str) -> None:
     computed_fields = [
         fs for fs in field_states if calculations_by_path.get(fs.field_path) is not None
     ]
+    logger.info(
+        "resolution.calculations.started",
+        extra={
+            "case_id": case_id,
+            "computed_fields_count": len(computed_fields),
+        },
+    )
+    changed_fields_log = set()
     for _ in range(5):
         any_changed = False
         for fs in computed_fields:
@@ -317,8 +369,17 @@ async def resolve_case_fields(session: AsyncSession, case_id: str) -> None:
                     fs.confidence = 0.0
                 assign_nested_value(schema_state, fs.field_path, computed)
                 any_changed = True
+                changed_fields_log.add(fs.field_path)
         if not any_changed:
             break
+
+    logger.info(
+        "resolution.calculations.completed",
+        extra={
+            "case_id": case_id,
+            "changed_fields": list(changed_fields_log),
+        },
+    )
 
     # Determine unresolved required status across all fields (including computed)
     unresolved_required = False
@@ -337,3 +398,18 @@ async def resolve_case_fields(session: AsyncSession, case_id: str) -> None:
         ReviewStatus.NOT_READY if unresolved_required else ReviewStatus.NEEDS_REVIEW
     )
     await session.flush()
+
+    elapsed = time.perf_counter() - start_time
+    logger.info(
+        "resolution.fields.completed",
+        extra={
+            "case_id": case_id,
+            "elapsed_seconds": elapsed,
+            "unresolved_required": unresolved_required,
+            "status": (
+                case_record.status.value
+                if hasattr(case_record.status, "value")
+                else case_record.status
+            ),
+        },
+    )

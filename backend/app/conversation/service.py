@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from typing import Any
@@ -24,6 +25,8 @@ from app.languages.utils import process_incoming_text
 from app.llm import generate_json
 from app.templates.models import TemplateField
 from app.templates.runtime import is_field_active
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -120,7 +123,21 @@ def build_question_candidates(detail: CaseDetail) -> list[QuestionCandidate]:
                 )
             )
 
-    return sorted(candidates, key=lambda item: (item.priority, item.order))
+    sorted_candidates = sorted(candidates, key=lambda item: (item.priority, item.order))
+    logger.info(
+        "conversation.question_candidates.generated",
+        extra={
+            "case_id": detail.case_id,
+            "candidate_count": len(sorted_candidates),
+            "priority_counts": {
+                "p1": sum(1 for c in sorted_candidates if c.priority == 1),
+                "p2": sum(1 for c in sorted_candidates if c.priority == 2),
+                "p3": sum(1 for c in sorted_candidates if c.priority == 3),
+                "p4": sum(1 for c in sorted_candidates if c.priority == 4),
+            },
+        },
+    )
+    return sorted_candidates
 
 
 def format_conversation_field_description(field: TemplateField, indent: int = 0) -> str:
@@ -180,6 +197,10 @@ async def generate_grouped_question(
 async def choose_next_question(detail: CaseDetail) -> NextQuestionPayload | None:
     candidates = build_question_candidates(detail)
     if not candidates:
+        logger.info(
+            "conversation.next_question.empty",
+            extra={"case_id": detail.case_id},
+        )
         return None
 
     anchor = candidates[0]
@@ -206,6 +227,16 @@ async def choose_next_question(detail: CaseDetail) -> NextQuestionPayload | None
         f"{grouped_candidates[0].reason} Related fields: {format_labels(field_labels)}."
         if len(grouped_candidates) > 1
         else grouped_candidates[0].reason
+    )
+    logger.info(
+        "conversation.next_question.generated",
+        extra={
+            "case_id": detail.case_id,
+            "field_path": field_paths[0],
+            "field_paths": field_paths,
+            "question": question,
+            "priority": grouped_candidates[0].priority,
+        },
     )
     return NextQuestionPayload(
         field_path=field_paths[0],
@@ -262,6 +293,17 @@ async def record_turn(
         await session.commit()
     else:
         await session.flush()
+    logger.info(
+        "conversation.turn.recorded",
+        extra={
+            "case_id": case_id,
+            "role": role,
+            "message_chars": len(message),
+            "related_field_path": related_field_path,
+            "metadata_keys": list(metadata.keys()) if metadata else [],
+            "commit": commit,
+        },
+    )
     return serialize_turn(record)
 
 
@@ -336,6 +378,15 @@ async def record_active_question_turn(
 async def submit_conversation_turn(
     session: AsyncSession, case_id: str, payload: ConversationTurnRequest
 ) -> ConversationTurnResponse:
+    logger.info(
+        "conversation.turn.submitted",
+        extra={
+            "case_id": case_id,
+            "created_by": payload.created_by,
+            "message_chars": len(payload.message),
+            "payload_language": payload.language,
+        },
+    )
     # 1. Fetch CaseFileRecord to get/set preferred language
     case_record = await session.get(CaseFileRecord, case_id)
     if case_record is None:
@@ -362,8 +413,25 @@ async def submit_conversation_turn(
         case_record.case_metadata = metadata
         preferred_lang = active_lang
 
+    logger.info(
+        "conversation.turn.language_resolved",
+        extra={
+            "case_id": case_id,
+            "detected_lang": active_lang,
+            "preferred_lang": preferred_lang,
+        },
+    )
+
     # 4. Translate incoming user message from active_lang to English
     english_message = await process_incoming_text(payload.message, active_lang)
+
+    logger.info(
+        "conversation.turn.translation_completed",
+        extra={
+            "case_id": case_id,
+            "english_translation_chars": len(english_message),
+        },
+    )
 
     next_question = await get_next_question(session, case_id, translate=False)
 
@@ -420,6 +488,17 @@ async def submit_conversation_turn(
                 "original_english": original_english,
             },
         )
+
+    logger.info(
+        "conversation.turn.assistant_response_resolved",
+        extra={
+            "case_id": case_id,
+            "has_next_question": refreshed_question is not None,
+            "next_question_field": (
+                refreshed_question.field_path if refreshed_question else None
+            ),
+        },
+    )
 
     return ConversationTurnResponse(
         user_turn=user_turn,
