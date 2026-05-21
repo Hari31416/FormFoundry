@@ -12,8 +12,20 @@ import {
   FileText,
   Download,
   Paperclip,
-  Send
+  Send,
+  Play,
+  Pause,
+  X,
+  RotateCcw,
+  RotateCw
 } from 'lucide-react'
+
+const formatAudioTime = (secs: number) => {
+  if (isNaN(secs)) return '0:00'
+  const minutes = Math.floor(secs / 60)
+  const seconds = Math.floor(secs % 60)
+  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`
+}
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -72,6 +84,13 @@ interface SimplifiedChatViewProps {
   onUndoLocalReject: (path: string) => void
   bulkRejectMutation: any
   unreviewedProposedCount: number
+  audioInstance: HTMLAudioElement | null
+  audioDuration: number
+  audioCurrentTime: number
+  isAudioPlaying: boolean
+  handleTogglePlayPause: () => void
+  handleSeekAudio: (value: number) => void
+  handleStopAudio: () => void
 }
 
 export function SimplifiedChatView({
@@ -109,7 +128,14 @@ export function SimplifiedChatView({
   onLocalReject,
   onUndoLocalReject,
   bulkRejectMutation,
-  unreviewedProposedCount
+  unreviewedProposedCount,
+  audioInstance,
+  audioDuration,
+  audioCurrentTime,
+  isAudioPlaying,
+  handleTogglePlayPause,
+  handleSeekAudio,
+  handleStopAudio
 }: SimplifiedChatViewProps) {
   const { t } = useTranslation()
   const validationRules = caseDetail?.template.validation_rules ?? []
@@ -183,9 +209,9 @@ export function SimplifiedChatView({
                     </div>
                   )}
 
-                  {isLatestAssistant ? (
+                  {isAssistant ? (
                     <div className="space-y-3">
-                      {fieldLabels.length > 0 && (
+                      {isLatestAssistant && fieldLabels.length > 0 && (
                         <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                           {fieldLabels.map((lbl: string) => (
                             <Badge key={lbl} variant="outline" className="text-[8px] font-bold border-blue-200 text-blue-600 bg-blue-100/30 uppercase tracking-tighter h-4">
@@ -196,7 +222,7 @@ export function SimplifiedChatView({
                       )}
 
                       <div className="flex items-start justify-between gap-4">
-                        <p className="text-[13px] leading-relaxed font-black text-slate-900 whitespace-pre-wrap text-left">
+                        <p className={cn("text-[13px] leading-relaxed whitespace-pre-wrap text-left", isLatestAssistant ? "font-black text-slate-900" : "font-medium text-slate-800")}>
                           {msg.message}
                         </p>
                         {langConfig?.is_tts_enabled && (
@@ -220,34 +246,94 @@ export function SimplifiedChatView({
                           </Button>
                         )}
                       </div>
+                      {playingQuestion === msg.message && audioInstance && (
+                        <div className="flex items-center space-x-3 p-3 bg-blue-50/40 border border-blue-100/60 rounded-2xl mt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                          <div className="flex items-center space-x-1 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-full text-slate-500 hover:text-blue-600 hover:bg-slate-100 flex items-center justify-center transition-all cursor-pointer"
+                              onClick={() => handleSeekAudio(Math.max(0, audioCurrentTime - 10))}
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                            </Button>
+
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white shrink-0 shadow-sm transition-all cursor-pointer flex items-center justify-center"
+                              onClick={handleTogglePlayPause}
+                            >
+                              {isAudioPlaying ? (
+                                <Pause className="w-3.5 h-3.5 fill-white text-white" />
+                              ) : (
+                                <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
+                              )}
+                            </Button>
+
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-full text-slate-500 hover:text-blue-600 hover:bg-slate-100 flex items-center justify-center transition-all cursor-pointer"
+                              onClick={() => handleSeekAudio(Math.min(audioDuration, audioCurrentTime + 10))}
+                            >
+                              <RotateCw className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          <div className="flex-1 flex items-center space-x-3 min-w-0">
+                            <input
+                              type="range"
+                              min="0"
+                              max={audioDuration || 100}
+                              step="0.1"
+                              value={audioCurrentTime}
+                              onChange={(e) => handleSeekAudio(parseFloat(e.target.value))}
+                              className="flex-1 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600 focus:outline-none"
+                            />
+                            <span className="text-[10px] font-bold text-slate-500 min-w-[65px] text-right tabular-nums shrink-0">
+                              {formatAudioTime(audioCurrentTime)} / {formatAudioTime(audioDuration)}
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 shrink-0 cursor-pointer flex items-center justify-center"
+                            onClick={handleStopAudio}
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      )}
 
                       {/* Expandable Thinking */}
-                      <div className="mt-3 border-t border-blue-100/60 pt-2.5">
-                        <button
-                          onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
-                          className="text-[9px] font-black uppercase tracking-wider text-blue-600 hover:text-blue-700 flex items-center space-x-1 cursor-pointer"
-                        >
-                          <span>{isThinkingExpanded ? t('hide_strategy') : t('show_strategy')}</span>
-                          <span className="text-[8px]">{isThinkingExpanded ? '▲' : '▼'}</span>
-                        </button>
-                        <AnimatePresence>
-                          {isThinkingExpanded && (
-                            <motion.div
-                              initial={{ opacity: 0, height: 0 }}
-                              animate={{ opacity: 1, height: 'auto' }}
-                              exit={{ opacity: 0, height: 0 }}
-                              className="overflow-hidden mt-2"
-                            >
-                              <p className="text-[11px] text-slate-500 bg-slate-50 rounded-xl p-3 border border-slate-100/60 italic leading-relaxed">
-                                {reason}
-                              </p>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
+                      {isLatestAssistant && (
+                        <div className="mt-3 border-t border-blue-100/60 pt-2.5">
+                          <button
+                            onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
+                            className="text-[9px] font-black uppercase tracking-wider text-blue-600 hover:text-blue-700 flex items-center space-x-1 cursor-pointer"
+                          >
+                            <span>{isThinkingExpanded ? t('hide_strategy') : t('show_strategy')}</span>
+                            <span className="text-[8px]">{isThinkingExpanded ? '▲' : '▼'}</span>
+                          </button>
+                          <AnimatePresence>
+                            {isThinkingExpanded && (
+                              <motion.div
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                exit={{ opacity: 0, height: 0 }}
+                                className="overflow-hidden mt-2"
+                              >
+                                <p className="text-[11px] text-slate-500 bg-slate-50 rounded-xl p-3 border border-slate-100/60 italic leading-relaxed">
+                                  {reason}
+                                </p>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    <p className={cn("text-[13px] leading-relaxed font-medium whitespace-pre-wrap text-left", isAssistant ? "text-slate-800" : "text-white")}>
+                    <p className="text-[13px] leading-relaxed font-medium whitespace-pre-wrap text-left text-white">
                       {msg.message}
                     </p>
                   )}

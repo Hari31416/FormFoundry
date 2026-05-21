@@ -255,41 +255,135 @@ export default function CaseWorkspace() {
   const [playingQuestion, setPlayingQuestion] = useState<string | null>(null)
   const [audioInstance, setAudioInstance] = useState<HTMLAudioElement | null>(null)
   const [loadingAudio, setLoadingAudio] = useState<string | null>(null)
+  const [audioDuration, setAudioDuration] = useState<number>(0)
+  const [audioCurrentTime, setAudioCurrentTime] = useState<number>(0)
+  const [isAudioPlaying, setIsAudioPlaying] = useState<boolean>(false)
 
-  const handlePlayTTS = async (text: string, lang: string) => {
-    if (playingQuestion === text) {
+  // Persistent TTS cache map ref
+  const ttsCacheRef = React.useRef<Map<string, { blob: Blob; url: string }>>(new Map())
+
+  // Revoke all cached object URLs on unmount
+  React.useEffect(() => {
+    return () => {
+      ttsCacheRef.current.forEach((cached) => {
+        URL.revokeObjectURL(cached.url)
+      })
+      ttsCacheRef.current.clear()
+    }
+  }, [])
+
+  React.useEffect(() => {
+    return () => {
       if (audioInstance) {
         audioInstance.pause()
-        audioInstance.currentTime = 0
       }
-      setPlayingQuestion(null)
+    }
+  }, [audioInstance])
+
+  const handlePlayTTS = async (text: string, lang: string) => {
+    if (playingQuestion === text && audioInstance) {
+      if (isAudioPlaying) {
+        audioInstance.pause()
+      } else {
+        if (audioInstance.currentTime >= audioInstance.duration) {
+          audioInstance.currentTime = 0
+          setAudioCurrentTime(0)
+        }
+        audioInstance.play().catch((err) => console.error(err))
+      }
       return
     }
 
+    if (audioInstance) {
+      audioInstance.pause()
+      setAudioInstance(null)
+      setIsAudioPlaying(false)
+      setAudioDuration(0)
+      setAudioCurrentTime(0)
+    }
+
+    const cacheKey = `${lang}:${text}`
+    let audioUrl = ttsCacheRef.current.get(cacheKey)?.url || ''
+
     try {
-      setLoadingAudio(text)
-      const audioBlob = await textToSpeech(text, lang)
-      const audioUrl = URL.createObjectURL(audioBlob)
+      if (!audioUrl) {
+        setLoadingAudio(text)
+        const audioBlob = await textToSpeech(text, lang)
+        audioUrl = URL.createObjectURL(audioBlob)
+        ttsCacheRef.current.set(cacheKey, { blob: audioBlob, url: audioUrl })
+      }
+
       const audio = new Audio(audioUrl)
+
+      audio.onloadedmetadata = () => {
+        setAudioDuration(audio.duration)
+      }
+      audio.ontimeupdate = () => {
+        setAudioCurrentTime(audio.currentTime)
+      }
+      audio.onplay = () => {
+        setIsAudioPlaying(true)
+      }
+      audio.onpause = () => {
+        setIsAudioPlaying(false)
+      }
+      audio.onended = () => {
+        setIsAudioPlaying(false)
+        setAudioCurrentTime(audio.duration)
+      }
+      audio.onerror = () => {
+        setPlayingQuestion(null)
+        setAudioInstance(null)
+        setIsAudioPlaying(false)
+        setAudioDuration(0)
+        setAudioCurrentTime(0)
+        ttsCacheRef.current.delete(cacheKey)
+      }
 
       setAudioInstance(audio)
       setLoadingAudio(null)
       setPlayingQuestion(text)
 
-      audio.onended = () => {
-        setPlayingQuestion(null)
-        URL.revokeObjectURL(audioUrl)
-      }
-      audio.onerror = () => {
-        setPlayingQuestion(null)
-        URL.revokeObjectURL(audioUrl)
-      }
       await audio.play()
     } catch (err) {
       console.error('Failed to play TTS audio:', err)
       setLoadingAudio(null)
       setPlayingQuestion(null)
+      setAudioInstance(null)
+      setIsAudioPlaying(false)
+      setAudioDuration(0)
+      setAudioCurrentTime(0)
     }
+  }
+
+  const handleTogglePlayPause = () => {
+    if (!audioInstance) return
+    if (isAudioPlaying) {
+      audioInstance.pause()
+    } else {
+      if (audioInstance.currentTime >= audioInstance.duration) {
+        audioInstance.currentTime = 0
+        setAudioCurrentTime(0)
+      }
+      audioInstance.play().catch((err) => console.error(err))
+    }
+  }
+
+  const handleSeekAudio = (value: number) => {
+    if (!audioInstance) return
+    audioInstance.currentTime = value
+    setAudioCurrentTime(value)
+  }
+
+  const handleStopAudio = () => {
+    if (audioInstance) {
+      audioInstance.pause()
+    }
+    setPlayingQuestion(null)
+    setAudioInstance(null)
+    setIsAudioPlaying(false)
+    setAudioDuration(0)
+    setAudioCurrentTime(0)
   }
 
   const updateLanguageMutation = useMutation({
@@ -320,6 +414,7 @@ export default function CaseWorkspace() {
     },
     onSuccess: () => {
       setChatInput('')
+      handleStopAudio()
       queryClient.invalidateQueries({ queryKey: ['case', caseId] })
       queryClient.invalidateQueries({ queryKey: ['turns', caseId] })
       queryClient.invalidateQueries({ queryKey: ['next-question', caseId] })
@@ -707,45 +802,59 @@ export default function CaseWorkspace() {
             onUndoLocalReject={handleUndoLocalReject}
             bulkRejectMutation={bulkRejectMutation}
             unreviewedProposedCount={unreviewedProposedCount}
+            audioInstance={audioInstance}
+            audioDuration={audioDuration}
+            audioCurrentTime={audioCurrentTime}
+            isAudioPlaying={isAudioPlaying}
+            handleTogglePlayPause={handleTogglePlayPause}
+            handleSeekAudio={handleSeekAudio}
+            handleStopAudio={handleStopAudio}
           />
         ) : (
-            <DetailedWorkspaceView
-              activeTab={activeTab}
-              setActiveTab={setActiveTab}
-              activeFieldPaths={activeFieldPaths}
-              fieldStatesByPath={fieldStatesByPath}
-              caseDetail={caseDetail}
-              validation={validation}
-              evidence={evidence}
-              confirmFieldMutation={confirmFieldMutation}
-              rejectFieldMutation={rejectFieldMutation}
-              bulkConfirmMutation={bulkConfirmMutation}
-              onEditField={handleEditField}
-              isEvidenceModalOpen={isEvidenceModalOpen}
-              setIsEvidenceModalOpen={setIsEvidenceModalOpen}
-              uploadFileMutation={uploadFileMutation}
-              uploadError={uploadError}
-              setUploadError={setUploadError}
-              addTextMutation={addTextMutation}
-              nextQuestion={nextQuestion}
-              langConfig={langConfig}
-              playingQuestion={playingQuestion}
-              loadingAudio={loadingAudio}
-              handlePlayTTS={handlePlayTTS}
-              isConversationComplete={isConversationComplete}
-              completionMessage={completionMessage}
-              hiddenConditionalFieldCount={hiddenConditionalFieldCount}
-              chatInput={chatInput}
-              setChatInput={setChatInput}
-              submitTurnMutation={submitTurnMutation}
-              artifacts={artifacts}
-              caseId={caseId}
-              localRejectedFields={localRejectedFields}
-              onLocalReject={handleLocalReject}
-              onUndoLocalReject={handleUndoLocalReject}
-              bulkRejectMutation={bulkRejectMutation}
-              unreviewedProposedCount={unreviewedProposedCount}
-            />
+          <DetailedWorkspaceView
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            activeFieldPaths={activeFieldPaths}
+            fieldStatesByPath={fieldStatesByPath}
+            caseDetail={caseDetail}
+            validation={validation}
+            evidence={evidence}
+            confirmFieldMutation={confirmFieldMutation}
+            rejectFieldMutation={rejectFieldMutation}
+            bulkConfirmMutation={bulkConfirmMutation}
+            onEditField={handleEditField}
+            isEvidenceModalOpen={isEvidenceModalOpen}
+            setIsEvidenceModalOpen={setIsEvidenceModalOpen}
+            uploadFileMutation={uploadFileMutation}
+            uploadError={uploadError}
+            setUploadError={setUploadError}
+            addTextMutation={addTextMutation}
+            nextQuestion={nextQuestion}
+            langConfig={langConfig}
+            playingQuestion={playingQuestion}
+            loadingAudio={loadingAudio}
+            handlePlayTTS={handlePlayTTS}
+            isConversationComplete={isConversationComplete}
+            completionMessage={completionMessage}
+            hiddenConditionalFieldCount={hiddenConditionalFieldCount}
+            chatInput={chatInput}
+            setChatInput={setChatInput}
+            submitTurnMutation={submitTurnMutation}
+            artifacts={artifacts}
+            caseId={caseId}
+            localRejectedFields={localRejectedFields}
+            onLocalReject={handleLocalReject}
+            onUndoLocalReject={handleUndoLocalReject}
+            bulkRejectMutation={bulkRejectMutation}
+            unreviewedProposedCount={unreviewedProposedCount}
+            audioInstance={audioInstance}
+            audioDuration={audioDuration}
+            audioCurrentTime={audioCurrentTime}
+            isAudioPlaying={isAudioPlaying}
+            handleTogglePlayPause={handleTogglePlayPause}
+            handleSeekAudio={handleSeekAudio}
+            handleStopAudio={handleStopAudio}
+          />
         )}
       </main>
     </div>

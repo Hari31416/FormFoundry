@@ -10,8 +10,20 @@ import {
   Send,
   FileText,
   Download,
-  Zap
+  Zap,
+  Play,
+  Pause,
+  X,
+  RotateCcw,
+  RotateCw
 } from 'lucide-react'
+
+const formatAudioTime = (secs: number) => {
+  if (isNaN(secs)) return '0:00'
+  const minutes = Math.floor(secs / 60)
+  const seconds = Math.floor(secs % 60)
+  return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`
+}
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -65,6 +77,13 @@ interface DetailedWorkspaceViewProps {
   onUndoLocalReject: (path: string) => void
   bulkRejectMutation: any
   unreviewedProposedCount: number
+  audioInstance: HTMLAudioElement | null
+  audioDuration: number
+  audioCurrentTime: number
+  isAudioPlaying: boolean
+  handleTogglePlayPause: () => void
+  handleSeekAudio: (value: number) => void
+  handleStopAudio: () => void
 }
 
 export function DetailedWorkspaceView({
@@ -102,7 +121,14 @@ export function DetailedWorkspaceView({
   onLocalReject,
   onUndoLocalReject,
   bulkRejectMutation,
-  unreviewedProposedCount
+  unreviewedProposedCount,
+  audioInstance,
+  audioDuration,
+  audioCurrentTime,
+  isAudioPlaying,
+  handleTogglePlayPause,
+  handleSeekAudio,
+  handleStopAudio
 }: DetailedWorkspaceViewProps) {
   const { t } = useTranslation()
   const validationRules = caseDetail?.template.validation_rules ?? []
@@ -373,6 +399,64 @@ export function DetailedWorkspaceView({
                       </Button>
                     )}
                   </div>
+                  {playingQuestion === nextQuestion.question && audioInstance && (
+                    <div className="flex items-center space-x-3 p-3 bg-blue-50/40 border border-blue-100/60 rounded-2xl mt-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="flex items-center space-x-1 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-full text-slate-500 hover:text-blue-600 hover:bg-slate-100 flex items-center justify-center transition-all cursor-pointer"
+                          onClick={() => handleSeekAudio(Math.max(0, audioCurrentTime - 10))}
+                        >
+                          <RotateCcw className="w-4 h-4" />
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-full bg-blue-600 hover:bg-blue-700 text-white shrink-0 shadow-sm transition-all cursor-pointer flex items-center justify-center"
+                          onClick={handleTogglePlayPause}
+                        >
+                          {isAudioPlaying ? (
+                            <Pause className="w-3.5 h-3.5 fill-white text-white" />
+                          ) : (
+                            <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
+                          )}
+                        </Button>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-full text-slate-500 hover:text-blue-600 hover:bg-slate-100 flex items-center justify-center transition-all cursor-pointer"
+                          onClick={() => handleSeekAudio(Math.min(audioDuration, audioCurrentTime + 10))}
+                        >
+                          <RotateCw className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="flex-1 flex items-center space-x-3 min-w-0">
+                        <input
+                          type="range"
+                          min="0"
+                          max={audioDuration || 100}
+                          step="0.1"
+                          value={audioCurrentTime}
+                          onChange={(e) => handleSeekAudio(parseFloat(e.target.value))}
+                          className="flex-1 h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600 focus:outline-none"
+                        />
+                        <span className="text-[10px] font-bold text-slate-500 min-w-[65px] text-right tabular-nums shrink-0">
+                          {formatAudioTime(audioCurrentTime)} / {formatAudioTime(audioDuration)}
+                        </span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 shrink-0 cursor-pointer flex items-center justify-center"
+                        onClick={handleStopAudio}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  )}
                   {nextQuestion.field_labels.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {nextQuestion.field_labels.map((label: string) => (
