@@ -19,7 +19,7 @@ from app.intake.models import EvidenceRecord, EvidenceSourceType
 from app.jobs.models import JobRecord, JobStatus
 from app.llm import generate_json
 from app.resolution.service import resolve_case_fields
-from app.storage.minio import get_storage_service
+from app.storage.s3 import get_storage_service
 from app.templates.models import TemplateDefinition, TemplateField
 from app.templates.service import get_template_definition
 

@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from reportlab.pdfgen import canvas
 
 import app.extraction.service as extraction_service
-import app.storage.minio as storage_module
+import app.storage.s3 as storage_module
 from app.intake.models import EvidenceSourceType
 
 

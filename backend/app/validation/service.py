@@ -25,7 +25,7 @@ from app.extraction.models import FieldCandidateRecord
 from app.intake.models import EvidenceRecord, EvidenceSourceType
 from app.intake.service import list_case_evidence
 from app.resolution.service import assign_nested_value
-from app.storage.minio import get_storage_service
+from app.storage.s3 import get_storage_service
 from app.templates.models import TemplateDefinitionRecord, TemplateField
 from app.templates.runtime import is_field_active
 from app.validation.models import (

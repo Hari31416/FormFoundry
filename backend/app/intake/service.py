@@ -21,7 +21,7 @@ from app.intake.models import (
     TextEvidenceRequest,
 )
 from app.jobs.queue import enqueue_job, get_job_payload
-from app.storage.minio import get_storage_service
+from app.storage.s3 import get_storage_service
 
 logger = logging.getLogger(__name__)
 

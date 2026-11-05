@@ -90,45 +90,45 @@ class LocalStorageService(StorageService):
         return payload
 
 
-class MinioStorageService(StorageService):
+class S3StorageService(StorageService):
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.client = Minio(
-            settings.minio_endpoint,
-            access_key=settings.minio_access_key,
-            secret_key=settings.minio_secret_key,
-            secure=settings.minio_secure,
+            settings.s3_endpoint,
+            access_key=settings.s3_access_key,
+            secret_key=settings.s3_secret_key,
+            secure=settings.s3_secure,
         )
-        if not self.client.bucket_exists(settings.minio_bucket):
+        if not self.client.bucket_exists(settings.s3_bucket):
             logger.info(
-                "storage.minio.create_bucket", extra={"bucket": settings.minio_bucket}
+                "storage.s3.create_bucket", extra={"bucket": settings.s3_bucket}
             )
-            self.client.make_bucket(settings.minio_bucket)
+            self.client.make_bucket(settings.s3_bucket)
 
     async def store_bytes(
         self, *, object_key: str, payload: bytes, content_type: str
     ) -> StoredObject:
         logger.info(
-            "storage.minio.store_bytes.started",
+            "storage.s3.store_bytes.started",
             extra={
-                "bucket": self.settings.minio_bucket,
+                "bucket": self.settings.s3_bucket,
                 "object_key": object_key,
                 "size_bytes": len(payload),
                 "content_type": content_type,
             },
         )
         self.client.put_object(
-            bucket_name=self.settings.minio_bucket,
+            bucket_name=self.settings.s3_bucket,
             object_name=object_key,
             data=io.BytesIO(payload),
             length=len(payload),
             content_type=content_type,
         )
-        uri = f"s3://{self.settings.minio_bucket}/{object_key}"
+        uri = f"s3://{self.settings.s3_bucket}/{object_key}"
         logger.info(
-            "storage.minio.store_bytes.completed",
+            "storage.s3.store_bytes.completed",
             extra={
-                "bucket": self.settings.minio_bucket,
+                "bucket": self.settings.s3_bucket,
                 "object_key": object_key,
                 "storage_uri": uri,
             },
@@ -141,7 +141,7 @@ class MinioStorageService(StorageService):
 
     async def get_download_url(self, storage_uri: str) -> str:
         logger.info(
-            "storage.minio.get_download_url.started", extra={"storage_uri": storage_uri}
+            "storage.s3.get_download_url.started", extra={"storage_uri": storage_uri}
         )
         if not storage_uri.startswith("s3://"):
             return storage_uri
@@ -153,18 +153,16 @@ class MinioStorageService(StorageService):
             object_name=key,
         )
         logger.info(
-            "storage.minio.get_download_url.completed",
+            "storage.s3.get_download_url.completed",
             extra={"storage_uri": storage_uri},
         )
         return url
 
     async def read_bytes(self, storage_uri: str) -> bytes:
-        logger.info(
-            "storage.minio.read_bytes.started", extra={"storage_uri": storage_uri}
-        )
+        logger.info("storage.s3.read_bytes.started", extra={"storage_uri": storage_uri})
         if not storage_uri.startswith("s3://"):
             logger.error(
-                "storage.minio.read_bytes.failed",
+                "storage.s3.read_bytes.failed",
                 extra={"storage_uri": storage_uri, "reason": "invalid_uri_scheme"},
             )
             raise FileNotFoundError(f"Unsupported s3 storage URI: {storage_uri}")
@@ -175,7 +173,7 @@ class MinioStorageService(StorageService):
         try:
             payload = response.read()
             logger.info(
-                "storage.minio.read_bytes.completed",
+                "storage.s3.read_bytes.completed",
                 extra={"storage_uri": storage_uri, "size_bytes": len(payload)},
             )
             return payload
@@ -186,6 +184,6 @@ class MinioStorageService(StorageService):
 
 def get_storage_service() -> StorageService:
     settings = get_settings()
-    if settings.storage_backend == "minio":
-        return MinioStorageService(settings)
+    if settings.storage_backend == "s3":
+        return S3StorageService(settings)
     return LocalStorageService(settings.local_storage_path)

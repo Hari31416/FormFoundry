@@ -34,7 +34,7 @@ from app.cases.models import (
 from app.core.config import get_settings
 from app.intake.models import EvidenceRecord, EvidenceSourceType
 from app.jobs.queue import enqueue_job
-from app.storage.minio import get_storage_service
+from app.storage.s3 import get_storage_service
 from app.templates.models import TemplateDefinitionRecord
 
 

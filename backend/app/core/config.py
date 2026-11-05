@@ -36,11 +36,11 @@ class Settings(BaseSettings):
     redis_db: int = 0
     redis_password: str = "redis"
 
-    minio_endpoint: str = "localhost:9000"
-    minio_access_key: str = "formfoundry"
-    minio_secret_key: str = "formfoundry123"
-    minio_secure: bool = False
-    minio_bucket: str = "formfoundry-assets"
+    s3_endpoint: str = "localhost:9000"
+    s3_access_key: str = "formfoundry"
+    s3_secret_key: str = "formfoundry123"
+    s3_secure: bool = False
+    s3_bucket: str = "formfoundry-assets"
 
     qdrant_host: str = "localhost"
     qdrant_port: int = 6333
