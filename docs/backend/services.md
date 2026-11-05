@@ -69,3 +69,15 @@ async def create_template(session: AsyncSession, payload: TemplateDefinitionCrea
     await session.refresh(db_obj)
     return db_obj
 ```
+
+### Conversation calls and prompt context
+
+An ordinary chat answer uses one extraction LLM call and one follow-up LLM call. When no fields remain to ask about, the follow-up call is skipped. Chat answers stay in one extraction unit even when longer than the document chunk size. Uploaded documents retain their per-chunk extraction flow.
+
+The submitted answer is associated with the stored assistant question. The backend does not regenerate that question before interpreting the answer. Both extraction and question generation receive the latest 20 conversation turns, oldest first, with up to 2,000 characters per turn. Stored English translations are used where available. Extraction uses history to interpret the current evidence, rather than creating new candidates from old answers or assistant examples. The question prompt also includes current field statuses, values, and confidence, allowing it to acknowledge partial answers and request clarification.
+
+The next question's English payload, displayed text, language, and state fingerprint are stored on its assistant turn. The fingerprint includes the template, current field/schema state, and latest user turn. Unchanged GET and SSE reads reuse that payload. Field changes and new user answers invalidate it. The frontend uses the question returned by answer submission directly. Existing language-provider translation remains separate; this change does not introduce another translation model.
+
+A per-case async lock serializes question reads and answer submission within the backend process. Polling waits for an in-progress answer instead of generating a follow-up from intermediate state. Multiple backend worker processes would require coordination beyond this in-process lock.
+
+All active LLM prompts live in `backend/app/prompts/*.jinja2`: extraction, conversation, and vision OCR, each with system and user templates. `render_prompt` uses one shared Jinja environment with strict undefined-variable checks. Incomplete dates must not acquire invented month/day components; the follow-up should request the missing detail.

@@ -17,6 +17,8 @@ async def fake_generate_json(*, system_prompt: str, user_prompt: str) -> dict:
     lowered_prompt = user_prompt.lower()
 
     if "field catalog:" in lowered_prompt:
+        # History is context, not new evidence for this extraction.
+        lowered_prompt = lowered_prompt.split("source text:\n", 1)[-1]
         candidates: list[dict] = []
 
         name_match = re.search(

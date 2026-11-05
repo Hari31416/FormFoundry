@@ -10,6 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cases.models import CaseFileRecord
+from app.conversation.context import load_conversation_context
 from app.core.config import get_settings
 from app.extraction.contracts import FieldCandidate
 from app.extraction.models import FieldCandidateRecord
@@ -18,6 +19,7 @@ from app.extraction.parsers.pdf import render_pdf_pages_to_png
 from app.intake.models import EvidenceRecord, EvidenceSourceType
 from app.jobs.models import JobRecord, JobStatus
 from app.llm import generate_json
+from app.prompts import render_prompt
 from app.resolution.service import resolve_case_fields
 from app.storage.s3 import get_storage_service
 from app.templates.models import TemplateDefinition, TemplateField
@@ -309,6 +311,7 @@ def format_field_catalog(template: TemplateDefinition) -> str:
 async def extract_candidates_with_llm(
     template: TemplateDefinition,
     text: str,
+    conversation_context: str = "[]",
 ) -> list[CandidateProposal]:
     started_at = perf_counter()
     field_lookup = {field.path: field for field in template.template_schema}
@@ -319,27 +322,15 @@ async def extract_candidates_with_llm(
         "source_text_chars": len(text),
     }
     logger.info("extraction.llm_candidates.started", extra=log_context)
-    import os
-
-    import jinja2
-
-    prompts_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "prompts"
-    )
-    env = jinja2.Environment(loader=jinja2.FileSystemLoader(prompts_dir))
-    system_template = env.get_template("extraction_system.jinja2")
-    user_template = env.get_template("extraction_user.jinja2")
-
-    system_prompt = system_template.render()
-    user_prompt = user_template.render(
-        template_name=template.name,
-        field_catalog=format_field_catalog(template),
-        source_text=text,
-    )
-
     response = await generate_json(
-        system_prompt=system_prompt,
-        user_prompt=user_prompt,
+        system_prompt=render_prompt("extraction_system.jinja2"),
+        user_prompt=render_prompt(
+            "extraction_user.jinja2",
+            template_name=template.name,
+            field_catalog=format_field_catalog(template),
+            source_text=text,
+            conversation_context=conversation_context,
+        ),
     )
     if response is None:
         logger.error(
@@ -581,7 +572,7 @@ async def extract_evidence_text(record: EvidenceRecord) -> str:
                 extra={
                     "case_id": record.case_id,
                     "evidence_id": record.evidence_id,
-                    "source_type": record.source_type.value,
+                    "source_type": str(record.source_type),
                     "raw_chars": len(record.raw_text),
                     "contextualized_chars": len(contextualized),
                 },
@@ -592,7 +583,7 @@ async def extract_evidence_text(record: EvidenceRecord) -> str:
             extra={
                 "case_id": record.case_id,
                 "evidence_id": record.evidence_id,
-                "source_type": record.source_type.value,
+                "source_type": str(record.source_type),
                 "extracted_chars": len(record.raw_text),
             },
         )
@@ -630,7 +621,7 @@ async def extract_evidence_text(record: EvidenceRecord) -> str:
                 extra={
                     "case_id": record.case_id,
                     "evidence_id": record.evidence_id,
-                    "source_type": record.source_type.value,
+                    "source_type": str(record.source_type),
                     "storage_uri": record.storage_uri,
                 },
             )
@@ -660,7 +651,7 @@ async def extract_evidence_text(record: EvidenceRecord) -> str:
                 extra={
                     "case_id": record.case_id,
                     "evidence_id": record.evidence_id,
-                    "source_type": record.source_type.value,
+                    "source_type": str(record.source_type),
                     "storage_uri": record.storage_uri,
                 },
             )
@@ -670,7 +661,7 @@ async def extract_evidence_text(record: EvidenceRecord) -> str:
         extra={
             "case_id": record.case_id,
             "evidence_id": record.evidence_id,
-            "source_type": record.source_type.value,
+            "source_type": str(record.source_type),
         },
     )
     return ""
@@ -762,12 +753,18 @@ async def run_extraction_job(
         },
     )
 
+    conversation_context = await load_conversation_context(session, case_id)
     candidates: list[FieldCandidateRecord] = []
     try:
         for record in evidence_records:
             evidence_started_at = perf_counter()
             text = await extract_evidence_text(record)
-            chunks = chunk_text(text)
+            # A chat answer is one unit; history must not multiply extraction calls.
+            chunks = (
+                [text]
+                if record.source_type == EvidenceSourceType.CHAT_ANSWER
+                else chunk_text(text)
+            )
             record.parsed_payload = {
                 **(record.parsed_payload or {}),
                 "chunk_count": len(chunks),
@@ -779,7 +776,7 @@ async def run_extraction_job(
                     "case_id": case_id,
                     "job_id": job_id,
                     "evidence_id": record.evidence_id,
-                    "source_type": record.source_type.value,
+                    "source_type": str(record.source_type),
                     "extracted_chars": len(text),
                     "chunk_count": len(chunks),
                     "duration_ms": round(
@@ -789,7 +786,9 @@ async def run_extraction_job(
             )
             for chunk_index, chunk in enumerate(chunks):
                 chunk_started_at = perf_counter()
-                proposals = await extract_candidates_with_llm(template, chunk)
+                proposals = await extract_candidates_with_llm(
+                    template, chunk, conversation_context
+                )
                 logger.info(
                     "extraction.chunk.completed",
                     extra={

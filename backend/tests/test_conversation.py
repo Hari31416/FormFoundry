@@ -290,3 +290,101 @@ def test_required_field_refusal_reasks_without_deterministic_warning(
 
     assert payload["assistant_turn"] is not None
     assert payload["next_question"]["field_path"] == "complainant.full_name"
+
+
+def test_turn_uses_two_calls_with_history_and_cached_reads(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from unittest.mock import AsyncMock
+
+    import app.conversation.service as conversation_service
+    import app.extraction.service as extraction_service
+
+    question_mock = AsyncMock(wraps=conversation_service.generate_json)
+    extraction_mock = AsyncMock(wraps=extraction_service.generate_json)
+    monkeypatch.setattr(conversation_service, "generate_json", question_mock)
+    monkeypatch.setattr(extraction_service, "generate_json", extraction_mock)
+    case_id = create_case(client)
+    assert question_mock.await_count == 1
+    initial = client.get(f"/api/v1/cases/{case_id}/conversation/next-question").json()
+    assert question_mock.await_count == 1
+    question_mock.reset_mock()
+
+    message = (
+        "My name is Priya Sharma. Phone number is 9876543210. "
+        "I live at 14 Residency Road, Bengaluru."
+    )
+    response = client.post(
+        f"/api/v1/cases/{case_id}/conversation/turns",
+        json={"message": message, "language": "en"},
+    )
+    assert response.status_code == 200
+    assert extraction_mock.await_count == 1
+    assert question_mock.await_count == 1
+    for mock in [extraction_mock, question_mock]:
+        prompt = mock.call_args.kwargs["user_prompt"]
+        assert message in prompt
+        assert initial["question"] in prompt
+    assert "Current field state:" in question_mock.call_args.kwargs["user_prompt"]
+    payload = response.json()
+    assert payload["assistant_turn"]["message"] == payload["next_question"]["question"]
+    assert (
+        payload["assistant_turn"]["metadata"]["original_english"]
+        == payload["next_question"]["question"]
+    )
+    for _ in range(3):
+        assert (
+            client.get(f"/api/v1/cases/{case_id}/conversation/next-question").json()
+            == payload["next_question"]
+        )
+    client.get(f"/api/v1/cases/{case_id}/conversation/stream")
+    assert question_mock.await_count == 1
+    assert extraction_mock.await_count == 1
+
+
+def test_empty_extraction_followup_receives_partial_answer(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from unittest.mock import AsyncMock
+
+    import app.conversation.service as conversation_service
+    import app.extraction.service as extraction_service
+
+    case_id = create_case(client)
+    extraction_mock = AsyncMock(return_value={"candidates": []})
+    question_mock = AsyncMock(
+        return_value={"question": "Thanks. What month and day in 2025?"}
+    )
+    monkeypatch.setattr(extraction_service, "generate_json", extraction_mock)
+    monkeypatch.setattr(conversation_service, "generate_json", question_mock)
+    response = client.post(
+        f"/api/v1/cases/{case_id}/conversation/turns",
+        json={"message": "2025", "language": "en"},
+    )
+    assert response.status_code == 200
+    assert extraction_mock.await_count == question_mock.await_count == 1
+    assert '"message": "2025"' in question_mock.call_args.kwargs["user_prompt"]
+    assert (
+        response.json()["next_question"]["question"]
+        == "Thanks. What month and day in 2025?"
+    )
+
+
+def test_long_chat_answer_still_uses_one_extraction_call(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from unittest.mock import AsyncMock
+
+    import app.extraction.service as extraction_service
+
+    case_id = create_case(client)
+    extraction_mock = AsyncMock(return_value={"candidates": []})
+    monkeypatch.setattr(extraction_service, "generate_json", extraction_mock)
+    message = "Some additional context. " * 100
+    response = client.post(
+        f"/api/v1/cases/{case_id}/conversation/turns",
+        json={"message": message, "language": "en"},
+    )
+    assert response.status_code == 200
+    assert extraction_mock.await_count == 1
+    assert message.strip() in extraction_mock.call_args.kwargs["user_prompt"]
