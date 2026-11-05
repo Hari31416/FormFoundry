@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from app.llm.service import generate_vision_text
+from app.prompts import render_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -14,15 +15,8 @@ async def extract_text_from_image_bytes(
     context_label: str = "uploaded image",
 ) -> str:
     extracted = await generate_vision_text(
-        system_prompt=(
-            "You perform OCR on images for downstream form filling. "
-            "Return plain text only. Preserve identifiers, dates, amounts, "
-            "addresses, names, and line breaks when possible."
-        ),
-        user_prompt=(
-            f"Extract all readable text from this {context_label}. "
-            "Do not summarize. If no text is visible, return an empty string."
-        ),
+        system_prompt=render_prompt("ocr_system.jinja2"),
+        user_prompt=render_prompt("ocr_user.jinja2", context_label=context_label),
         media=[{"content_type": content_type, "payload": payload}],
     )
     if extracted is None:
