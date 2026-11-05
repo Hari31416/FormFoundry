@@ -41,7 +41,7 @@ Data enters the system via three channels:
 When a user submits a conversational turn:
 
 1. If the locale in `payload.language` is provided, that language is used.
-2. If not, the backend `LanguageManager` runs language detection (via Google, Bhashini, Sarvam, or `langdetect`) on the raw message.
+2. If not, the backend `LanguageManager` runs language detection (via `indic-language-utils`, with local FastText by default) on the raw message.
 3. If a change in language is detected (e.g. user replies in Hindi), the case's relational metadata is updated to store this `preferred_language`.
 4. This synchronizes the frontend and backend preferred language, persisting it across page refreshes.
 
@@ -86,8 +86,8 @@ If there are unresolved fields or validation issues, the assistant generates a f
 1. **Question Generation**: The `app/conversation/service.py` deterministically selects the outstanding field candidates, then requires the LLM to generate the consolidated, English follow-up question text. The backend does not fall back to canned template questions.
 2. **Read-only Preview**: `GET /conversation/next-question` computes the current question without inserting a conversation turn. This keeps polling and page reloads idempotent.
 3. **Canonical Timeline**: Assistant questions are persisted only during command flows: case creation, submitted user answers, evidence ingestion, and field rejection. `GET /conversation/turns` is the canonical chronological timeline rendered by the frontend.
-4. **Outgoing Translation**: If the case's `preferred_language` is not English (e.g. Hindi), the persisted assistant question is translated back to the target language (utilizing the Redis cache `translation:en:hi:<hash>` to avoid redundant translations).
-5. **Text-to-Speech (TTS)**: When the user views the question on the frontend (Simplified or Detailed), they can trigger real-time Text-to-Speech audio playback. The backend `/languages/tts` route handles generating MP3 audio bytes using the configured speech provider, such as Bhashini or Sarvam, and streams the audio directly back to the React player.
+4. **Outgoing Translation**: If the case's `preferred_language` is not English (e.g. Hindi), the persisted assistant question is translated back to the target language (utilizing the Redis cache `translation:en-IN:hi-IN:<hash>` to avoid redundant translations).
+5. **Text-to-Speech (TTS)**: When the user views the question on the frontend (Simplified or Detailed), they can trigger real-time Text-to-Speech audio playback. The backend `/languages/tts` route handles generating audio using `indic-language-utils`, with Microsoft Edge TTS by default, and streams the audio directly back to the React player.
 
 ---
 

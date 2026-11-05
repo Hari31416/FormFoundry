@@ -14,9 +14,9 @@ The service layer in FormFoundry contains all the core business logic. Services 
 
 A pluggable, centralized orchestrator that manages all regional language detection, translation, and text-to-speech (TTS) services.
 
-- `detect_language`: Dynamically determines the language of raw user inputs (using Google, Bhashini, Sarvam, or `langdetect`).
+- `detect_language`: Dynamically determines the language of raw user inputs (using the configured `indic-language-utils` route, local FastText by default).
 - `translate`: Performs bidirectional translation between local languages (Hindi) and English. Automatically checks the Redis translation cache to avoid calling third-party API providers on identical strings.
-- `text_to_speech`: Converts plain text into high-quality audio bytes (MP3) in a specific language using regional speech models (such as Bhashini or Sarvam), enabling clickable playback in the chat.
+- `text_to_speech`: Converts text into audio using `indic-language-utils`, with Microsoft Edge TTS by default and the returned audio format preserved, enabling clickable playback in the chat.
 - `speech_to_text`: Transcribes spoken voice bytes into plain text for intake processing.
 
 ### Template Service (`app/templates/service.py`)

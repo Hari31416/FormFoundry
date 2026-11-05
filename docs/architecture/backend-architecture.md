@@ -44,31 +44,30 @@ FormFoundry uses `litellm` to maintain provider-agnosticism. The extraction proc
 3. **LLM Extraction**: Sending blocks to the LLM with structured prompts to identify field candidates.
 4. **Attribution**: Mapping extracted data back to the original evidence source.
 
-## Pluggable Multilingual & Speech Subsystem
+## Language and speech
 
-FormFoundry features a robust and decoupled **Language & Speech Subsystem** designed to handle diverse language requirements. It supports bidirectional translation between regional languages (e.g., Hindi) and English so that downstream LLM and OCR services only process English data, assuring maximum compliance and model intelligence.
+`LanguageManager` uses the public `indic-language-utils` clients for translation,
+language detection, TTS, and optional STT. Provider routes, model IDs, and voice
+mappings live in the root `.indic-language-utils.toml`. Credentials load from the
+root `.env`, with process environment values taking precedence.
 
-### 1. Provider Interfaces
+Defaults are Google Translate, local FastText detection, and Microsoft Edge TTS.
+STT is disabled by default. The first language request opens async clients once;
+application shutdown closes them. Partial initialization closes any clients that
+were opened before a failure. No custom provider HTTP adapters remain.
 
-The subsystem defines abstract base classes (ABCs) in `app/languages/base.py`:
+The library normalizes language inputs to canonical tags such as `hi-IN`.
+Detection returns bare ISO codes such as `hi` for conversation metadata and UI
+selectors. Disabled or failed detection returns `en`. Translation failures remain
+visible to the caller; conversation localization helpers log them and retain the
+original text. Empty or failed translations never enter the Redis cache.
 
-- `BaseLanguageDetectionProvider`
-- `BaseTranslationProvider`
-- `BaseTTSProvider`
-- `BaseSTTProvider`
+Redis stores successful translations under SHA-256 keys containing normalized
+source and destination tags, with a 24-hour TTL. Cache connection failures do not
+block provider calls. The library's own cache is disabled to avoid duplicate
+translation caches.
 
-This decoupling allows developers to register any translation service. Currently supported out-of-the-box:
-
-- **Google Translate Provider**: Fast, reliable general translation API.
-- **Bhashini Provider**: Specifically tailored for Indian regional languages, delivering state-of-the-art translation, detection, and Text-to-Speech (TTS) synthesis.
-- **Sarvam Provider**: Indian language detection, translation, and Text-to-Speech integration using Sarvam REST APIs with BCP-47 language-code mapping at the provider boundary.
-- **Langdetect Provider**: A local, zero-cost language detector used as a developer fallback.
-
-### 2. High-Performance Translation Caching
-
-To minimize billing costs and network latency when calling external translation APIs (like Google, Bhashini, or Sarvam), a high-performance **caching layer** is built directly into the service orchestrator (`app/languages/cache.py`):
-
-- Uses **Redis** as a key-value store.
-- Generates collision-free **SHA-256 hashed keys** combining the source text, source language, and target language.
-- Defaults to a **24-hour TTL (86,400s)**, ensuring highly active conversation steps are processed instantly with zero external provider cost.
-- Automatically handles network errors or cache misses by falling back to the active provider.
+TTS returns the library's audio bytes and audio format. The endpoint uses the
+matching content type and `application/octet-stream` if the format is unknown.
+STT accepts bytes with their actual audio format and sampling rate. It does not
+fetch URLs, load file paths, or resample audio.

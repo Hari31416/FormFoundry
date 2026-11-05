@@ -7,7 +7,7 @@ This guide will help you get a local development environment up and running for 
 Ensure you have the following installed on your system:
 
 - **Docker & Docker Compose**: For running infrastructure services.
-- **Python 3.12+**: For the backend.
+- **Python 3.12**: For the backend.
 - **`uv`**: Fast Python package manager.
 - **Node.js (LTS)**: For the frontend.
 - **`pnpm`**: Fast Node package manager.
@@ -28,64 +28,34 @@ Ensure you have the following installed on your system:
    cp .env.example .env
    ```
 
-3. **Configure Pluggable Language Providers**:
-   Open `.env` and adjust the variables to enable the multilingual and speech features.
+3. **Configure language providers**:
+   Translation, language detection, and speech use `indic-language-utils`. The root
+   `.indic-language-utils.toml` selects the defaults:
 
-   **Option A: Local Developer (Zero-Key Setup)**
-   To iterate quickly without setting up external translation keys, utilize `langdetect` local fallback:
-
-   ```bash
-   LANGUAGE_DETECTION_SERVICE_PROVIDER=langdetect
-   LANGUAGE_TRANSLATION_SERVICE_PROVIDER=None
-   TTS_SERVICE_PROVIDER=None
-   STT_SERVICE_PROVIDER=None
+   ```toml
+   [routes]
+   translation = ["googletrans"]
+   text_language_detection = ["fasttext"]
+   text_to_speech = ["edge_tts"]
+   speech_to_text = []
    ```
 
-   **Option B: Google Cloud translation**
-   To utilize Google Translation pipelines, set:
+   These defaults need no API keys. Google Translate and Microsoft Edge TTS are
+   unofficial network adapters. FastText runs locally and downloads its model on
+   first detection. Backend setup installs the required extras and uses Python 3.12.
 
-   ```bash
-   LANGUAGE_DETECTION_SERVICE_PROVIDER=google
-   LANGUAGE_TRANSLATION_SERVICE_PROVIDER=google
-   TTS_SERVICE_PROVIDER=None
-   STT_SERVICE_PROVIDER=None
-   # Standard google credentials (ADC) or API key envs are required based on your GCP setup
-   ```
+   Set a route to `[]` to disable it. A comma-separated `ILU_ROUTE_TRANSLATION`,
+   `ILU_ROUTE_TEXT_LANGUAGE_DETECTION`, `ILU_ROUTE_TEXT_TO_SPEECH`, or
+   `ILU_ROUTE_SPEECH_TO_TEXT` environment variable overrides its TOML route.
+   An explicitly empty override disables the capability. The old
+   `LANGUAGE_DETECTION_SERVICE_PROVIDER`, `LANGUAGE_TRANSLATION_SERVICE_PROVIDER`,
+   `TTS_SERVICE_PROVIDER`, and `STT_SERVICE_PROVIDER` variables are no longer used.
 
-   **Option C: Bhashini GovTech pipeline (State-of-the-Art Indian Language API)**
-   To leverage Bhashini for Indian languages (Hindi, etc.) with Text-to-Speech playback:
-
-   ```bash
-   LANGUAGE_DETECTION_SERVICE_PROVIDER=bhashini
-   LANGUAGE_TRANSLATION_SERVICE_PROVIDER=bhashini
-   TTS_SERVICE_PROVIDER=bhashini
-   STT_SERVICE_PROVIDER=None
-
-   # Bhashini credentials
-   BHASHINI_API_KEY=your-api-key-here
-   BHASHINI_ENDPOINT_URL=https://dhruva-api.bhashini.gov.in/services/inference/pipeline
-   BHASHINI_TRANSLATION_SERVICE_ID=ai4bharat/indictrans-v2-all-gpu--t4
-   BHASHINI_LANG_DETECTION_SERVICE_ID=some-lang-detection-model-id  # Optional, falls back to standard pipelines
-   ```
-
-   **Option D: Sarvam AI language and speech APIs**
-   To use Sarvam for Indian language detection, translation, and Text-to-Speech:
-
-   ```bash
-   LANGUAGE_DETECTION_SERVICE_PROVIDER=sarvam
-   LANGUAGE_TRANSLATION_SERVICE_PROVIDER=sarvam
-   TTS_SERVICE_PROVIDER=sarvam
-   STT_SERVICE_PROVIDER=None
-
-   # Sarvam credentials
-   SARVAM_API_KEY=your-api-key-here
-   SARVAM_BASE_URL=https://api.sarvam.ai
-   SARVAM_TRANSLATION_MODEL=sarvam-translate:v1
-   SARVAM_TRANSLATION_MODE=formal
-   SARVAM_TTS_MODEL=bulbul:v3
-   SARVAM_TTS_SPEAKER=shubh
-   SARVAM_TTS_AUDIO_CODEC=mp3
-   ```
+   For Bhashini or Sarvam, change the routes to `bhashini` or `sarvam`, configure
+   endpoints and model/service IDs in the TOML provider sections, and supply
+   `BHASHINI_API_KEY` or `SARVAM_API_KEY` in the root `.env`. See the commented
+   provider and Edge voice examples in the TOML. Process environment values take
+   precedence over `.env`. `ILU_CONFIG_FILE` selects an alternative TOML file.
 
 4. **Start Infrastructure**:
    Use the Makefile to spin up the required Docker containers (PostgreSQL, Minio, Redis, Qdrant).
@@ -128,6 +98,6 @@ Once running, you can verify the status of the services:
 - **LLM Errors**: Verify your `LLM_API_KEY` and `LLM_MODEL` settings.
 - **Translation Failures**:
   - Ensure **Redis** is running (`make ps`), as translation caching relies on an active Redis connection.
-  - Double-check external API keys (`BHASHINI_API_KEY`, `SARVAM_API_KEY`, or standard Google keys) if provider translations are failing.
+  - Double-check external API keys (`BHASHINI_API_KEY` or `SARVAM_API_KEY` for cloud providers) if provider translations are failing.
   - Review backend logs (`make logs-backend`) to check for `LanguageManager` initialization warnings or connection failures.
 - **Frontend Build**: If you encounter issues with Vite or translation loaders, try clearing `frontend/node_modules` and re-running `make frontend-setup`.

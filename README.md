@@ -30,7 +30,7 @@ graph TD
 
 ## Key Features
 
-- **Pluggable Multilingual Orchestrator**: High-fidelity real-time language detection, translation, and text-to-speech (TTS) synthesis supporting **Google Translate**, **Bhashini**, and **Sarvam**, with local `langdetect` fallback capability.
+- **Multilingual support**: `indic-language-utils` supplies Google translation, local FastText language detection, and Microsoft Edge TTS by default. Provider routes, model IDs, and voices are configured in `.indic-language-utils.toml`.
 - **Dual-Workspace UX**: Seamless frontend view toggle between:
   - **Simplified Chat View**: A guided, chat-first UI featuring speech accessibility, strategists' reasoning insights, and quick inline field reviews.
   - **Detailed Workspace View**: A professional three-panel grid for concurrently analyzing uploaded evidence, reviewing structured field values, and auditing AI attribution.
@@ -46,7 +46,7 @@ graph TD
 
 | Component              | Technology                                                                  |
 | :--------------------- | :-------------------------------------------------------------------------- |
-| **Backend**            | FastAPI, Python 3.12+, SQLAlchemy, Alembic, Pydantic, LiteLLM, ReportLab, `langdetect` |
+| **Backend**            | FastAPI, Python 3.12, SQLAlchemy, Alembic, Pydantic, LiteLLM, ReportLab, `indic-language-utils` |
 | **Frontend**           | React 18, TypeScript, Vite, shadcn/ui, Tailwind CSS, `react-i18next`        |
 | **Database**           | PostgreSQL 16                                                               |
 | **Caching/Jobs**       | Redis 7 (State, Jobs, and Translation caching)                              |
@@ -115,7 +115,7 @@ flowchart TD
 ### Prerequisites
 
 - Docker and Docker Compose
-- Python 3.12+ and `uv`
+- Python 3.12 and `uv`
 - Node.js and `pnpm`
 
 ### Local Development Setup
@@ -127,27 +127,34 @@ flowchart TD
    # Edit .env with your LLM keys and Language service providers
    ```
 
-2. **Language Service Provider Configuration**:
-   Open `.env` and configure the following parameters to enable translations:
+2. **Language provider configuration**:
+   Translation, language detection, and speech use `indic-language-utils`. The root
+   `.indic-language-utils.toml` selects the defaults:
 
-   ```bash
-   # Enable Language Providers (e.g. google, bhashini, sarvam, langdetect, or None)
-   LANGUAGE_DETECTION_SERVICE_PROVIDER=langdetect
-   LANGUAGE_TRANSLATION_SERVICE_PROVIDER=google  # or bhashini/sarvam
-   TTS_SERVICE_PROVIDER=bhashini                 # or sarvam for text-to-speech
-   STT_SERVICE_PROVIDER=None
-
-   # Bhashini GovTech API Credentials
-   BHASHINI_API_KEY=your-bhashini-api-key
-   BHASHINI_ENDPOINT_URL=https://dhruva-api.bhashini.gov.in/services/inference/pipeline
-   BHASHINI_TRANSLATION_SERVICE_ID=ai4bharat/indictrans-v2-all-gpu--t4
-
-   # Sarvam API Credentials
-   SARVAM_API_KEY=your-sarvam-api-key
-   SARVAM_BASE_URL=https://api.sarvam.ai
-   SARVAM_TRANSLATION_MODEL=sarvam-translate:v1
-   SARVAM_TTS_MODEL=bulbul:v3
+   ```toml
+   [routes]
+   translation = ["googletrans"]
+   text_language_detection = ["fasttext"]
+   text_to_speech = ["edge_tts"]
+   speech_to_text = []
    ```
+
+   These defaults need no API keys. Google Translate and Microsoft Edge TTS are
+   unofficial network adapters. FastText runs locally and downloads its model on
+   first detection. Backend setup installs the required extras and uses Python 3.12.
+
+   Set a route to `[]` to disable it. A comma-separated `ILU_ROUTE_TRANSLATION`,
+   `ILU_ROUTE_TEXT_LANGUAGE_DETECTION`, `ILU_ROUTE_TEXT_TO_SPEECH`, or
+   `ILU_ROUTE_SPEECH_TO_TEXT` environment variable overrides its TOML route.
+   An explicitly empty override disables the capability. The old
+   `LANGUAGE_DETECTION_SERVICE_PROVIDER`, `LANGUAGE_TRANSLATION_SERVICE_PROVIDER`,
+   `TTS_SERVICE_PROVIDER`, and `STT_SERVICE_PROVIDER` variables are no longer used.
+
+   For Bhashini or Sarvam, change the routes to `bhashini` or `sarvam`, configure
+   endpoints and model/service IDs in the TOML provider sections, and supply
+   `BHASHINI_API_KEY` or `SARVAM_API_KEY` in the root `.env`. See the commented
+   provider and Edge voice examples in the TOML. Process environment values take
+   precedence over `.env`. `ILU_CONFIG_FILE` selects an alternative TOML file.
 
 3. **Infrastructure**:
 

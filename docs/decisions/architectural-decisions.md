@@ -36,10 +36,10 @@ This document tracks significant architectural decisions made during the develop
 **Context**: Reaching regional users (such as citizen intake in India) requires local language interfaces and speech accessibility. However, hardcoding external translation/speech APIs locks the platform into specific vendors and raises API costs.
 **Decision**:
 
-1. Build a decoupled multilingual subsystem with abstract base classes (`BaseTranslationProvider`, `BaseTTSProvider`, etc.) and a service registry orchestrator (`LanguageManager`).
+1. Use `indic-language-utils` async clients through `LanguageManager` for translation, detection, TTS, and optional STT. Keep provider routes, models, and voice mappings in `.indic-language-utils.toml`, with credentials in `.env`. Default to Google Translate, local FastText detection, and Microsoft Edge TTS.
 2. Integrate high-performance, Redis-backed translation caching with SHA-256 collision-free hashing of source, target, and string contents.
 3. Sync case metadata preferences so that backend-generated questions automatically translate and stream to match the active client locale.
-   **Consequences**: Pluggability of localized systems (such as Bhashini or Google Cloud) with zero-key local fallbacks, significant reduction in translation API costs, and low latency for active conversation loops.
+   **Consequences**: Providers can change through configuration without custom HTTP adapters. The defaults need no API keys. FastText downloads its model on first use, while translation and TTS require network access. Redis reuses successful translations and clients close at application shutdown.
 
 ## ADR 6: Dual-Workspace UI Architecture
 

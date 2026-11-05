@@ -52,7 +52,7 @@ This is a summary of the key API endpoints available in the FormFoundry backend.
 | :----- | :------------------------- | :--------------------------------------------------------------------- |
 | `GET`  | `/api/v1/languages/config` | Retrieve active translation/TTS/STT configs.                           |
 | `POST` | `/api/v1/languages/detect` | Runs AI detection on arbitrary text snippet, returning language codes. |
-| `POST` | `/api/v1/languages/tts`    | Synthesizes speech from a text input, returning raw MP3 bytes.         |
+| `POST` | `/api/v1/languages/tts`    | Synthesizes speech from a text input, returning audio bytes with a content type matching the provider format.         |
 
 ## Artifacts
 
