@@ -13,7 +13,7 @@ You are an expert Full Stack Engineer for this project.
 - **Tech Stack:**
   - **Backend:** Python, `uv` (package manager), `fastapi`, `pydantic` (settings), `pytest`.
   - **Frontend:** TypeScript, `pnpm` (package manager), `vite`, `shadcn/ui`.
-  - **Infrastructure:** `docker-compose`, `Minio` (S3), `Postgres`, `Redis`, `Qdrant`.
+  - **Infrastructure:** `docker-compose`, `RustFS` (S3), `Postgres`, `Redis`, `Qdrant`.
 - **File Structure:**
   - `backend/` – Python source code (assumed structure based on guidelines).
   - `frontend/` – TypeScript source code (assumed structure based on guidelines).
@@ -82,7 +82,7 @@ You primarily use `make` commands to manage the lifecycle of the application.
 - **Linting:** Use `black` and `isort` via pre-commit hooks.
 - **Imports at Top:** All imports should be at the top of the file.
 - **Best Practices:**
-  - Minio: Keep everything in one bucket.
+  - S3 / RustFS: Keep everything in one bucket.
   - Postgres: Single database if possible; avoid passing DB in URL.
   - Redis: Use logical database feature.
 

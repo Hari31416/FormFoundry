@@ -14,7 +14,7 @@ graph TD
     subgraph Persistence
         Backend <--> DB[(Postgres - Data & Metadata)]
         Backend <--> Cache[(Redis - Jobs, State & Translation Cache)]
-        Backend <--> ObjectStore[(Minio - Files & Artifacts)]
+        Backend <--> ObjectStore[(RustFS - S3 Files & Artifacts)]
         Backend <--> VectorDB[(Qdrant - Vector Search)]
     end
 
@@ -50,7 +50,7 @@ graph TD
 | **Frontend**           | React 18, TypeScript, Vite, shadcn/ui, Tailwind CSS, `react-i18next`        |
 | **Database**           | PostgreSQL 16                                                               |
 | **Caching/Jobs**       | Redis 7 (State, Jobs, and Translation caching)                              |
-| **Object Storage**     | Minio (S3 Compatible)                                                       |
+| **Object Storage**     | RustFS (S3 Compatible)                                                      |
 | **Vector DB**          | Qdrant                                                                      |
 | **Package Management** | `uv` (Backend), `pnpm` (Frontend)                                           |
 | **Orchestration**      | Docker Compose, Makefile                                                    |
