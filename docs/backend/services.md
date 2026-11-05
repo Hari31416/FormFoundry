@@ -81,3 +81,11 @@ The next question's English payload, displayed text, language, and state fingerp
 A per-case async lock serializes question reads and answer submission within the backend process. Polling waits for an in-progress answer instead of generating a follow-up from intermediate state. Multiple backend worker processes would require coordination beyond this in-process lock.
 
 All active LLM prompts live in `backend/app/prompts/*.jinja2`: extraction, conversation, and vision OCR, each with system and user templates. `render_prompt` uses one shared Jinja environment with strict undefined-variable checks. Incomplete dates must not acquire invented month/day components; the follow-up should request the missing detail.
+
+### Evidence-backed provenance
+
+Chat extraction candidates must cite a quote present in the current raw answer. History and assistant question text cannot supply that citation. The backend checks quotes before storing candidates, allowing case and whitespace normalization and the legacy `User answer:` prefix. Candidate rejection counts are logged as `skipped_unsupported_quote` without an extra model call.
+
+The resolver repeats this validation for stored chat candidates and ignores unsupported sources. Proposed fields list only the qualifying evidence supporting the selected value. Conflicted fields retain sources for the competing qualifying candidates; unresolved fields do not label rejected guesses as supporting evidence. Confirmed values remain confirmed, with provenance restricted to matching validated candidates and matching manual edits. Original candidate and evidence records are retained for audit.
+
+To repair an existing case without LLM calls, run `uv run python -m scripts.repair_case_provenance CASE_ID` from `backend/`. This re-resolves the case with the current validation rules and updates its field state and resolution audit.

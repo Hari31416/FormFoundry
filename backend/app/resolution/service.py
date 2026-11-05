@@ -6,7 +6,7 @@ import operator
 import re
 import time
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from typing import Any
 
@@ -22,6 +22,8 @@ from app.cases.models import (
 )
 from app.core.config import get_settings
 from app.extraction.models import FieldCandidateRecord
+from app.extraction.provenance import source_refs_are_supported
+from app.intake.models import EvidenceRecord, EvidenceSourceType
 from app.resolution.models import ResolutionAuditRecord
 from app.templates.models import TemplateDefinitionRecord
 
@@ -40,7 +42,7 @@ def normalize_candidate_value(value: Any) -> str:
 
 
 # Supported AST operators
-operators = {
+operators: dict[type[ast.AST], Callable[..., Any]] = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
     ast.Mult: operator.mul,
@@ -181,9 +183,45 @@ async def resolve_case_fields(session: AsyncSession, case_id: str) -> None:
         },
     )
 
+    evidence_by_id = {
+        evidence.evidence_id: evidence
+        for evidence in (
+            await session.execute(
+                select(EvidenceRecord).where(EvidenceRecord.case_id == case_id)
+            )
+        )
+        .scalars()
+        .all()
+    }
+    candidate_sources: dict[str, list[str]] = {}
     candidates_by_field: dict[str, list[FieldCandidateRecord]] = defaultdict(list)
     for candidate in candidates:
-        candidates_by_field[candidate.field_path].append(candidate)
+        valid_ids = []
+        for evidence_id in candidate.source_evidence_ids:
+            evidence = evidence_by_id.get(evidence_id)
+            if evidence is None:
+                continue
+            if (
+                candidate.extractor_type == "litellm"
+                and evidence.source_type == EvidenceSourceType.CHAT_ANSWER
+                and not source_refs_are_supported(
+                    candidate.source_refs, evidence.raw_text or ""
+                )
+            ):
+                continue
+            valid_ids.append(evidence_id)
+        if valid_ids:
+            candidate_sources[candidate.candidate_id] = valid_ids
+            candidates_by_field[candidate.field_path].append(candidate)
+        else:
+            logger.info(
+                "resolution.candidate.unsupported_source",
+                extra={
+                    "case_id": case_id,
+                    "candidate_id": candidate.candidate_id,
+                    "field_path": candidate.field_path,
+                },
+            )
 
     await session.execute(
         delete(ResolutionAuditRecord).where(ResolutionAuditRecord.case_id == case_id)
@@ -193,14 +231,31 @@ async def resolve_case_fields(session: AsyncSession, case_id: str) -> None:
     required_fields = {
         field["path"]: bool(field.get("required")) for field in template_record.schema
     }
-    calculations_by_path = {
-        field["path"]: field.get("calculation")
+    calculations_by_path: dict[str, str] = {
+        field["path"]: field["calculation"]
         for field in template_record.schema
         if field.get("calculation") is not None
     }
 
     for field_state in field_states:
         if field_state.status == FieldStateStatus.CONFIRMED:
+            matching_sources = {
+                evidence_id
+                for candidate in candidates_by_field.get(field_state.field_path, [])
+                if normalize_candidate_value(candidate.candidate_value)
+                == normalize_candidate_value(field_state.resolved_value)
+                for evidence_id in candidate_sources[candidate.candidate_id]
+            }
+            # Manual edits are direct evidence and do not create LLM candidates.
+            matching_sources.update(
+                evidence_id
+                for evidence_id in field_state.source_evidence_ids
+                if (evidence := evidence_by_id.get(evidence_id)) is not None
+                and evidence.source_type == EvidenceSourceType.FIELD_EDIT
+                and evidence.parsed_payload.get("field_path") == field_state.field_path
+                and evidence.parsed_payload.get("value") == field_state.resolved_value
+            )
+            field_state.source_evidence_ids = sorted(matching_sources)
             assign_nested_value(
                 schema_state, field_state.field_path, field_state.resolved_value
             )
@@ -232,13 +287,8 @@ async def resolve_case_fields(session: AsyncSession, case_id: str) -> None:
         confidence = max(
             (candidate.confidence for candidate in field_candidates), default=0.0
         )
-        source_evidence_ids: list[str] = sorted(
-            {
-                evidence_id
-                for candidate in field_candidates
-                for evidence_id in candidate.source_evidence_ids
-            }
-        )
+        source_evidence_ids: list[str] = []
+        supporting_candidates: list[FieldCandidateRecord] = []
 
         if qualifying:
             # Group candidates by their normalized value and sort by max confidence, then frequency
@@ -268,12 +318,14 @@ async def resolve_case_fields(session: AsyncSession, case_id: str) -> None:
             if is_clear_winner:
                 # Pick the highest confidence item in the winning group
                 winner = max(top_candidates, key=lambda c: c.confidence)
+                supporting_candidates = top_candidates
                 resolved_value = winner.candidate_value
                 confidence = winner.confidence
                 status = FieldStateStatus.PROPOSED
                 decision = "selected"
                 summary = "Selected the best-supported candidate group."
             else:
+                supporting_candidates = qualifying
                 status = FieldStateStatus.CONFLICTED
                 decision = "conflicted"
                 summary = (
@@ -286,6 +338,13 @@ async def resolve_case_fields(session: AsyncSession, case_id: str) -> None:
             else:
                 summary = "No candidates found at all."
 
+        source_evidence_ids = sorted(
+            {
+                evidence_id
+                for candidate in supporting_candidates
+                for evidence_id in candidate_sources[candidate.candidate_id]
+            }
+        )
         field_state.resolved_value = resolved_value
         field_state.status = status
         field_state.confidence = confidence

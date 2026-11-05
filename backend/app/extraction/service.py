@@ -16,6 +16,7 @@ from app.extraction.contracts import FieldCandidate
 from app.extraction.models import FieldCandidateRecord
 from app.extraction.ocr.adapter import extract_text_from_image_bytes
 from app.extraction.parsers.pdf import render_pdf_pages_to_png
+from app.extraction.provenance import quote_is_supported
 from app.intake.models import EvidenceRecord, EvidenceSourceType
 from app.jobs.models import JobRecord, JobStatus
 from app.llm import generate_json
@@ -312,6 +313,8 @@ async def extract_candidates_with_llm(
     template: TemplateDefinition,
     text: str,
     conversation_context: str = "[]",
+    *,
+    evidence_text: str | None = None,
 ) -> list[CandidateProposal]:
     started_at = perf_counter()
     field_lookup = {field.path: field for field in template.template_schema}
@@ -360,6 +363,7 @@ async def extract_candidates_with_llm(
     skipped_non_object = 0
     skipped_unknown_field = 0
     skipped_uncoercible_value = 0
+    skipped_unsupported_quote = 0
 
     # Group candidate entries by their corresponding top-level template field path
     grouped_candidates: dict[str, list[dict]] = (
@@ -369,6 +373,11 @@ async def extract_candidates_with_llm(
     for item in raw_candidates:
         if not isinstance(item, dict):
             skipped_non_object += 1
+            continue
+        if evidence_text is not None and not quote_is_supported(
+            item.get("source_quote"), evidence_text
+        ):
+            skipped_unsupported_quote += 1
             continue
         field_path = str(item.get("field_path", "")).strip()
         # Normalize bracket notation (e.g., path[idx].sub -> path.idx.sub)
@@ -543,6 +552,7 @@ async def extract_candidates_with_llm(
             "skipped_non_object": skipped_non_object,
             "skipped_unknown_field": skipped_unknown_field,
             "skipped_uncoercible_value": skipped_uncoercible_value,
+            "skipped_unsupported_quote": skipped_unsupported_quote,
         },
     )
     return proposals
@@ -787,7 +797,14 @@ async def run_extraction_job(
             for chunk_index, chunk in enumerate(chunks):
                 chunk_started_at = perf_counter()
                 proposals = await extract_candidates_with_llm(
-                    template, chunk, conversation_context
+                    template,
+                    chunk,
+                    conversation_context,
+                    evidence_text=(
+                        record.raw_text or ""
+                        if record.source_type == EvidenceSourceType.CHAT_ANSWER
+                        else None
+                    ),
                 )
                 logger.info(
                     "extraction.chunk.completed",
