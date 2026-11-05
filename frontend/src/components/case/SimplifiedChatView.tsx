@@ -149,10 +149,24 @@ export function SimplifiedChatView({
     return -1
   }, [mergedMessages])
 
+  const composerRef = React.useRef<HTMLTextAreaElement>(null)
+  const messagesEndRef = React.useRef<HTMLDivElement>(null)
+  React.useEffect(() => {
+    const input = composerRef.current
+    if (input) {
+      input.style.height = 'auto'
+      input.style.height = `${Math.min(input.scrollHeight, 128)}px`
+    }
+  }, [chatInput])
+  const latestMessageId = mergedMessages.at(-1)?.id
+  React.useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
+  }, [latestMessageId])
+
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-slate-50/20">
       <ScrollArea className="flex-1 min-h-0 px-8 py-6">
-        <div className="max-w-3xl mx-auto space-y-6 pb-28">
+        <div className="max-w-3xl mx-auto space-y-6 pb-2">
           {/* Welcome Intro Card */}
           <div className="flex items-start space-x-3 w-full">
             <div className="p-2 bg-blue-600 rounded-xl text-white shadow-md shadow-blue-500/10">
@@ -350,6 +364,15 @@ export function SimplifiedChatView({
               </div>
             )
           })}
+
+          {submitTurnMutation.isPending && (
+            <div role="status" aria-live="polite" className="flex items-center gap-3 text-slate-500">
+              <div className="p-2 bg-slate-100 rounded-xl border border-slate-200">
+                <Loader2 aria-hidden="true" className="w-4 h-4 text-blue-600 animate-spin motion-reduce:animate-none" />
+              </div>
+              <span className="text-sm">{t('generating_response')}</span>
+            </div>
+          )}
 
           {/* Active Upload/OCR Error Alert Card */}
           {uploadError && (
@@ -591,83 +614,72 @@ export function SimplifiedChatView({
               )}
             </motion.div>
           )}
+          <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
 
       {/* Sticky Bottom Input Bar (if next question outstanding) */}
       {nextQuestion && (
-        <div className="border-t border-slate-200/50 bg-white/80 backdrop-blur-md p-4 shrink-0 relative">
-          <div className="max-w-3xl mx-auto bg-white border border-slate-200/70 rounded-2xl shadow-lg shadow-slate-900/5 p-2 space-y-2">
-            <textarea
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              placeholder={uploadFileMutation.isPending ? t('upload_wait_placeholder') : t('reply_placeholder')}
-              className="w-full bg-transparent border-none p-3 pb-0 text-sm focus:outline-none focus:ring-0 resize-none h-16 text-slate-800 placeholder:text-slate-400 leading-relaxed disabled:opacity-50"
-              disabled={uploadFileMutation.isPending || submitTurnMutation.isPending}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  if (e.shiftKey) {
-                    // allows new line
-                  } else {
+        <div className="border-t border-slate-200/50 bg-white/80 backdrop-blur-md px-4 py-2 shrink-0 relative">
+          <div className="max-w-3xl mx-auto">
+            <div className="flex items-end gap-2 bg-white border border-slate-200/70 rounded-2xl shadow-sm p-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={t('attach_file')}
+                className="h-9 w-9 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 shrink-0"
+                onClick={() => document.getElementById('simplified-chat-file-upload')?.click()}
+                disabled={uploadFileMutation.isPending || submitTurnMutation.isPending}
+              >
+                <Paperclip className="w-4 h-4" />
+              </Button>
+              <input
+                id="simplified-chat-file-upload"
+                type="file"
+                accept="image/*,.pdf,application/pdf"
+                className="hidden"
+                onChange={(event) => {
+                  setUploadError(null)
+                  const file = event.target.files?.[0]
+                  if (file) uploadFileMutation.mutate(file)
+                  event.target.value = ''
+                }}
+                disabled={uploadFileMutation.isPending || submitTurnMutation.isPending}
+              />
+              <textarea
+                ref={composerRef}
+                rows={1}
+                aria-label={t('reply_placeholder')}
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                placeholder={uploadFileMutation.isPending ? t('upload_wait_placeholder') : t('reply_placeholder')}
+                className="flex-1 min-w-0 min-h-9 max-h-32 bg-transparent border-none px-1 py-2 text-sm focus:outline-none focus:ring-0 resize-none text-slate-800 placeholder:text-slate-400 leading-5 disabled:opacity-50"
+                disabled={uploadFileMutation.isPending || submitTurnMutation.isPending}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                     e.preventDefault()
                     if (chatInput.trim() && !submitTurnMutation.isPending && !uploadFileMutation.isPending) {
                       submitTurnMutation.mutate(chatInput)
                     }
                   }
-                }
-              }}
-            />
-
-            <div className="flex items-center justify-between border-t border-slate-100/50 pt-2 px-2">
-              <div className="flex items-center space-x-1.5">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    "h-7 w-7 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors shrink-0",
-                    uploadFileMutation.isPending && "bg-blue-50 text-blue-600"
-                  )}
-                  onClick={() => document.getElementById('simplified-chat-file-upload')?.click()}
-                  disabled={uploadFileMutation.isPending || submitTurnMutation.isPending}
-                >
-                  <Paperclip className="w-4 h-4" />
-                </Button>
-                <input
-                  id="simplified-chat-file-upload"
-                  type="file"
-                  accept="image/*,.pdf,application/pdf"
-                  className="hidden"
-                  onChange={(event) => {
-                    setUploadError(null)
-                    const file = event.target.files?.[0]
-                    if (file) {
-                      uploadFileMutation.mutate(file)
-                    }
-                  }}
-                  disabled={uploadFileMutation.isPending || submitTurnMutation.isPending}
-                />
-                {uploadFileMutation.isPending && (
-                  <div className="flex items-center space-x-1 text-[10px] font-black text-blue-600 uppercase tracking-wider animate-pulse">
-                    <Loader2 className="w-3 h-3 animate-spin" />
-                    <span>{t('ocr_analyzing')}</span>
-                  </div>
-                )}
-                {uploadError && (
-                  <span className="text-[10px] font-semibold text-red-500 max-w-[200px] truncate">
-                    {uploadError}
-                  </span>
-                )}
-              </div>
-
+                }}
+              />
               <Button
                 size="icon"
-                className="h-8 w-8 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-md shadow-blue-500/20 shrink-0 transition-all active:scale-95 disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+                aria-label={t('send_message')}
+                className="h-9 w-9 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shrink-0 transition-all active:scale-95 disabled:bg-slate-100 disabled:text-slate-400"
                 disabled={!chatInput.trim() || submitTurnMutation.isPending || uploadFileMutation.isPending}
                 onClick={() => submitTurnMutation.mutate(chatInput)}
               >
-                {submitTurnMutation.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                {submitTurnMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>
             </div>
+            {uploadFileMutation.isPending && (
+              <p role="status" className="mt-1 text-xs text-blue-600">{t('ocr_analyzing')}</p>
+            )}
+            {(uploadError || submitTurnMutation.isError) && (
+              <p role="alert" className="mt-1 text-xs text-red-600">{uploadError || t('message_send_error')}</p>
+            )}
           </div>
         </div>
       )}

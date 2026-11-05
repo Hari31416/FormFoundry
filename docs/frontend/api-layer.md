@@ -61,3 +61,11 @@ The chat UI renders `GET /conversation/turns` directly. Uploaded files and text 
 ## Error Handling
 
 API errors are handled gracefully within the components. The application typically displays a toast notification or an inline error message when a request fails, often leveraging the structured error details returned by FastAPI.
+
+## Chat submission feedback
+
+Submitting an answer immediately clears the composer and adds a local user bubble. That bubble remains visible while language detection and answer processing run. A loading indicator appears beneath it until the request completes. History polling reconciles a newly persisted user turn with the local bubble to avoid duplicates, and success merges the returned user and assistant turns into the query cache. The returned next question is used directly. On failure, the local bubble is removed, the draft is restored, and a translated error message appears for retry.
+
+The chat composer uses one row with attachment and send controls beside the text. Multiline input expands up to 128 pixels. Enter submits, Shift+Enter adds a line break, and IME composition does not submit. The detailed view also shows response-generation and failure feedback.
+
+Run the mocked browser regression tests with `pnpm exec playwright test e2e/chat-composer.spec.ts`. They cover immediate display before the server responds, loading feedback, reconciliation, failure recovery, and multiline input.

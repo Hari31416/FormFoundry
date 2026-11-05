@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
   CaseDetail,
+  ConversationTurn,
   FieldState,
   TemplateField,
   addTextEvidence,
@@ -174,6 +175,7 @@ export default function CaseWorkspace() {
   const [activeTab, setActiveTab] = useState('review')
   const [isEvidenceModalOpen, setIsEvidenceModalOpen] = useState(false)
   const [chatInput, setChatInput] = useState('')
+  const [pendingTurn, setPendingTurn] = useState<{ turn: ConversationTurn; existingIds: Set<string> } | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [localRejectedFields, setLocalRejectedFields] = useState<Set<string>>(new Set())
 
@@ -396,6 +398,25 @@ export default function CaseWorkspace() {
   })
 
   const submitTurnMutation = useMutation({
+    onMutate: (message: string) => {
+      setPendingTurn({
+        turn: {
+          turn_id: crypto.randomUUID(),
+          case_id: caseId!,
+          role: 'user',
+          message,
+          created_at: new Date().toISOString(),
+          related_field_path: nextQuestion?.field_path ?? null,
+          metadata: {},
+        },
+        existingIds: new Set(
+          (queryClient.getQueryData<ConversationTurn[]>(['turns', caseId]) ?? [])
+            .map((turn) => turn.turn_id),
+        ),
+      })
+      setChatInput('')
+      handleStopAudio()
+    },
     mutationFn: async (msg: string) => {
       try {
         let activeLang = i18n.language
@@ -412,14 +433,25 @@ export default function CaseWorkspace() {
         return submitTurn(caseId!, msg, i18n.language)
       }
     },
-    onSuccess: () => {
-      setChatInput('')
-      handleStopAudio()
+    onSuccess: async (response) => {
+      await queryClient.cancelQueries({ queryKey: ['turns', caseId] })
+      queryClient.setQueryData<ConversationTurn[]>(['turns', caseId], (previous = []) => {
+        const received = [response.user_turn, response.assistant_turn]
+          .filter((turn): turn is ConversationTurn => turn !== null)
+        const receivedIds = new Set(received.map((turn) => turn.turn_id))
+        return [...previous.filter((turn) => !receivedIds.has(turn.turn_id)), ...received]
+      })
+      setPendingTurn(null)
       queryClient.invalidateQueries({ queryKey: ['case', caseId] })
-      queryClient.invalidateQueries({ queryKey: ['turns', caseId] })
-      queryClient.invalidateQueries({ queryKey: ['next-question', caseId] })
+      await queryClient.cancelQueries({ queryKey: ['next-question', caseId] })
+      queryClient.setQueryData(['next-question', caseId], response.next_question)
       queryClient.invalidateQueries({ queryKey: ['validation', caseId] })
       queryClient.invalidateQueries({ queryKey: ['evidence', caseId] })
+    },
+    onError: (_error, message) => {
+      setPendingTurn(null)
+      setChatInput((draft) => draft || message)
+      queryClient.invalidateQueries({ queryKey: ['turns', caseId] })
     },
   })
 
@@ -586,10 +618,24 @@ export default function CaseWorkspace() {
       })
     }
 
+    if (pendingTurn && !turns?.some((turn) =>
+      turn.role === 'user' &&
+      turn.message === pendingTurn.turn.message &&
+      !pendingTurn.existingIds.has(turn.turn_id)
+    )) {
+      list.push({
+        id: pendingTurn.turn.turn_id,
+        role: 'user',
+        message: pendingTurn.turn.message,
+        created_at: pendingTurn.turn.created_at,
+        type: 'turn',
+      })
+    }
+
     list.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
 
     return list
-  }, [turns])
+  }, [turns, pendingTurn])
 
   const schemaState = (caseDetail?.current_schema_state ?? {}) as Record<string, unknown>
   const templateFields = caseDetail?.template.schema ?? []

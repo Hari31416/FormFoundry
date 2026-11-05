@@ -155,6 +155,12 @@ export interface ConversationTurn {
   created_at: string
 }
 
+export interface ConversationTurnResponse {
+  user_turn: ConversationTurn
+  assistant_turn: ConversationTurn | null
+  next_question: NextQuestion | null
+}
+
 export const getTemplates = () => api.get<TemplateDefinition[]>('/templates').then((res) => res.data)
 export const createTemplate = (data: TemplateDefinition) =>
   api.post<TemplateDefinition>('/templates', data).then((res) => res.data)
@@ -186,7 +192,7 @@ export const uploadFileEvidence = (id: string, file: File) => {
 }
 
 export const submitTurn = (id: string, message: string, language?: string) =>
-  api.post(`/cases/${id}/conversation/turns`, { message, language }).then((res) => res.data)
+  api.post<ConversationTurnResponse>(`/cases/${id}/conversation/turns`, { message, language }).then((res) => res.data)
 
 export const detectLanguage = (text: string) =>
   api.post<{ language: string }>('/languages/detect', { text }).then((res) => res.data)

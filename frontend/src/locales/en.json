@@ -123,5 +123,9 @@
   "validation_min_length": "Value must be at least {{threshold}} characters long.",
   "edit_save_failed": "Failed to save changes.",
   "yes": "Yes",
-  "no": "No"
+  "no": "No",
+  "attach_file": "Attach file",
+  "send_message": "Send message",
+  "message_send_error": "Could not send your message. Your draft has been restored. Please try again.",
+  "generating_response": "Generating a response…"
 }

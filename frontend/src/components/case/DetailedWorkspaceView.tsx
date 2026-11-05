@@ -527,7 +527,7 @@ export function DetailedWorkspaceView({
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   placeholder={t('add_conversation_details')}
-                  className="w-full bg-slate-50/80 border-none rounded-2xl p-4 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 resize-none h-28 text-slate-800 placeholder:text-slate-400"
+                  className="w-full bg-slate-50/80 border-none rounded-2xl p-4 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/10 resize-none h-16 text-slate-800 placeholder:text-slate-400"
                 />
                 <Button
                   size="icon"
@@ -538,6 +538,15 @@ export function DetailedWorkspaceView({
                   {submitTurnMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                 </Button>
               </div>
+              {submitTurnMutation.isPending && (
+                <p role="status" className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                  <Loader2 aria-hidden="true" className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" />
+                  {t('generating_response')}
+                </p>
+              )}
+              {submitTurnMutation.isError && (
+                <p role="alert" className="mt-2 text-xs text-red-600">{t('message_send_error')}</p>
+              )}
             </div>
           </div>
 
