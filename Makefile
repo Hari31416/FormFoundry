@@ -23,7 +23,7 @@ install-pnpm:
 	@command -v pnpm >/dev/null 2>&1 || (echo "pnpm is required. Install it first." && exit 1)
 
 up:
-	@docker compose up -d postgres redis minio
+	@docker compose up -d postgres redis rustfs
 
 down:
 	@docker compose down
