@@ -270,6 +270,17 @@ async def fake_extract_text_from_image_bytes(
         )
 
 
+@pytest.fixture(autouse=True)
+def disable_external_language_calls(monkeypatch: pytest.MonkeyPatch):
+    for capability in (
+        "TRANSLATION",
+        "TEXT_LANGUAGE_DETECTION",
+        "TEXT_TO_SPEECH",
+        "SPEECH_TO_TEXT",
+    ):
+        monkeypatch.setenv(f"ILU_ROUTE_{capability}", "")
+
+
 @pytest.fixture()
 def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     database_path = tmp_path / "formfoundry-test.db"

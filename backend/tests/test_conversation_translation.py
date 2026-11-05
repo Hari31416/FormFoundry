@@ -36,7 +36,7 @@ def test_conversation_turn_routes_translation_and_persists_lang(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # 1. Mock translation and language detection
-    mock_manager = MagicMock()
+    mock_manager = MagicMock(close=AsyncMock())
     mock_manager.is_detection_enabled = True
     mock_manager.is_translation_enabled = True
 
@@ -105,7 +105,7 @@ def test_conversation_turn_respects_explicit_language(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # 1. Mock translation and language detection
-    mock_manager = MagicMock()
+    mock_manager = MagicMock(close=AsyncMock())
     mock_manager.is_detection_enabled = True
     mock_manager.is_translation_enabled = True
 

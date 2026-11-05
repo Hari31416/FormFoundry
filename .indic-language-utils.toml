@@ -1,0 +1,36 @@
+# Credentials belong in .env. Provider order determines fallback order.
+[routes]
+translation = ["googletrans"]
+text_language_detection = ["fasttext"]
+text_to_speech = ["edge_tts"]
+speech_to_text = []
+
+# Optional cloud providers. Select them in [routes] and add API keys to .env.
+# [providers.bhashini]
+# endpoint = "https://dhruva-api.bhashini.gov.in/services/inference/pipeline"
+# translation_service_id = "ai4bharat/indictrans-v2-all-gpu--t4"
+# detection_service_id = "your-detection-service-id"
+# tts_model_id = "your-tts-model-id"
+# stt_model_id = "your-stt-model-id"
+#
+# [providers.sarvam]
+# model = "sarvam-translate:v1"
+# tts_model_id = "bulbul:v3"
+# stt_model_id = "saarika:v2.5"
+#
+# Edge voices can be configured per canonical language tag:
+# [providers.edge_tts.tts_model_ids]
+# hi-IN = "hi-IN-SwaraNeural"
+# en-IN = "en-IN-NeerjaNeural"
+
+[retry]
+max_attempts = 2
+base_delay_seconds = 0.25
+max_delay_seconds = 1.0
+
+# Translation caching is handled by the application's Redis cache.
+[cache]
+enabled = false
+
+[telemetry]
+include_content = false

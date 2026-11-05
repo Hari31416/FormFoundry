@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.core.request_id import RequestIdMiddleware
 from app.db import get_session_maker, init_db
+from app.languages.manager import close_language_manager
 from app.templates.service import ensure_seed_templates
 
 
@@ -21,7 +22,10 @@ async def lifespan(_: FastAPI):
     session_maker = get_session_maker()
     async with session_maker() as session:
         await ensure_seed_templates(session)
-    yield
+    try:
+        yield
+    finally:
+        await close_language_manager()
 
 
 def create_app() -> FastAPI:

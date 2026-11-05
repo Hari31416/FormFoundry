@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -23,7 +24,7 @@ def test_detect_language_api_endpoint(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     # Mock the LanguageManager singleton to verify routing isolation
-    mock_manager = MagicMock()
+    mock_manager = MagicMock(close=AsyncMock())
     mock_manager.detect_language = AsyncMock(return_value="hi")
     monkeypatch.setattr(manager_module, "_manager", mock_manager)
 
@@ -39,7 +40,7 @@ def test_detect_language_api_endpoint(
 def test_get_languages_config(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    mock_manager = MagicMock()
+    mock_manager = MagicMock(close=AsyncMock())
     mock_manager.is_translation_enabled = True
     mock_manager.is_detection_enabled = True
     mock_manager.is_tts_enabled = True
@@ -60,9 +61,11 @@ def test_get_languages_config(
 def test_text_to_speech_endpoint_success(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    mock_manager = MagicMock()
+    mock_manager = MagicMock(close=AsyncMock())
     mock_manager.is_tts_enabled = True
-    mock_manager.text_to_speech = AsyncMock(return_value=b"fake-mp3-bytes")
+    mock_manager.text_to_speech = AsyncMock(
+        return_value=SimpleNamespace(audio=b"fake-mp3-bytes", audio_format="mp3")
+    )
     monkeypatch.setattr(manager_module, "_manager", mock_manager)
 
     response = client.post(
@@ -79,7 +82,7 @@ def test_text_to_speech_endpoint_success(
 def test_text_to_speech_endpoint_disabled(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    mock_manager = MagicMock()
+    mock_manager = MagicMock(close=AsyncMock())
     mock_manager.is_tts_enabled = False
     monkeypatch.setattr(manager_module, "_manager", mock_manager)
 
@@ -95,7 +98,7 @@ def test_text_to_speech_endpoint_disabled(
 def test_text_to_speech_endpoint_failed_generation(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    mock_manager = MagicMock()
+    mock_manager = MagicMock(close=AsyncMock())
     mock_manager.is_tts_enabled = True
     mock_manager.text_to_speech = AsyncMock(return_value=None)
     monkeypatch.setattr(manager_module, "_manager", mock_manager)
@@ -107,3 +110,26 @@ def test_text_to_speech_endpoint_failed_generation(
 
     assert response.status_code == 400
     assert "Failed" in response.json()["detail"]
+
+
+@pytest.mark.parametrize(
+    "audio_format,content_type",
+    [("wav", "audio/wav"), ("ogg", "audio/ogg"), (None, "application/octet-stream")],
+)
+def test_tts_content_type_matches_result(
+    client: TestClient,
+    monkeypatch: pytest.MonkeyPatch,
+    audio_format: str | None,
+    content_type: str,
+) -> None:
+    mock_manager = MagicMock(close=AsyncMock(), is_tts_enabled=True)
+    mock_manager.text_to_speech = AsyncMock(
+        return_value=SimpleNamespace(audio=b"audio", audio_format=audio_format)
+    )
+    monkeypatch.setattr(manager_module, "_manager", mock_manager)
+    response = client.post(
+        "/api/v1/languages/tts", json={"text": "Hello", "language": "en"}
+    )
+    assert response.status_code == 200
+    assert response.content == b"audio"
+    assert response.headers["content-type"] == content_type

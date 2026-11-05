@@ -45,16 +45,25 @@ async def text_to_speech(payload: TTSRequest) -> Response:
             detail="Text-to-Speech service is disabled or not configured.",
         )
 
-    audio_bytes = await manager.text_to_speech(
-        payload.text, payload.language, payload.gender
-    )
-    if audio_bytes is None:
+    audio = await manager.text_to_speech(payload.text, payload.language, payload.gender)
+    if audio is None or not audio.audio:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Failed to generate audio from the provided text.",
         )
 
-    return Response(content=audio_bytes, media_type="audio/mpeg")
+    media_type = {
+        "mp3": "audio/mpeg",
+        "mpeg": "audio/mpeg",
+        "wav": "audio/wav",
+        "wave": "audio/wav",
+        "ogg": "audio/ogg",
+        "opus": "audio/ogg",
+        "flac": "audio/flac",
+        "aac": "audio/aac",
+        "pcm": "audio/pcm",
+    }.get((audio.audio_format or "").lower(), "application/octet-stream")
+    return Response(content=audio.audio, media_type=media_type)
 
 
 @router.get("/languages/config", response_model=LanguageConfigResponse)
