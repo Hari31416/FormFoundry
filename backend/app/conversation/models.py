@@ -33,6 +33,8 @@ class ConversationTurnRequest(BaseModel):
 class NextQuestionPayload(BaseModel):
     kind: Literal["field", "document_upload"] = "field"
     documents: list[DocumentKind] = Field(default_factory=list)
+    pending_documents: list[DocumentKind] = Field(default_factory=list)
+    question_turn_id: str | None = None
     field_path: str
     field_paths: list[str] = Field(default_factory=list)
     field_labels: list[str] = Field(default_factory=list)

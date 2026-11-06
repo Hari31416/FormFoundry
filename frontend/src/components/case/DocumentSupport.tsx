@@ -1,3 +1,4 @@
+import { CheckCircle2, Loader2, AlertCircle } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import {
@@ -5,9 +6,20 @@ import {
   type DocumentAnalysis,
   type DocumentUpload,
   type DocumentKind,
+  type Evidence,
 } from '@/lib/api'
 
+export interface DocumentUploadProgress {
+  filename: string
+  status: 'queued' | 'uploading' | 'processing' | 'completed' | 'needs_review' | 'failed'
+  evidenceId?: string
+  percent?: number
+  error?: string
+}
+
 export interface DocumentUploadMutation {
+  progress?: Record<string, DocumentUploadProgress>
+
   isPending: boolean
   mutate: (upload: DocumentUpload) => void
 }
@@ -87,8 +99,11 @@ export function DocumentAnalysisSummary({ analysis }: { analysis?: DocumentAnaly
   )
 }
 
-export function DocumentUploadQuestion({ documents, mutation, clearError, error, disabled }: {
+export function DocumentUploadQuestion({ documents, mutation, clearError, error, disabled, evidence = [], readOnly = false, pendingDocuments }: {
   documents: DocumentKind[]
+  evidence?: Evidence[]
+  readOnly?: boolean
+  pendingDocuments?: DocumentKind[]
   mutation: DocumentUploadMutation
   clearError: () => void
   error: string | null
@@ -96,14 +111,42 @@ export function DocumentUploadQuestion({ documents, mutation, clearError, error,
 }) {
   const { t } = useTranslation()
   return (
-    <div className="mt-3 space-y-3" data-testid="document-upload-question">
+    <div className="mt-3 space-y-3" data-testid="document-upload-question" data-state={readOnly ? 'completed' : 'active'}>
       <p className="text-xs text-ink-soft">{t('documents.upload_only')}</p>
       {documents.map((document) => {
         const name = t(`documents.types.${document.document_type}`, { defaultValue: document.document_type })
+        const uploaded = [...evidence].reverse().find((item) => {
+          const kind = item.metadata?.declared_document ?? item.document_analysis?.declared ?? item.document_analysis?.detected
+          return kind?.country === document.country && kind?.document_type === document.document_type
+        })
+        const analysis = uploaded?.document_analysis
+        const local = !readOnly ? mutation.progress?.[document.document_type] : undefined
+        const progress: DocumentUploadProgress | undefined = local && (!uploaded || !local.evidenceId || local.evidenceId === uploaded.evidence_id)
+          ? local
+          : uploaded ? {
+            filename: uploaded.parsed_payload?.filename ?? uploaded.source_subtype,
+            status: !analysis ? 'queued' : analysis.status === 'error' ? 'failed' : ['matched', 'detected'].includes(analysis.status) ? 'completed' : 'needs_review',
+          } : undefined
+        const busy = progress && ['queued', 'uploading', 'processing'].includes(progress.status)
+        const requested = !readOnly && (pendingDocuments ?? documents).some((item) => item.country === document.country && item.document_type === document.document_type)
         return (
-          <label key={`${document.country}/${document.document_type}`} className="block rounded-md border border-line bg-paper p-3 text-sm text-ink">
-            <span className="mb-2 block font-semibold">{name}</span>
-            <input
+          <div key={`${document.country}/${document.document_type}`} className="block rounded-md border border-line bg-paper p-3 text-sm text-ink">
+            <span className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <span className="font-semibold">{name}</span>
+              {progress && (
+                <span role="status" aria-live="polite" className="inline-flex items-center gap-1.5 text-xs text-ink-soft">
+                  {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : progress.status === 'completed' ? <CheckCircle2 className="h-3.5 w-3.5 text-pine" /> : <AlertCircle className="h-3.5 w-3.5 text-terracotta" />}
+                  {progress.status === 'uploading' && progress.percent !== undefined
+                    ? t('documents.transfer_percent', { percent: progress.percent })
+                    : t(`documents.progress.${progress.status}`)}
+                </span>
+              )}
+            </span>
+            {progress && <span className="mb-2 block break-all text-xs text-ink-soft">{progress.filename}</span>}
+            {progress?.status === 'uploading' && progress.percent !== undefined && (
+              <progress aria-label={t('documents.transfer_progress', { type: name })} max={100} value={progress.percent} className="mb-2 h-1.5 w-full accent-pine" />
+            )}
+            {!readOnly && ((requested && !busy && progress?.status !== 'completed') || progress?.status === 'failed') && <input
               aria-label={t('documents.upload_named', { type: name })}
               type="file"
               accept="image/*,.pdf,application/pdf"
@@ -115,12 +158,14 @@ export function DocumentUploadQuestion({ documents, mutation, clearError, error,
                 if (file) mutation.mutate({ file, documentType: document.document_type })
                 event.target.value = ''
               }}
-            />
-          </label>
+            />}
+            {progress?.error && <span role="alert" className="mt-2 block text-xs text-terracotta">{progress.error}</span>}
+            <DocumentAnalysisSummary analysis={analysis} />
+          </div>
         )
       })}
-      {mutation.isPending && <p role="status" className="text-xs text-pine">{t('uploading_ocr')}</p>}
-      {error && <p role="alert" className="text-xs text-terracotta">{error}</p>}
+      {mutation.isPending && !mutation.progress && <p role="status" className="text-xs text-pine">{t('uploading_ocr')}</p>}
+      {!readOnly && error && !Object.values(mutation.progress ?? {}).some((item) => item.error) && <p role="alert" className="text-xs text-terracotta">{error}</p>}
     </div>
   )
 }

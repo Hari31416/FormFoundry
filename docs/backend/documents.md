@@ -220,3 +220,27 @@ A malformed extraction envelope receives one bounded retry with the contract res
 a second malformed response still fails rather than masquerading as no extracted data.
 Grounded candidates from successful stages are persisted and resolved even when a
 later extraction stage fails. The job still reports failure for that stage.
+
+Each inline document row retains the selected filename and shows its own state:
+uploading with byte-transfer percentage when available, processing, processed, needs
+review, or failed. Server processing is indeterminate; the UI does not invent an OCR
+percentage. Completed rows remain visible while other requested documents are pending.
+Errors stay beside the affected document and its retry input. Queued jobs show a waiting
+state and update when their evidence analysis becomes available. Upload failure also
+refreshes evidence and case data, since a stored file or valid mappings may already exist.
+
+## A single document upload card
+
+A document upload batch retains the original assistant turn and its full `documents`
+list. `pending_documents` identifies the types still needed, and `question_turn_id`
+identifies the persistent card. As files arrive, the server updates the same turn rather
+than appending another upload prompt. Uploaded evidence stores `upload_question_turn_id`
+and stays available through the evidence API without creating a separate user receipt.
+When the batch is complete, its metadata becomes `completed`, its pending list is empty,
+and the next field question gets a new turn.
+
+The chat renders each document's progress and extracted information inside that original
+card. Completed cards remain readable after subsequent questions and page refreshes.
+The display also groups old upload receipt messages and repeated upload prompts from
+existing cases, preserving their evidence associations without rewriting stored history.
+Conditional document batches remain separate when activated by later field answers.

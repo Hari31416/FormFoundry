@@ -33,6 +33,7 @@ import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
+import { getQuestionEvidence } from '@/lib/conversation'
 import {
   CaseDetail,
   FieldState,
@@ -408,7 +409,7 @@ export function DetailedWorkspaceView({
                     )}
                   </div>
                   {nextQuestion.kind === 'document_upload' && (
-                    <DocumentUploadQuestion documents={nextQuestion.documents ?? []} mutation={uploadFileMutation} clearError={() => setUploadError(null)} error={uploadError} disabled={submitTurnMutation.isPending} />
+                    <DocumentUploadQuestion documents={nextQuestion.documents ?? []} pendingDocuments={nextQuestion.pending_documents ?? nextQuestion.documents} evidence={getQuestionEvidence(evidence, nextQuestion.question_turn_id ? [nextQuestion.question_turn_id] : [])} mutation={uploadFileMutation} clearError={() => setUploadError(null)} error={uploadError} disabled={submitTurnMutation.isPending} />
                   )}
                   {playingQuestion === nextQuestion.question && audioInstance && (
                     <div className="flex items-center space-x-3 p-3 bg-paper border border-line rounded-md mt-2 animate-in fade-in slide-in-from-top-2 duration-200">

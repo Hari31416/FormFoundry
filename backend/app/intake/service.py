@@ -334,23 +334,34 @@ async def create_upload_evidence(
     )
     session.add(record)
     await session.flush()
-    from app.conversation.service import record_turn
+    from app.conversation.service import latest_question_turn, record_turn
 
     filename = upload.filename or "upload"
-    await record_turn(
-        session,
-        case_id=case_id,
-        role="user",
-        message=f"Uploaded file: {filename}",
-        related_field_path=None,
-        metadata={
-            "kind": "upload",
-            "evidence_id": record.evidence_id,
-            "filename": filename,
-            "created_by": created_by,
-        },
-        commit=False,
-    )
+    active_question = await latest_question_turn(session, case_id)
+    if (
+        active_question
+        and active_question.turn_metadata.get("question_payload", {}).get("kind")
+        == "document_upload"
+    ):
+        record.evidence_metadata = {
+            **record.evidence_metadata,
+            "upload_question_turn_id": active_question.turn_id,
+        }
+    else:
+        await record_turn(
+            session,
+            case_id=case_id,
+            role="user",
+            message=f"Uploaded file: {filename}",
+            related_field_path=None,
+            metadata={
+                "kind": "upload",
+                "evidence_id": record.evidence_id,
+                "filename": filename,
+                "created_by": created_by,
+            },
+            commit=False,
+        )
     job = await enqueue_job(
         session,
         case_id=case_id,

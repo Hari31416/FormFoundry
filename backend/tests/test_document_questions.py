@@ -62,14 +62,28 @@ def test_documents_advance_individually_then_request_fields(
     mock_document_processing(monkeypatch)
     aadhaar, pan, dl = generate_samples(tmp_path)
     case_id = create_document_case(client)
-    upload(client, case_id, aadhaar, "aadhaar")
-    assert next_question(client, case_id)["documents"] == [
-        {"country": "IN", "document_type": "pan"}
-    ]
+    original = next_question(client, case_id)
+    first_upload = upload(client, case_id, aadhaar, "aadhaar")
+    current = next_question(client, case_id)
+    assert current["question_turn_id"] == original["question_turn_id"]
+    assert current["question"] == original["question"]
+    assert current["documents"] == original["documents"]
+    assert (
+        first_upload["evidence"]["metadata"]["upload_question_turn_id"]
+        == original["question_turn_id"]
+    )
+    history = client.get(f"/api/v1/cases/{case_id}/conversation/turns").json()
+    assert len(history) == 1
+    assert current["pending_documents"] == [{"country": "IN", "document_type": "pan"}]
     upload(client, case_id, pan, "pan")
     question = next_question(client, case_id)
     assert question["kind"] == "field"
     assert question["field_path"] == "applicant.include_driving_licence"
+    history = client.get(f"/api/v1/cases/{case_id}/conversation/turns").json()
+    assert len(history) == 2
+    assert all(turn["role"] == "assistant" for turn in history)
+    assert history[0]["metadata"]["status"] == "completed"
+    assert history[0]["metadata"]["question_payload"]["pending_documents"] == []
     client.post(
         f"/api/v1/cases/{case_id}/fields/applicant.include_driving_licence/edit",
         json={"value": True},

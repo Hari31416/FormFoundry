@@ -452,6 +452,16 @@
       "vehicle_classes": "Vehicle classes"
     },
     "upload_only": "Upload an image or PDF for each document. This question accepts files only.",
-    "upload_named": "Upload {{type}}"
+    "upload_named": "Upload {{type}}",
+    "transfer_percent": "Uploading {{percent}}%",
+    "transfer_progress": "{{type}} upload progress",
+    "progress": {
+      "uploading": "Uploading",
+      "processing": "Processing document",
+      "completed": "Processed",
+      "needs_review": "Needs review",
+      "failed": "Processing failed",
+      "queued": "Waiting for processing"
+    }
   }
 }

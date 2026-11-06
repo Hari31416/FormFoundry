@@ -33,6 +33,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
+import { getQuestionEvidence } from '@/lib/conversation'
 import {
   CaseDetail,
   FieldState,
@@ -263,8 +264,17 @@ export function SimplifiedChatView({
                           </Button>
                         )}
                       </div>
-                      {isLatestAssistant && nextQuestion.kind === 'document_upload' && (
-                        <DocumentUploadQuestion documents={nextQuestion.documents ?? []} mutation={uploadFileMutation} clearError={() => setUploadError(null)} error={uploadError} disabled={submitTurnMutation.isPending} />
+                      {msg.metadata?.question_payload?.kind === 'document_upload' && (
+                        <DocumentUploadQuestion
+                          documents={msg.metadata.question_payload.documents ?? []}
+                          pendingDocuments={isLatestAssistant ? nextQuestion.pending_documents ?? nextQuestion.documents : []}
+                          evidence={getQuestionEvidence(evidence, msg.metadata.upload_question_ids ?? [msg.id], msg.metadata.upload_evidence_ids)}
+                          readOnly={!isLatestAssistant}
+                          mutation={uploadFileMutation}
+                          clearError={() => setUploadError(null)}
+                          error={isLatestAssistant ? uploadError : null}
+                          disabled={submitTurnMutation.isPending}
+                        />
                       )}
                       {playingQuestion === msg.message && audioInstance && (
                         <div className="flex items-center space-x-3 p-3 bg-paper border border-line rounded-lg mt-2 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -384,7 +394,7 @@ export function SimplifiedChatView({
           )}
 
           {/* Active Upload/OCR Error Alert Card */}
-          {uploadError && (
+          {uploadError && nextQuestion?.kind !== 'document_upload' && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}

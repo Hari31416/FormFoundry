@@ -452,6 +452,16 @@
       "vehicle_classes": "वाहन वर्ग"
     },
     "upload_only": "हर दस्तावेज़ की छवि या PDF अपलोड करें। इस प्रश्न में केवल फ़ाइलें स्वीकार की जाती हैं।",
-    "upload_named": "{{type}} अपलोड करें"
+    "upload_named": "{{type}} अपलोड करें",
+    "transfer_percent": "{{percent}}% अपलोड हुआ",
+    "transfer_progress": "{{type}} अपलोड प्रगति",
+    "progress": {
+      "uploading": "अपलोड हो रहा है",
+      "processing": "दस्तावेज़ का विश्लेषण हो रहा है",
+      "completed": "विश्लेषण पूरा हुआ",
+      "needs_review": "समीक्षा आवश्यक है",
+      "failed": "विश्लेषण विफल हुआ",
+      "queued": "विश्लेषण की प्रतीक्षा में"
+    }
   }
 }

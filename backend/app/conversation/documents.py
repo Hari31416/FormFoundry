@@ -65,6 +65,10 @@ async def choose_document_upload_question(
             DocumentKind(country=country, document_type=kind)
             for country, kind in pending
         ],
+        pending_documents=[
+            DocumentKind(country=country, document_type=kind)
+            for country, kind in pending
+        ],
         field_path=fields[0].path,
         field_paths=[field.path for field in fields],
         field_labels=[field.label for field in fields],

@@ -329,6 +329,7 @@ async def get_next_question(
     if turn is None:
         return None
     payload = NextQuestionPayload.model_validate(turn.metadata["question_payload"])
+    payload.question_turn_id = turn.turn_id
     if translate:
         payload.question = turn.message
     return payload
@@ -405,8 +406,36 @@ async def _record_active_question_turn(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Unable to generate the next question.",
             ) from exc
+    previous_upload = bool(
+        latest_turn
+        and latest_turn.turn_metadata.get("question_payload", {}).get("kind")
+        == "document_upload"
+    )
+    if (
+        previous_upload
+        and latest_turn
+        and (question_en is None or question_en.kind != "document_upload")
+    ):
+        previous_metadata = dict(latest_turn.turn_metadata)
+        previous_payload = dict(previous_metadata["question_payload"])
+        previous_payload["pending_documents"] = []
+        previous_metadata.update(status="completed", question_payload=previous_payload)
+        latest_turn.turn_metadata = previous_metadata
+        await session.flush()
     if question_en is None:
+        await session.commit()
         return None
+    if previous_upload and latest_turn and question_en.kind == "document_upload":
+        original = NextQuestionPayload.model_validate(
+            latest_turn.turn_metadata["question_payload"]
+        )
+        keys = {(item.country, item.document_type) for item in original.documents}
+        question_en.documents = original.documents + [
+            item
+            for item in question_en.documents
+            if (item.country, item.document_type) not in keys
+        ]
+        question_en.question = original.question
     question = question_en.model_copy()
     if preferred_lang != "en":
         question.question = await process_outgoing_text(
@@ -423,13 +452,13 @@ async def _record_active_question_turn(
         "question_state": fingerprint,
         "question_payload": question_en.model_dump(),
     }
-    if (
-        latest_turn
-        and not force
-        and latest_turn.turn_metadata.get("question_state") == fingerprint
+    if latest_turn and (
+        (not force and latest_turn.turn_metadata.get("question_state") == fingerprint)
+        or (previous_upload and question_en.kind == "document_upload")
     ):
         latest_turn.message = question.question
         latest_turn.turn_metadata = metadata
+        latest_turn.related_field_path = question.field_path
         await session.commit()
         return serialize_turn(latest_turn)
     return await record_turn(
@@ -563,6 +592,7 @@ async def _submit_conversation_turn(
             assistant_turn.metadata["question_payload"]
         )
         refreshed_question.question = assistant_turn.message
+        refreshed_question.question_turn_id = assistant_turn.turn_id
 
     logger.info(
         "conversation.turn.assistant_response_resolved",

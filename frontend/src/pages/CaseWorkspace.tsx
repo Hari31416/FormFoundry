@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { groupDocumentUploadTurns } from '@/lib/conversation'
 import {
   CaseDetail,
   ConversationTurn,
@@ -45,6 +46,7 @@ import {
 
 import { DropdownMenuComponent } from '@/components/case/DropdownMenuComponent'
 import { SimplifiedChatView } from '@/components/case/SimplifiedChatView'
+import type { DocumentUploadProgress } from '@/components/case/DocumentSupport'
 import { DetailedWorkspaceView } from '@/components/case/DetailedWorkspaceView'
 import { CaseTitleEditor } from '@/components/case/CaseTitleEditor'
 import { LanguageSelector } from '@/components/case/LanguageSelector'
@@ -182,6 +184,12 @@ export default function CaseWorkspace() {
   const [chatInput, setChatInput] = useState('')
   const [pendingTurn, setPendingTurn] = useState<{ turn: ConversationTurn; existingIds: Set<string> } | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<Record<string, DocumentUploadProgress>>({})
+  React.useEffect(() => {
+    setUploadProgress({})
+    setUploadError(null)
+  }, [caseId])
+
   const [localRejectedFields, setLocalRejectedFields] = useState<Set<string>>(new Set())
 
   const { data: caseDetail, isLoading: isLoadingCase } = useQuery({
@@ -203,6 +211,19 @@ export default function CaseWorkspace() {
       return status === 'extracting' || status === 'resolving' || status === 'artifact_generating' ? 3000 : 15000
     },
   })
+
+  React.useEffect(() => {
+    setUploadProgress((previous) => {
+      let updated = previous
+      for (const [type, item] of Object.entries(previous)) {
+        if (item.status !== 'queued' || !item.evidenceId) continue
+        const analysis = evidence?.find((record) => record.evidence_id === item.evidenceId)?.document_analysis
+        if (!analysis) continue
+        updated = { ...updated, [type]: { ...item, status: analysis.status === 'error' ? 'failed' : ['matched', 'detected'].includes(analysis.status) ? 'completed' : 'needs_review' } }
+      }
+      return updated
+    })
+  }, [evidence])
 
   const { data: validation } = useQuery({
     queryKey: ['validation', caseId],
@@ -475,8 +496,25 @@ export default function CaseWorkspace() {
   })
 
   const uploadFileMutation = useMutation({
-    mutationFn: ({ file, documentType }: DocumentUpload) => uploadFileEvidence(caseId!, file, documentType),
-    onSuccess: () => {
+    onMutate: ({ file, documentType }: DocumentUpload) => {
+      setUploadError(null)
+      setUploadProgress((previous) => ({ ...previous, [documentType || 'auto']: { filename: file.name, status: 'uploading', percent: 0 } }))
+    },
+    mutationFn: ({ file, documentType }: DocumentUpload) => uploadFileEvidence(caseId!, file, documentType, (event) => {
+      const percent = event.total ? Math.min(100, Math.round(100 * event.loaded / event.total)) : undefined
+      setUploadProgress((previous) => ({ ...previous, [documentType || 'auto']: {
+        filename: file.name,
+        status: event.total && event.loaded >= event.total ? 'processing' : 'uploading',
+        percent,
+      } }))
+    }),
+    onSuccess: (response, { file, documentType }) => {
+      const analysisStatus = response.evidence?.document_analysis?.status
+      setUploadProgress((previous) => ({ ...previous, [documentType || 'auto']: {
+        filename: file.name,
+        evidenceId: response.evidence?.evidence_id,
+        status: response.job?.status === 'queued' ? 'queued' : analysisStatus === 'mismatch' || analysisStatus === 'needs_review' || analysisStatus === 'error' ? 'needs_review' : 'completed',
+      } }))
       queryClient.invalidateQueries({ queryKey: ['evidence', caseId] })
       queryClient.invalidateQueries({ queryKey: ['case', caseId] })
       queryClient.invalidateQueries({ queryKey: ['turns', caseId] })
@@ -487,10 +525,18 @@ export default function CaseWorkspace() {
       const input = document.getElementById('evidence-file') as HTMLInputElement | null
       if (input) input.value = ''
     },
-    onError: (error: any) => {
-      const detail =
-        error?.response?.data?.detail || t('upload_error_generic')
-      setUploadError(String(detail))
+    onError: (error: any, { file, documentType }) => {
+      const detail = String(error?.response?.data?.detail || t('upload_error_generic'))
+      setUploadError(detail)
+      setUploadProgress((previous) => ({ ...previous, [documentType || 'auto']: { filename: file.name, status: 'failed', error: detail } }))
+    },
+    onSettled: () => {
+      // Failed extraction can still leave a stored upload and grounded field mappings.
+      queryClient.invalidateQueries({ queryKey: ['evidence', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['case', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['turns', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['next-question', caseId] })
+      queryClient.invalidateQueries({ queryKey: ['validation', caseId] })
     },
   })
 
@@ -611,7 +657,7 @@ export default function CaseWorkspace() {
     }> = []
 
     if (turns) {
-      turns.forEach((t) => {
+      groupDocumentUploadTurns(turns).forEach((t) => {
         list.push({
           id: t.turn_id,
           role: t.role,
@@ -864,7 +910,7 @@ export default function CaseWorkspace() {
             chatInput={chatInput}
             setChatInput={setChatInput}
             submitTurnMutation={submitTurnMutation}
-            uploadFileMutation={uploadFileMutation}
+            uploadFileMutation={{ ...uploadFileMutation, progress: uploadProgress }}
             uploadError={uploadError}
             setUploadError={setUploadError}
             caseId={caseId}
@@ -896,7 +942,7 @@ export default function CaseWorkspace() {
             onEditField={handleEditField}
             isEvidenceModalOpen={isEvidenceModalOpen}
             setIsEvidenceModalOpen={setIsEvidenceModalOpen}
-            uploadFileMutation={uploadFileMutation}
+            uploadFileMutation={{ ...uploadFileMutation, progress: uploadProgress }}
             uploadError={uploadError}
             setUploadError={setUploadError}
             addTextMutation={addTextMutation}

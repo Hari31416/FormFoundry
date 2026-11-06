@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { type AxiosProgressEvent } from 'axios'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
@@ -207,6 +207,8 @@ export interface Artifact {
 export interface NextQuestion {
   kind?: 'field' | 'document_upload'
   documents?: DocumentKind[]
+  pending_documents?: DocumentKind[]
+  question_turn_id?: string | null
   field_path: string
   field_paths: string[]
   field_labels: string[]
@@ -260,14 +262,14 @@ export const addTextEvidence = (id: string, text: string) =>
 export const getDocumentTypes = () =>
   api.get<DocumentDefinition[]>('/documents/types').then((res) => res.data)
 
-export const uploadFileEvidence = (id: string, file: File, documentType?: string) => {
+export const uploadFileEvidence = (id: string, file: File, documentType?: string, onUploadProgress?: (event: AxiosProgressEvent) => void) => {
   const formData = new FormData()
   formData.append('file', file)
   if (documentType) {
     formData.append('document_type', documentType)
     formData.append('document_country', 'IN')
   }
-  return api.post(`/cases/${id}/evidence/upload`, formData).then((res) => res.data)
+  return api.post(`/cases/${id}/evidence/upload`, formData, { onUploadProgress }).then((res) => res.data)
 }
 
 export const submitTurn = (id: string, message: string, language?: string) =>
