@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom'
 import { ArrowRight, Clock, FileText, Layers, Activity, Shield, Sparkles } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
 import type { CaseFile, TemplateDefinition } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { getCaseTitle, getCaseSubject, formatCaseDate, getShortId, formatCompactTime, formatProgress } from '@/lib/caseLabel'
@@ -55,17 +54,17 @@ export default function OverviewView({ templates, cases, filter, search = '', t 
     <div className="space-y-4 max-w-5xl">
       <div className="flex items-end justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-[22px] leading-none font-semibold text-ink">Intake Overview</h1>
-          <p className="text-xs text-ink-soft mt-1">Pick a schema on the left, or jump to a case that needs attention.</p>
+          <h1 className="text-[22px] leading-none font-semibold text-ink">{t('overview_title')}</h1>
+          <p className="text-xs text-ink-soft mt-1">{t('overview_desc')}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
         {[
-          { label: 'Schemas', value: uniqueTemplates, icon: Layers, hint: `${templates.length} versions`, to: null as string | null },
-          { label: 'Total Cases', value: cases.length, icon: FileText, hint: 'all time', to: '/?filter=all' as string | null },
-          { label: 'Awaiting', value: awaiting.length, icon: Clock, hint: 'needs attention', to: '/?filter=needs-attention' as string | null, hot: true },
-          { label: 'Domains', value: domains, icon: Activity, hint: 'coverage', to: null as string | null },
+          { label: t('stat_schemas'), value: uniqueTemplates, icon: Layers, hint: t('versions_count', { count: templates.length }), to: null as string | null },
+          { label: t('stat_total_cases'), value: cases.length, icon: FileText, hint: t('stat_all_time'), to: '/?filter=all' as string | null },
+          { label: t('stat_awaiting'), value: awaiting.length, icon: Clock, hint: t('stat_needs_attention'), to: '/?filter=needs-attention' as string | null, hot: true },
+          { label: t('stat_domains'), value: domains, icon: Activity, hint: t('stat_coverage'), to: null as string | null },
         ].map(s => s.to ? (
           <Link key={s.label} to={s.to} aria-label={`${s.label}: ${s.value}`} className={cn('bg-white border border-line rounded-lg px-3.5 py-3 flex items-center gap-3 hover:border-pine/40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine/50', s.hot && 'border-marigold bg-[#fff8ed] shadow-sm')}>
             <span className="p-1.5 rounded-md bg-paper border border-line"><s.icon className="w-4 h-4 text-pine" /></span>
@@ -81,11 +80,11 @@ export default function OverviewView({ templates, cases, filter, search = '', t 
 
       <div className="bg-white border border-line rounded-lg overflow-hidden">
         <div className="px-4 py-2.5 border-b border-line flex items-center justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-faint">{q ? `Results for “${search}”` : needsAttention ? 'Needs Attention' : isAll ? 'All Cases' : 'Recent Cases'}</span>
-          <span className="text-[11px] text-ink-faint">{q ? `${shownCases.length} match` : needsAttention ? `${awaiting.length} awaiting` : `${cases.length} total`}</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-faint">{q ? t('results_for', { query: search }) : needsAttention ? t('needs_attention_header') : isAll ? t('all_cases_header') : t('recent_cases')}</span>
+          <span className="text-[11px] text-ink-faint">{q ? (shownCases.length === 1 ? t('matches_count', { count: shownCases.length }) : t('matches_count_plural', { count: shownCases.length })) : needsAttention ? t('awaiting_count', { count: awaiting.length }) : t('total_count', { count: cases.length })}</span>
         </div>
         {shownCases.length === 0 ? (
-          <p className="px-4 py-10 text-center text-xs text-ink-faint">{q ? `No cases match “${search}”.` : 'No cases yet — start one from a schema.'}</p>
+          <p className="px-4 py-10 text-center text-xs text-ink-faint">{q ? t('no_cases_match', { query: search }) : t('no_cases_yet')}</p>
         ) : (
           <div className="divide-y divide-line/70">
             {shownCases.map(c => (
@@ -117,7 +116,7 @@ export default function OverviewView({ templates, cases, filter, search = '', t 
       </div>
 
       <div className="bg-white border border-line rounded-lg overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-line text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-faint">Schemas</div>
+        <div className="px-4 py-2.5 border-b border-line text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-faint">{t('nav_schemas')}</div>
         <div className="divide-y divide-line/70">
           {templates.filter((v, i, a) => a.findIndex(x => x.template_id === v.template_id) === i).map(tpl => {
             const pcs = cases.filter(c => c.template_id === tpl.template_id)
@@ -125,9 +124,9 @@ export default function OverviewView({ templates, cases, filter, search = '', t 
             return (
               <Link key={tpl.template_id} to={`/schemas/${tpl.template_id}`} className="flex items-center gap-3 px-4 py-2.5 hover:bg-paper group">
                 <span className="w-7 h-7 rounded-md bg-pine-soft text-pine grid place-items-center shrink-0">{tpl.domain === 'healthcare' ? <Activity className="w-3.5 h-3.5" /> : tpl.domain === 'public-safety' ? <Shield className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}</span>
-                <span className="min-w-0 flex-1"><span className="block text-[12.5px] font-semibold truncate">{tpl.name}</span><span className="block text-[10px] text-ink-faint uppercase tracking-wide">{tpl.domain} · {tpl.schema?.length ?? 0} fields</span></span>
-                <span className="text-[11px] text-ink-soft">{pcs.length} {pcs.length === 1 ? 'case' : 'cases'}</span>
-                {aw > 0 ? <span className="text-[11px] font-bold text-marigold">{aw} awaiting</span> : <span className="text-[11px] text-ink-faint">None awaiting</span>}
+                <span className="min-w-0 flex-1"><span className="block text-[12.5px] font-semibold truncate">{tpl.name}</span><span className="block text-[10px] text-ink-faint uppercase tracking-wide">{t('schema_fields_summary', { domain: tpl.domain, count: tpl.schema?.length ?? 0 })}</span></span>
+                <span className="text-[11px] text-ink-soft">{pcs.length} {t(pcs.length === 1 ? 'case_singular' : 'case_plural')}</span>
+                {aw > 0 ? <span className="text-[11px] font-bold text-marigold">{t('awaiting_count', { count: aw })}</span> : <span className="text-[11px] text-ink-faint">{t('none_awaiting')}</span>}
                 <ArrowRight className="w-3.5 h-3.5 text-ink-faint group-hover:text-pine transition-all" />
               </Link>
             )

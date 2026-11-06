@@ -41,7 +41,7 @@ export const SchemaVisualizerDialog: React.FC<SchemaVisualizerDialogProps> = ({
                 </DialogTitle>
               </div>
               <Badge variant="outline" className="font-mono text-[11px] font-semibold uppercase text-ink-faint bg-paper border-line px-2 py-0.5">
-                Version {template.template_version}
+                {t('version_label')} {template.template_version}
               </Badge>
             </div>
             <DialogDescription className="text-xs text-ink-soft leading-relaxed italic pt-2">
@@ -75,17 +75,17 @@ export const SchemaVisualizerDialog: React.FC<SchemaVisualizerDialogProps> = ({
                             </Badge>
                             {field.required && (
                               <Badge className="font-mono text-[11px] uppercase font-semibold bg-terracotta-soft text-terracotta border border-terracotta/20 px-1 py-0 leading-none">
-                                Required
+                                {t('required_badge')}
                               </Badge>
                             )}
                             {field.repeated && (
                               <Badge className="font-mono text-[11px] uppercase font-semibold bg-marigold-soft text-marigold border border-marigold/20 px-1 py-0 leading-none">
-                                List
+                                {t('list_badge')}
                               </Badge>
                             )}
                           </div>
                           <code className="text-[11px] font-mono text-ink-soft block">{field.path}</code>
-                          <span className="text-[11px] text-ink-faint block pt-1">Prompt: "{field.default_question}"</span>
+                          <span className="text-[11px] text-ink-faint block pt-1">{t('prompt_label')} "{field.default_question}"</span>
                         </div>
                         {field.help_text && (
                           <span className="text-[11px] text-ink-faint italic bg-paper border border-line px-2 py-1 rounded-md max-w-[200px]">
@@ -102,8 +102,8 @@ export const SchemaVisualizerDialog: React.FC<SchemaVisualizerDialogProps> = ({
             {unassignedFields.length > 0 && (
               <div className="p-4 rounded-md bg-paper border border-line space-y-3">
                 <div>
-                  <span className="font-serif font-semibold text-sm text-ink block">General / Other Fields</span>
-                  <span className="text-[11px] text-ink-faint font-medium block">Uncategorized schema fields</span>
+                  <span className="font-serif font-semibold text-sm text-ink block">{t('general_other_fields')}</span>
+                  <span className="text-[11px] text-ink-faint font-medium block">{t('uncategorized_fields')}</span>
                 </div>
 
                 <div className="divide-y divide-line space-y-2 pt-2 border-t border-line">
@@ -117,17 +117,17 @@ export const SchemaVisualizerDialog: React.FC<SchemaVisualizerDialogProps> = ({
                           </Badge>
                           {field.required && (
                             <Badge className="font-mono text-[11px] uppercase font-semibold bg-terracotta-soft text-terracotta border border-terracotta/20 px-1 py-0 leading-none">
-                              Required
+                              {t('required_badge')}
                             </Badge>
                           )}
                           {field.repeated && (
                             <Badge className="font-mono text-[11px] uppercase font-semibold bg-marigold-soft text-marigold border border-marigold/20 px-1 py-0 leading-none">
-                              List
+                              {t('list_badge')}
                             </Badge>
                           )}
                         </div>
                         <code className="text-[11px] font-mono text-ink-soft block">{field.path}</code>
-                        <span className="text-[11px] text-ink-faint block pt-1">Prompt: "{field.default_question}"</span>
+                        <span className="text-[11px] text-ink-faint block pt-1">{t('prompt_label')} "{field.default_question}"</span>
                       </div>
                       {field.help_text && (
                         <span className="text-[11px] text-ink-faint italic bg-paper border border-line px-2 py-1 rounded-md max-w-[200px]">
@@ -143,13 +143,13 @@ export const SchemaVisualizerDialog: React.FC<SchemaVisualizerDialogProps> = ({
 
           <DialogFooter className="pt-4 border-t border-line flex gap-2">
             <Button variant="outline" className="h-11 rounded-md font-semibold border-line-strong text-ink-soft hover:bg-paper" onClick={onClose}>
-              Close Outline
+              {t('close')}
             </Button>
             <Button
               className="h-11 bg-pine hover:bg-pine-deep font-semibold rounded-md shadow-none cursor-pointer text-primary-foreground"
               onClick={() => onLaunchCase(template.template_id, template.template_version)}
             >
-              Launch Case Workspace <ArrowRight className="ml-1.5 w-4 h-4" />
+              {t('launch_case_workspace')} <ArrowRight className="ml-1.5 w-4 h-4" />
             </Button>
           </DialogFooter>
         </div>

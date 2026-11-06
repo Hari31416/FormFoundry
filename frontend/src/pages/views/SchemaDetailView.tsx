@@ -1,7 +1,6 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Eye, Trash2 } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
 import type { CaseFile, TemplateDefinition } from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -53,7 +52,7 @@ export default function SchemaDetailView({ template, versions, activeVersion, on
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-[20px] font-semibold text-ink leading-tight">{template.name}</h1>
             {versions.length > 1 && (
-              <select value={activeVersion} onChange={e => onVersionChange(parseInt(e.target.value))} aria-label="Version" className="text-[11px] font-mono border border-line rounded px-1.5 py-0.5 bg-white cursor-pointer">
+              <select value={activeVersion} onChange={e => onVersionChange(parseInt(e.target.value))} aria-label={t('version_label')} className="text-[11px] font-mono border border-line rounded px-1.5 py-0.5 bg-white cursor-pointer">
                 {versions.map(v => <option key={v.template_version} value={v.template_version}>V{v.template_version}</option>)}
               </select>
             )}
@@ -62,13 +61,13 @@ export default function SchemaDetailView({ template, versions, activeVersion, on
           <p className="text-xs text-ink-soft mt-1 line-clamp-2 max-w-xl">{template.description}</p>
         </div>
         <div className="flex gap-2 shrink-0">
-          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={onViewSchema}><Eye className="w-3.5 h-3.5 mr-1.5" />Schema</Button>
-          <Button size="sm" className="h-8 text-xs bg-pine hover:bg-pine-deep" onClick={onStartCase} disabled={isPending}>+ Start Case</Button>
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={onViewSchema}><Eye className="w-3.5 h-3.5 mr-1.5" />{t('schema_button')}</Button>
+          <Button size="sm" className="h-8 text-xs bg-pine hover:bg-pine-deep" onClick={onStartCase} disabled={isPending}>+ {t('start_case')}</Button>
         </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-        {[['Total', cases.length], ['Awaiting', awaiting], ['Ready', ready], ['Done', done]].map(([label, value]) => (
+        {[[t('stat_total'), cases.length], [t('stat_awaiting'), awaiting], [t('stat_ready'), ready], [t('stat_done'), done]].map(([label, value]) => (
           <div key={label as string} className="bg-white border border-line rounded-lg px-3.5 py-2.5">
             <p className="text-[10px] uppercase tracking-[0.14em] text-ink-faint">{label}</p>
             <p className="text-xl font-semibold leading-none mt-1">{value}</p>
@@ -80,16 +79,16 @@ export default function SchemaDetailView({ template, versions, activeVersion, on
         <div className="bg-white border border-line rounded-lg overflow-hidden min-w-0">
           <div className="px-3 pt-2 flex items-center gap-1 border-b border-line">
             {(['cases', 'schema'] as const).map(x => (
-              <button key={x} onClick={() => setTab(x)} className={cn('px-3 py-2 text-[12px] font-semibold capitalize border-b-2 -mb-px cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine/40 rounded-t-sm', tab === x ? 'border-pine text-pine' : 'border-transparent text-ink-faint hover:text-ink')}>{x}</button>
+              <button key={x} onClick={() => setTab(x)} className={cn('px-3 py-2 text-[12px] font-semibold border-b-2 -mb-px cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine/40 rounded-t-sm', tab === x ? 'border-pine text-pine' : 'border-transparent text-ink-faint hover:text-ink')}>{t(x === 'cases' ? 'tab_cases' : 'tab_schema')}</button>
             ))}
             {tab === 'cases' && search && (
-              <span className="ml-auto mb-1.5 text-[11px] text-ink-faint">Filtering by “{search}” · <button onClick={() => onSearch('')} className="font-semibold text-pine hover:underline cursor-pointer">clear</button></span>
+              <span className="ml-auto mb-1.5 text-[11px] text-ink-faint">{t('filtering_by', { search })} · <button onClick={() => onSearch('')} className="font-semibold text-pine hover:underline cursor-pointer">{t('clear_word')}</button></span>
             )}
           </div>
 
           {tab === 'cases' ? (
             filtered.length === 0 ? (
-              <p className="px-4 py-12 text-center text-xs text-ink-faint">No cases yet. <button onClick={onStartCase} className="font-semibold text-pine hover:underline cursor-pointer">Start the first case →</button></p>
+              <p className="px-4 py-12 text-center text-xs text-ink-faint">{t('no_cases_yet_body')} <button onClick={onStartCase} className="font-semibold text-pine hover:underline cursor-pointer">{t('start_first_case')}</button></p>
             ) : (
               <div className="divide-y divide-line/70">
                 {filtered.map(c => (
@@ -100,7 +99,7 @@ export default function SchemaDetailView({ template, versions, activeVersion, on
                           <span className="block text-[12.5px] font-semibold truncate">{getCaseTitle(c)}</span>
                           <span className={cn('inline-block text-[10px] font-bold uppercase tracking-wide rounded-full px-1.5 py-0.5 shrink-0', STATUS_PILL[c.status] || 'bg-paper border border-line text-ink-soft')}>{t('case_status_' + c.status)}</span>
                         </span>
-                        <span className="block text-[10px] text-ink-faint truncate">{formatCaseDate(c.created_at)} · {formatCompactTime(c.created_at)} ago · {formatProgress(c)} · <span className="font-mono">#{getShortId(c)}</span></span>
+                        <span className="block text-[10px] text-ink-faint truncate">{formatCaseDate(c.created_at)} · {t('time_ago', { time: formatCompactTime(c.created_at) })} · {formatProgress(c)} · <span className="font-mono">#{getShortId(c)}</span></span>
                       </span>
                       <span className="hidden sm:block w-20 shrink-0">
                         <span role="progressbar" aria-label={t('case_progress_label')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={c.completion_pct ?? 0} className="block h-1 rounded bg-[#eee6d3] overflow-hidden"><span className="block h-full bg-pine" style={{ width: `${c.completion_pct ?? 0}%` }} /></span>
@@ -108,7 +107,7 @@ export default function SchemaDetailView({ template, versions, activeVersion, on
                       </span>
                       <ArrowRight className="w-3.5 h-3.5 text-ink-faint group-hover:text-pine shrink-0" />
                     </Link>
-                    <button onClick={() => onDeleteCase(c.case_id)} aria-label="Delete case" className="p-1.5 rounded text-ink-faint hover:text-terracotta hover:bg-terracotta-soft opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => onDeleteCase(c.case_id)} aria-label={t('delete_case_aria')} className="p-1.5 rounded text-ink-faint hover:text-terracotta hover:bg-terracotta-soft opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
                 ))}
               </div>
@@ -122,7 +121,7 @@ export default function SchemaDetailView({ template, versions, activeVersion, on
                   <div className="mt-1.5 divide-y divide-line/60">
                     {g.field_paths.map(fp => {
                       const f = template.schema?.find(x => x.path === fp)
-                      return <div key={fp} className="py-1.5 flex justify-between text-xs"><span className="font-medium">{f?.label || fp}</span><span className="text-ink-faint font-mono text-[10px]">{f?.type}{f?.required ? ' · required' : ''}</span></div>
+                      return <div key={fp} className="py-1.5 flex justify-between text-xs"><span className="font-medium">{f?.label || fp}</span><span className="text-ink-faint font-mono text-[10px]">{f?.type}{f?.required ? ` · ${t('required_word')}` : ''}</span></div>
                     })}
                   </div>
                 </div>
@@ -133,16 +132,16 @@ export default function SchemaDetailView({ template, versions, activeVersion, on
 
         <aside className="space-y-3">
           <div className="bg-white border border-line rounded-lg p-3.5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-faint mb-2">Schema Snapshot</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-faint mb-2">{t('schema_snapshot')}</p>
             <div className="divide-y divide-line/60">
-              {template.field_groups?.map(g => <div key={g.group_id} className="py-1.5 flex justify-between text-xs"><span>{g.label}</span><b>{g.field_paths.length} fields</b></div>)}
+              {template.field_groups?.map(g => <div key={g.group_id} className="py-1.5 flex justify-between text-xs"><span>{g.label}</span><b>{t('fields_count', { count: g.field_paths.length })}</b></div>)}
             </div>
-            <p className="text-[11px] text-ink-faint mt-3 pt-2.5 border-t border-line/70">Artifacts: <b className="text-ink">{(template.supported_artifacts || []).join(', ') || '—'}</b><br />Version V{template.template_version} · {template.schema?.length ?? 0} fields total</p>
+            <p className="text-[11px] text-ink-faint mt-3 pt-2.5 border-t border-line/70">{t('artifacts_label')}<b className="text-ink">{(template.supported_artifacts || []).join(', ') || '—'}</b><br />Version V{template.template_version} · {t('fields_total', { count: template.schema?.length ?? 0 })}</p>
           </div>
           <div className="bg-pine-soft/50 border border-pine/15 rounded-lg p-3.5">
-            <p className="text-[11px] font-semibold text-pine">Need to change fields?</p>
-            <p className="text-[11px] text-ink-soft mt-1">Edit validation, groups, and artifacts in the Architect.</p>
-            <button onClick={onViewSchema} className="text-[11px] font-bold text-pine hover:underline mt-2 cursor-pointer">Open schema preview →</button>
+            <p className="text-[11px] font-semibold text-pine">{t('need_change_fields')}</p>
+            <p className="text-[11px] text-ink-soft mt-1">{t('need_change_fields_desc')}</p>
+            <button onClick={onViewSchema} className="text-[11px] font-bold text-pine hover:underline mt-2 cursor-pointer">{t('open_schema_preview')}</button>
           </div>
         </aside>
       </div>

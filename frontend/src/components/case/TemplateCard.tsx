@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight, History, Clock, FileText, Activity, Shield, Sparkles, Eye, Trash2, MoreHorizontal } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { formatDistanceToNow } from 'date-fns'
+import { getDateLocale } from '@/lib/dateLocale'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { TemplateDefinition, CaseFile } from '@/lib/api'
@@ -81,7 +82,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
             <select
               value={activeVersionNum}
               onChange={(e) => onVersionChange(parseInt(e.target.value))}
-              aria-label="Template version"
+              aria-label={t('template_version_aria')}
               className="appearance-none bg-paper border border-line-strong text-ink-soft font-mono text-[11px] uppercase tracking-[0.14em] pl-2 pr-6 py-1 rounded cursor-pointer focus:outline-none focus:ring-2 focus:ring-pine/30"
               style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235f6b66' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 6px center' }}
             >
@@ -95,7 +96,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
           <div className="relative">
             <button
               onClick={() => setMenuOpen(o => !o)}
-              aria-label="More options"
+              aria-label={t('more_options')}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               className="p-1.5 rounded-md text-ink-faint hover:text-pine hover:bg-paper transition-colors cursor-pointer"
@@ -105,11 +106,11 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
             {menuOpen && (
               <div role="menu" className="absolute right-0 top-8 z-20 w-44 rounded-md border border-line bg-card-warm shadow-lg py-1 text-xs">
                 <button role="menuitem" className="w-full flex items-center gap-2 px-3 py-2 hover:bg-paper text-ink-soft cursor-pointer" onClick={() => { onViewSchema(template); setMenuOpen(false) }}>
-                  <Eye className="w-3.5 h-3.5" /> View schema
+                  <Eye className="w-3.5 h-3.5" /> {t('view_schema')}
                 </button>
                 {onViewCases && (
                   <button role="menuitem" className="w-full flex items-center gap-2 px-3 py-2 hover:bg-paper text-ink-soft cursor-pointer" onClick={() => { onViewCases(template); setMenuOpen(false) }}>
-                    <History className="w-3.5 h-3.5" /> View cases ({templateCases.length})
+                    <History className="w-3.5 h-3.5" /> {t('view_cases', { count: templateCases.length })}
                   </button>
                 )}
               </div>
@@ -126,7 +127,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
         </h3>
         <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-ink-faint mt-1">
           {template.domain}
-          {activeCaseCount > 0 && <span className="ml-2 text-marigold">· {activeCaseCount} awaiting</span>}
+          {activeCaseCount > 0 && <span className="ml-2 text-marigold">· {t('awaiting_count', { count: activeCaseCount })}</span>}
         </p>
       </div>
 
@@ -144,7 +145,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
             onClick={() => onStartCase(template.template_id, template.template_version)}
             disabled={isPending}
           >
-            Start Case
+            {t('start_case')}
             <ArrowRight className="ml-1.5 w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
           </Button>
 
@@ -158,7 +159,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
                 </div>
                 {onViewCases && (
                   <button className="text-[11px] font-semibold text-pine hover:underline cursor-pointer" onClick={() => onViewCases(template)}>
-                    View all ({templateCases.length})
+                    {t('view_all_cases', { count: templateCases.length })}
                   </button>
                 )}
               </div>
@@ -189,7 +190,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
                           </span>
                           <span className="flex items-center gap-1 text-[11px] text-ink-faint">
                             <Clock className="w-2.5 h-2.5" />
-                            {formatDistanceToNow(new Date(c.created_at))}
+                            {t('time_ago', { time: formatDistanceToNow(new Date(c.created_at), { locale: getDateLocale() }) })}
                           </span>
                           {onDeleteCase && (
                             <button
@@ -199,8 +200,8 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
                                 onDeleteCase(c.case_id)
                               }}
                               className="p-1 text-ink-faint hover:text-terracotta hover:bg-terracotta-soft rounded transition-all cursor-pointer opacity-0 group-hover/case:opacity-100 focus-visible:opacity-100"
-                              title="Delete Case"
-                              aria-label="Delete case"
+                              title={t('delete_case_title')}
+                              aria-label={t('delete_case_aria')}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -212,10 +213,10 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
                 </AnimatePresence>
               </div>
               {templateCases.length > 2 && !isExpanded && (
-                <button className="mt-1 text-[11px] font-semibold text-pine hover:underline cursor-pointer" onClick={onToggleExpand}>Show more</button>
+                <button className="mt-1 text-[11px] font-semibold text-pine hover:underline cursor-pointer" onClick={onToggleExpand}>{t('show_more')}</button>
               )}
               {isExpanded && templateCases.length > 2 && (
-                <button className="mt-1 text-[11px] font-semibold text-pine hover:underline cursor-pointer" onClick={onToggleExpand}>Show less</button>
+                <button className="mt-1 text-[11px] font-semibold text-pine hover:underline cursor-pointer" onClick={onToggleExpand}>{t('show_less')}</button>
               )}
             </div>
           )}

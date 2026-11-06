@@ -3,6 +3,7 @@ import { getCaseTitle, getCaseSubject } from '@/lib/caseLabel'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Trash2, Search, ChevronLeft, ChevronRight, Inbox, Clock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { getDateLocale } from '@/lib/dateLocale'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -59,18 +60,18 @@ export const TemplateCasesDialog: React.FC<TemplateCasesDialogProps> = ({
             <div className="flex justify-between items-start mr-6">
               <div className="space-y-1">
                 <span className="font-mono text-[11px] font-semibold text-pine uppercase tracking-[0.2em] block">
-                  {template.domain} Cases
+                  {t('domain_cases', { domain: template.domain })}
                 </span>
                 <DialogTitle className="font-serif text-2xl font-semibold text-ink leading-tight">
                   {t('template_' + template.template_id + '_name', { defaultValue: template.name })}
                 </DialogTitle>
               </div>
               <Badge variant="outline" className="font-mono text-[11px] font-semibold uppercase text-ink-faint bg-paper border-line px-2 py-0.5">
-                {cases.length} Total Cases
+                {t('total_cases_badge', { count: cases.length })}
               </Badge>
             </div>
             <DialogDescription className="text-xs text-ink-soft leading-relaxed pt-1">
-              Browse, search, open, or delete existing cases started under this template.
+              {t('cases_dialog_desc')}
             </DialogDescription>
           </DialogHeader>
 
@@ -81,7 +82,7 @@ export const TemplateCasesDialog: React.FC<TemplateCasesDialogProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by case ID or subject name..."
+              placeholder={t('search_cases_id_placeholder')}
               className="pl-10 h-11 bg-paper border-line rounded-md focus-visible:ring-pine/25"
             />
           </div>
@@ -110,7 +111,7 @@ export const TemplateCasesDialog: React.FC<TemplateCasesDialogProps> = ({
                         </span>
                         <span className="flex items-center gap-1 text-ink-faint">
                           <Clock className="w-3 h-3 text-ink-faint" />
-                          {formatDistanceToNow(new Date(c.created_at))} ago
+                          {t('time_ago', { time: formatDistanceToNow(new Date(c.created_at), { locale: getDateLocale() }) })}
                         </span>
                       </div>
                     </div>
@@ -122,7 +123,7 @@ export const TemplateCasesDialog: React.FC<TemplateCasesDialogProps> = ({
                           size="sm"
                           className="h-9 border-line-strong hover:border-pine hover:bg-pine-soft text-ink-soft hover:text-pine-deep font-semibold text-xs rounded-md transition-colors"
                         >
-                          Open Workspace <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                          {t('open_workspace')} <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                         </Button>
                       </Link>
                       <Button
@@ -130,7 +131,7 @@ export const TemplateCasesDialog: React.FC<TemplateCasesDialogProps> = ({
                         size="icon"
                         onClick={() => onDeleteCase(c.case_id)}
                         className="h-9 w-9 border-transparent bg-transparent text-ink-faint hover:text-terracotta hover:bg-terracotta-soft rounded-md transition-colors cursor-pointer"
-                        title="Delete Case"
+                        title={t('delete_case_title')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
@@ -144,9 +145,9 @@ export const TemplateCasesDialog: React.FC<TemplateCasesDialogProps> = ({
                   <Inbox className="w-8 h-8 text-ink-faint" />
                 </div>
                 <div className="space-y-1">
-                  <span className="font-serif font-semibold text-ink text-sm block">No Cases Found</span>
+                  <span className="font-serif font-semibold text-ink text-sm block">{t('no_cases_found')}</span>
                   <span className="text-xs text-ink-faint block max-w-[280px]">
-                    {searchQuery ? "No cases match your active search terms." : "No cases have been created for this template yet."}
+                    {searchQuery ? t('no_cases_search') : t('no_cases_template')}
                   </span>
                 </div>
               </div>
@@ -157,7 +158,7 @@ export const TemplateCasesDialog: React.FC<TemplateCasesDialogProps> = ({
           {totalPages > 1 && (
             <div className="pt-4 border-t border-line flex items-center justify-between">
               <span className="font-mono text-[11px] uppercase tracking-wide text-ink-faint">
-                Page {currentPage} of {totalPages} ({totalCases} cases)
+                {t('page_of', { current: currentPage, total: totalPages, count: totalCases })}
               </span>
               <div className="flex gap-1.5">
                 <Button
@@ -167,7 +168,7 @@ export const TemplateCasesDialog: React.FC<TemplateCasesDialogProps> = ({
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
                 >
-                  <ChevronLeft className="w-4 h-4 mr-0.5" /> Prev
+                  <ChevronLeft className="w-4 h-4 mr-0.5" /> {t('prev')}
                 </Button>
                 <Button
                   variant="outline"
@@ -176,7 +177,7 @@ export const TemplateCasesDialog: React.FC<TemplateCasesDialogProps> = ({
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
                 >
-                  Next <ChevronRight className="w-4 h-4 ml-0.5" />
+                  {t('next')} <ChevronRight className="w-4 h-4 ml-0.5" />
                 </Button>
               </div>
             </div>
