@@ -52,63 +52,63 @@ export const TemplateCasesDialog: React.FC<TemplateCasesDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-xl sm:max-w-2xl bg-white border border-slate-200 p-6 rounded-3xl">
+      <DialogContent className="max-w-xl sm:max-w-2xl bg-card-warm border border-line p-6 rounded-lg">
         <div className="space-y-6">
           <DialogHeader>
             <div className="flex justify-between items-start mr-6">
               <div className="space-y-1">
-                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest block">
+                <span className="font-mono text-[11px] font-semibold text-pine uppercase tracking-[0.2em] block">
                   {template.domain} Cases
                 </span>
-                <DialogTitle className="text-2xl font-black text-slate-900 leading-tight">
+                <DialogTitle className="font-serif text-2xl font-semibold text-ink leading-tight">
                   {t('template_' + template.template_id + '_name', { defaultValue: template.name })}
                 </DialogTitle>
               </div>
-              <Badge variant="outline" className="text-[10px] font-black uppercase text-indigo-500 bg-indigo-50/20 border-indigo-150 px-2 py-0.5">
+              <Badge variant="outline" className="font-mono text-[11px] font-semibold uppercase text-ink-faint bg-paper border-line px-2 py-0.5">
                 {cases.length} Total Cases
               </Badge>
             </div>
-            <DialogDescription className="text-xs text-slate-500 leading-relaxed pt-1">
+            <DialogDescription className="text-xs text-ink-soft leading-relaxed pt-1">
               Browse, search, open, or delete existing cases started under this template.
             </DialogDescription>
           </DialogHeader>
 
           {/* Search bar */}
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-ink-faint" />
             <Input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by case ID or subject name..."
-              className="pl-10 h-11 bg-slate-50 border-slate-200 rounded-xl focus-visible:ring-indigo-500/50"
+              className="pl-10 h-11 bg-paper border-line rounded-md focus-visible:ring-pine/25"
             />
           </div>
 
           {/* Cases List */}
           <div className="space-y-2 min-h-[300px]">
             {paginatedCases.length > 0 ? (
-              <div className="space-y-2.5">
+              <div className="divide-y divide-line border-y border-line">
                 {paginatedCases.map((c) => (
                   <div
                     key={c.case_id}
-                    className="p-3.5 rounded-2xl bg-slate-50 hover:bg-indigo-50/10 border border-slate-100 hover:border-indigo-100 transition-all flex items-center justify-between gap-4 group/case"
+                    className="py-3.5 transition-colors flex items-center justify-between gap-4 group/case hover:bg-paper"
                   >
                     <div className="space-y-1 min-w-0 flex-grow">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-black text-slate-800 truncate max-w-[200px]">
+                        <span className="text-sm font-semibold text-ink truncate max-w-[200px]">
                           {c.metadata?.subject_name || "Untitled Case"}
                         </span>
-                        <Badge variant="outline" className="text-[8px] font-black uppercase text-slate-500 border-slate-200 bg-white">
+                        <Badge variant="outline" className="font-mono text-[11px] font-semibold uppercase text-ink-faint border-line bg-card-warm">
                           {t('case_status_' + c.status)}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-3 text-[10px] text-slate-450 font-medium">
-                        <span className="font-mono text-[9px] bg-slate-200/50 px-1.5 py-0.5 rounded text-slate-500">
+                      <div className="flex items-center gap-3 text-[11px] text-ink-faint font-medium">
+                        <span className="font-mono text-[11px] bg-paper border border-line px-1.5 py-0.5 rounded text-ink-soft">
                           ID: #{c.case_id.slice(-8)}
                         </span>
-                        <span className="flex items-center gap-1 text-slate-400">
-                          <Clock className="w-3 h-3 text-slate-400" />
+                        <span className="flex items-center gap-1 text-ink-faint">
+                          <Clock className="w-3 h-3 text-ink-faint" />
                           {formatDistanceToNow(new Date(c.created_at))} ago
                         </span>
                       </div>
@@ -119,7 +119,7 @@ export const TemplateCasesDialog: React.FC<TemplateCasesDialogProps> = ({
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-9 border-slate-250 hover:border-indigo-200 hover:bg-indigo-50/50 text-slate-700 hover:text-indigo-600 font-extrabold text-xs rounded-xl transition-all"
+                          className="h-9 border-line-strong hover:border-pine hover:bg-pine-soft text-ink-soft hover:text-pine-deep font-semibold text-xs rounded-md transition-colors"
                         >
                           Open Workspace <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
                         </Button>
@@ -128,7 +128,7 @@ export const TemplateCasesDialog: React.FC<TemplateCasesDialogProps> = ({
                         variant="outline"
                         size="icon"
                         onClick={() => onDeleteCase(c.case_id)}
-                        className="h-9 w-9 border-slate-250 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
+                        className="h-9 w-9 border-transparent bg-transparent text-ink-faint hover:text-terracotta hover:bg-terracotta-soft rounded-md transition-colors cursor-pointer"
                         title="Delete Case"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -139,12 +139,12 @@ export const TemplateCasesDialog: React.FC<TemplateCasesDialogProps> = ({
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-center space-y-3 min-h-[300px]">
-                <div className="p-4 bg-slate-50 border border-slate-100 rounded-2xl text-slate-450">
-                  <Inbox className="w-8 h-8 text-slate-400" />
+                <div className="p-4 border border-dashed border-line rounded-lg text-ink-faint">
+                  <Inbox className="w-8 h-8 text-ink-faint" />
                 </div>
                 <div className="space-y-1">
-                  <span className="font-extrabold text-slate-700 text-sm block">No Cases Found</span>
-                  <span className="text-xs text-slate-400 block max-w-[280px]">
+                  <span className="font-serif font-semibold text-ink text-sm block">No Cases Found</span>
+                  <span className="text-xs text-ink-faint block max-w-[280px]">
                     {searchQuery ? "No cases match your active search terms." : "No cases have been created for this template yet."}
                   </span>
                 </div>
@@ -154,15 +154,15 @@ export const TemplateCasesDialog: React.FC<TemplateCasesDialogProps> = ({
 
           {/* Pagination Footer */}
           {totalPages > 1 && (
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400">
+            <div className="pt-4 border-t border-line flex items-center justify-between">
+              <span className="font-mono text-[11px] uppercase tracking-wide text-ink-faint">
                 Page {currentPage} of {totalPages} ({totalCases} cases)
               </span>
               <div className="flex gap-1.5">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 rounded-lg text-slate-500 font-extrabold text-xs"
+                  className="h-8 rounded-md border-line text-ink-soft font-semibold text-xs"
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
                 >
@@ -171,7 +171,7 @@ export const TemplateCasesDialog: React.FC<TemplateCasesDialogProps> = ({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="h-8 rounded-lg text-slate-500 font-extrabold text-xs"
+                  className="h-8 rounded-md border-line text-ink-soft font-semibold text-xs"
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
                 >

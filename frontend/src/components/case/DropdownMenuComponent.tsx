@@ -31,23 +31,23 @@ export function DropdownMenuComponent({
         render={
           <Button
             size="sm"
-            className="bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-lg shadow-sm cursor-pointer"
+            className="bg-primary-foreground text-pine-deep hover:bg-paper font-semibold rounded-md shadow-none cursor-pointer"
           />
         }
       >
         {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
         {t('generate_artifact')}
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-48 rounded-xl p-1 shadow-xl border-slate-100 bg-white">
+      <DropdownMenuContent className="w-48 rounded-md p-1 shadow-lg border border-line bg-card-warm">
         <DropdownMenuGroup>
-          <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-slate-400 px-2 py-1.5">
+          <DropdownMenuLabel className="font-mono text-[11px] uppercase tracking-[0.18em] text-ink-faint px-2 py-1.5">
             {t('select_format')}
           </DropdownMenuLabel>
-          <DropdownMenuSeparator className="bg-slate-100" />
+          <DropdownMenuSeparator className="bg-line" />
           {options.map((opt) => (
             <DropdownMenuItem
               key={opt}
-              className="rounded-lg text-xs font-bold uppercase tracking-tight text-slate-700 focus:bg-slate-50 focus:text-blue-600 cursor-pointer"
+              className="rounded-md text-xs font-semibold uppercase tracking-tight text-ink-soft focus:bg-pine-soft focus:text-pine-deep cursor-pointer"
               onClick={() => onSelect(opt)}
             >
               {opt}

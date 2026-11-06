@@ -312,29 +312,29 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
   }
 
   return (
-    <div className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden min-h-[600px] flex flex-col">
-      <div className="p-6 bg-slate-900 text-white flex justify-between items-center">
+    <div className="card-ledger rounded-lg overflow-hidden min-h-[600px] flex flex-col">
+      <div className="p-6 bg-paper border-b border-line flex justify-between items-center">
         <div>
-          <span className="text-xs uppercase font-extrabold tracking-widest text-indigo-400">Template Architect</span>
-          <h2 className="text-2xl font-black">{activeTemplate ? 'Edit Schema Layout' : 'Create Custom Schema'}</h2>
+          <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-pine">Template Architect</span>
+          <h2 className="font-serif text-2xl font-semibold text-ink">{activeTemplate ? 'Edit Schema Layout' : 'Create Custom Schema'}</h2>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white" onClick={onCancel}>
+          <Button variant="outline" className="border-line-strong text-ink-soft hover:bg-card-warm hover:text-ink" onClick={onCancel}>
             <X className="w-4 h-4 mr-2" /> Cancel
           </Button>
-          <Button className="bg-indigo-600 hover:bg-indigo-500 font-bold shadow-lg shadow-indigo-500/20 text-white" onClick={onSave} disabled={isPending}>
+          <Button className="bg-pine hover:bg-pine-deep font-semibold shadow-none text-primary-foreground" onClick={onSave} disabled={isPending}>
             <Check className="w-4 h-4 mr-2" /> {isPending ? 'Saving...' : 'Save Template Configuration'}
           </Button>
         </div>
       </div>
 
-      <div className="flex border-b border-slate-100 bg-slate-50/50 p-2 gap-2">
+      <div className="flex border-b border-line bg-card-warm px-4 gap-1">
         {[
-          { id: 'metadata', label: '1. Metadata & Output', icon: <Database className="w-4 h-4" /> },
-          { id: 'fields', label: '2. Form Fields Schema', icon: <Layers className="w-4 h-4" /> },
-          { id: 'groups', label: '3. Section Groups', icon: <Workflow className="w-4 h-4" /> },
-          { id: 'ai', label: '4. Conversation & AI', icon: <Sparkles className="w-4 h-4" /> },
-          { id: 'json', label: '5. Raw JSON Editor', icon: <FileJson className="w-4 h-4" /> },
+          { id: 'metadata', label: '1. Metadata & Output', icon: <span className="p-1 rounded-sm bg-leaf-soft text-leaf"><Database className="w-3.5 h-3.5" /></span> },
+          { id: 'fields', label: '2. Form Fields Schema', icon: <span className="p-1 rounded-sm bg-inkblue-soft text-inkblue"><Layers className="w-3.5 h-3.5" /></span> },
+          { id: 'groups', label: '3. Section Groups', icon: <span className="p-1 rounded-sm bg-marigold-soft text-marigold"><Workflow className="w-3.5 h-3.5" /></span> },
+          { id: 'ai', label: '4. Conversation & AI', icon: <span className="p-1 rounded-sm bg-pine-soft text-pine"><Sparkles className="w-3.5 h-3.5" /></span> },
+          { id: 'json', label: '5. Raw JSON Editor', icon: <span className="p-1 rounded-sm bg-paper text-ink-faint border border-line"><FileJson className="w-3.5 h-3.5" /></span> },
         ].map(tab => (
           <button
             key={tab.id}
@@ -345,10 +345,10 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
               setBuilderTab(tab.id as any)
             }}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 text-xs font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer",
+              "flex items-center gap-2 px-4 py-3 text-[11px] font-mono font-semibold uppercase tracking-[0.16em] transition-colors cursor-pointer border-b-2 -mb-px",
               builderTab === tab.id
-                ? "bg-slate-900 text-white shadow-md shadow-slate-900/10"
-                : "text-slate-500 hover:bg-slate-200/50"
+                ? "border-pine text-pine"
+                : "border-transparent text-ink-faint hover:text-ink-soft"
             )}
           >
             {tab.icon}
@@ -362,45 +362,45 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
           <div className="max-w-2xl space-y-6">
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Template ID / Code</label>
+                <label className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-faint">Template ID / Code</label>
                 <Input
                   disabled={!!activeTemplate}
                   value={draftTemplate.template_id}
                   onChange={e => setDraftTemplate(prev => ({ ...prev, template_id: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '-') }))}
                   placeholder="e.g. employee-onboarding"
-                  className="h-11 rounded-xl bg-slate-50 border-slate-200"
+                  className="h-11 rounded-md bg-card-warm border-line focus-visible:ring-pine/25"
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Template Version</label>
+                <label className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-faint">Template Version</label>
                 <Input
                   type="number"
                   disabled={!!activeTemplate}
                   value={draftTemplate.template_version}
                   onChange={e => setDraftTemplate(prev => ({ ...prev, template_version: parseInt(e.target.value) || 1 }))}
                   placeholder="e.g. 1"
-                  className="h-11 rounded-xl bg-slate-50 border-slate-200"
+                  className="h-11 rounded-md bg-card-warm border-line focus-visible:ring-pine/25"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Template Name</label>
+              <label className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-faint">Template Name</label>
               <Input
                 value={draftTemplate.name}
                 onChange={e => setDraftTemplate(prev => ({ ...prev, name: e.target.value }))}
                 placeholder="e.g. Employee HR Intake"
-                className="h-11 rounded-xl bg-slate-50 border-slate-200"
+                className="h-11 rounded-md bg-card-warm border-line focus-visible:ring-pine/25"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-6">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Domain Category</label>
+                <label className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-faint">Domain Category</label>
                 <select
                   value={draftTemplate.domain}
                   onChange={e => setDraftTemplate(prev => ({ ...prev, domain: e.target.value }))}
-                  className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900"
+                  className="w-full h-11 px-3 bg-card-warm border border-line rounded-md text-ink focus:outline-none focus:ring-1 focus:ring-pine/25"
                 >
                   <option value="custom">Custom Templates</option>
                   <option value="healthcare">Healthcare</option>
@@ -409,10 +409,10 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                 </select>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Supported Output Formats</label>
+                <label className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-faint">Supported Output Formats</label>
                 <div className="flex gap-4 items-center h-11">
                   {['json_export', 'pdf'].map(artifact => (
-                    <label key={artifact} className="flex items-center gap-2 text-sm font-semibold text-slate-700 cursor-pointer">
+                    <label key={artifact} className="flex items-center gap-2 text-sm font-semibold text-ink-soft cursor-pointer">
                       <input
                         type="checkbox"
                         checked={draftTemplate.supported_artifacts.includes(artifact)}
@@ -423,7 +423,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                             : active.filter(x => x !== artifact)
                           setDraftTemplate(prev => ({ ...prev, supported_artifacts: updated }))
                         }}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-line text-pine focus:ring-pine/40"
                       />
                       {artifact.toUpperCase().replace('_', ' ')}
                     </label>
@@ -433,23 +433,23 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Description</label>
+              <label className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-faint">Description</label>
               <Textarea
                 value={draftTemplate.description}
                 onChange={e => setDraftTemplate(prev => ({ ...prev, description: e.target.value }))}
                 placeholder="Provide a description of this intake flow..."
-                className="min-h-24 rounded-xl bg-slate-50 border-slate-200"
+                className="min-h-24 rounded-md bg-card-warm border-line focus-visible:ring-pine/25"
               />
             </div>
 
             {draftTemplate.supported_artifacts.includes('pdf') && (
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-4">
-                <span className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-blue-500" /> PDF Assembly Configuration
+              <div className="p-4 bg-paper border border-line rounded-md space-y-4">
+                <span className="text-sm font-semibold text-ink flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-pine" /> PDF Assembly Configuration
                 </span>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-500">PDF Title</label>
+                    <label className="text-xs font-semibold text-ink-soft">PDF Title</label>
                     <Input
                       value={draftTemplate.renderer_config?.pdf_title || ''}
                       onChange={e => setDraftTemplate(prev => ({
@@ -457,11 +457,11 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                         renderer_config: { ...(prev.renderer_config || {}), pdf_title: e.target.value }
                       }))}
                       placeholder="e.g. Screening Report"
-                      className="h-10 rounded-xl bg-white border-slate-200"
+                      className="h-10 rounded-md bg-card-warm border-line focus-visible:ring-pine/25"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-slate-500">Template PDF Path</label>
+                    <label className="text-xs font-semibold text-ink-soft">Template PDF Path</label>
                     <Input
                       value={draftTemplate.renderer_config?.template_asset || ''}
                       onChange={e => setDraftTemplate(prev => ({
@@ -469,7 +469,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                         renderer_config: { ...(prev.renderer_config || {}), template_asset: e.target.value }
                       }))}
                       placeholder="e.g. assets/pdfs/packet.pdf"
-                      className="h-10 rounded-xl bg-white border-slate-200"
+                      className="h-10 rounded-md bg-card-warm border-line focus-visible:ring-pine/25"
                     />
                   </div>
                 </div>
@@ -483,8 +483,8 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
             {/* Fields List */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <span className="text-sm font-bold text-slate-800 uppercase tracking-wider">{draftTemplate.schema.length} Field Nodes Configured</span>
-                <Button variant="outline" className="border-slate-200 text-slate-700 rounded-xl font-bold hover:bg-slate-50" onClick={startFieldAdd}>
+                <span className="font-mono text-[11px] font-semibold text-ink-soft uppercase tracking-[0.16em]">{draftTemplate.schema.length} Field Nodes Configured</span>
+                <Button variant="outline" className="border-dashed border-line text-ink-faint rounded-md font-semibold hover:text-pine hover:border-pine" onClick={startFieldAdd}>
                   <Plus className="w-4 h-4 mr-2" /> Add Field Node
                 </Button>
               </div>
@@ -492,34 +492,34 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
               <div className="space-y-2 max-h-[500px] overflow-y-auto pr-2">
                 {draftTemplate.schema.map((field, idx) => (
                   <div key={idx} className={cn(
-                    "p-4 border rounded-2xl flex justify-between items-start transition-all",
-                    editingFieldIdx === idx ? "border-blue-500 bg-blue-50/20 shadow-md" : "border-slate-100 bg-white hover:border-slate-300"
+                    "p-3.5 border rounded-md flex justify-between items-start transition-all",
+                    editingFieldIdx === idx ? "border-inkblue bg-inkblue-soft/50 shadow-sm" : "border-line bg-card-warm hover:border-line-strong"
                   )}>
                     <div>
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-black text-slate-800">{field.label}</span>
-                        <Badge variant="outline" className="text-[10px] uppercase font-bold text-slate-400 border-slate-200">{field.type}</Badge>
-                        {field.required && <Badge className="text-[9px] uppercase font-black bg-red-50 text-red-500 border border-red-100">Required</Badge>}
-                        {field.repeated && <Badge className="text-[9px] uppercase font-black bg-purple-50 text-purple-500 border border-purple-100">List</Badge>}
+                        <span className="font-semibold text-ink">{field.label}</span>
+                        <Badge variant="outline" className="font-mono text-[11px] uppercase font-semibold text-ink-faint border-line">{field.type}</Badge>
+                        {field.required && <Badge className="font-mono text-[11px] uppercase font-semibold bg-terracotta-soft text-terracotta border border-terracotta/20">Required</Badge>}
+                        {field.repeated && <Badge className="font-mono text-[11px] uppercase font-semibold bg-marigold-soft text-marigold border border-marigold/20">List</Badge>}
                         {field.type === 'object' && (
-                          <Badge className="text-[9px] uppercase font-black bg-indigo-50 text-indigo-650 border border-indigo-150">
+                          <Badge className="font-mono text-[11px] uppercase font-semibold bg-inkblue-soft text-inkblue border border-inkblue/20">
                             {field.schema?.length || 0} Properties
                           </Badge>
                         )}
                         {field.type === 'list_of_objects' && (
-                          <Badge className="text-[9px] uppercase font-black bg-indigo-50 text-indigo-650 border border-indigo-150">
+                          <Badge className="font-mono text-[11px] uppercase font-semibold bg-inkblue-soft text-inkblue border border-inkblue/20">
                             List of ({field.schema?.length || 0} Properties)
                           </Badge>
                         )}
                       </div>
-                      <code className="text-xs text-indigo-600 font-mono block mb-2">{field.path}</code>
-                      <p className="text-xs text-slate-500">{field.help_text || 'No description help text provided.'}</p>
+                      <code className="text-[11px] font-mono text-ink-soft bg-paper border border-line px-1.5 py-0.5 rounded inline-block mb-2">{field.path}</code>
+                      <p className="text-xs text-ink-soft">{field.help_text || 'No description help text provided.'}</p>
                     </div>
                     <div className="flex items-center gap-1">
-                      <button onClick={() => startFieldEdit(idx)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-xl cursor-pointer border-none">
+                      <button onClick={() => startFieldEdit(idx)} className="p-2 text-ink-faint hover:text-pine hover:bg-paper rounded-md cursor-pointer border-none">
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button onClick={() => deleteField(idx)} className="p-2 text-slate-400 hover:text-red-650 hover:bg-slate-100 rounded-xl cursor-pointer border-none">
+                      <button onClick={() => deleteField(idx)} className="p-2 text-ink-faint hover:text-terracotta hover:bg-terracotta-soft rounded-md cursor-pointer border-none">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -529,42 +529,42 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
             </div>
 
             {/* Field Inline Editor Panel */}
-            <div className="bg-slate-50/50 border border-slate-150 rounded-2xl p-6 h-fit border">
+            <div className="card-ledger rounded-lg p-6 h-fit">
               {editingFieldIdx !== null ? (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center pb-3 border-b border-slate-200">
-                    <span className="font-black text-slate-800">
+                  <div className="flex justify-between items-center pb-3 border-b border-line">
+                    <span className="font-serif font-semibold text-ink">
                       {editingFieldIdx === draftTemplate.schema.length ? 'Add Field' : 'Edit Field Properties'}
                     </span>
-                    <button onClick={() => setEditingFieldIdx(null)} className="p-1 rounded-full text-slate-400 hover:bg-slate-200 cursor-pointer border-none bg-transparent">
+                    <button onClick={() => setEditingFieldIdx(null)} className="p-1 rounded-md text-ink-faint hover:bg-paper cursor-pointer border-none bg-transparent">
                       <X className="w-4 h-4" />
                     </button>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">JSON Path</label>
+                      <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.16em]">JSON Path</label>
                       <Input
                         value={fieldForm.path}
                         onChange={e => setFieldForm(prev => ({ ...prev, path: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '') }))}
                         placeholder="e.g. patient.dob"
-                        className="h-10 bg-white border-slate-200 rounded-xl"
+                        className="h-10 bg-card-warm border-line rounded-md focus-visible:ring-pine/25"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Field Label</label>
+                      <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.16em]">Field Label</label>
                       <Input
                         value={fieldForm.label}
                         onChange={e => setFieldForm(prev => ({ ...prev, label: e.target.value }))}
                         placeholder="e.g. Date of Birth"
-                        className="h-10 bg-white border-slate-200 rounded-xl"
+                        className="h-10 bg-card-warm border-line rounded-md focus-visible:ring-pine/25"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Field Data Type</label>
+                      <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.16em]">Field Data Type</label>
                       <select
                         value={fieldForm.type}
                         onChange={e => setFieldForm(prev => {
@@ -573,7 +573,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                           const enum_options = type === 'enum' ? (prev.enum_options || []) : []
                           return { ...prev, type, schema, enum_options }
                         })}
-                        className="w-full h-10 px-3 bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-900"
+                        className="w-full h-10 px-3 bg-card-warm border border-line rounded-md text-ink focus:outline-none focus:ring-1 focus:ring-pine/25"
                       >
                         <option value="string">String (Text)</option>
                         <option value="date">Date</option>
@@ -586,21 +586,21 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                       </select>
                     </div>
                     <div className="flex gap-4 items-center h-16 pt-3">
-                      <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-650 cursor-pointer">
+                      <label className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-soft cursor-pointer">
                         <input
                           type="checkbox"
                           checked={fieldForm.required}
                           onChange={e => setFieldForm(prev => ({ ...prev, required: e.target.checked }))}
-                          className="rounded border-slate-300 text-blue-650 focus:ring-blue-500"
+                          className="rounded border-line text-pine focus:ring-pine/40"
                         />
                         Required
                       </label>
-                      <label className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-650 cursor-pointer">
+                      <label className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-soft cursor-pointer">
                         <input
                           type="checkbox"
                           checked={fieldForm.repeated}
                           onChange={e => setFieldForm(prev => ({ ...prev, repeated: e.target.checked }))}
-                          className="rounded border-slate-300 text-blue-650 focus:ring-blue-500"
+                          className="rounded border-line text-pine focus:ring-pine/40"
                         />
                         Is List
                       </label>
@@ -608,23 +608,23 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                   </div>
 
                   {fieldForm.type === 'enum' && (
-                    <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Enum Options</label>
+                    <div className="p-3 bg-paper border border-line rounded-md space-y-2">
+                      <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.16em] block">Enum Options</label>
                       <div className="flex gap-2">
                         <Input
                           value={newEnumOption}
                           onChange={e => setNewEnumOption(e.target.value)}
                           placeholder="e.g. male"
-                          className="h-8 bg-slate-50 border-slate-200 rounded-lg"
+                          className="h-8 bg-card-warm border-line rounded-md focus-visible:ring-pine/25"
                           onKeyDown={e => e.key === 'Enter' && addEnumOption()}
                         />
-                        <Button size="sm" variant="secondary" className="h-8 rounded-lg font-bold" onClick={addEnumOption}>Add</Button>
+                        <Button size="sm" variant="secondary" className="h-8 rounded-md font-semibold" onClick={addEnumOption}>Add</Button>
                       </div>
                       <div className="flex flex-wrap gap-1.5 pt-1">
                         {fieldForm.enum_options?.map(opt => (
-                          <Badge key={opt} variant="secondary" className="bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1.5 py-0.5 px-2">
+                          <Badge key={opt} variant="secondary" className="bg-paper hover:bg-line text-ink-soft border border-line flex items-center gap-1.5 py-0.5 px-2">
                             {opt}
-                            <X className="w-3 h-3 text-slate-400 hover:text-slate-600 cursor-pointer" onClick={() => removeEnumOption(opt)} />
+                            <X className="w-3 h-3 text-ink-faint hover:text-ink cursor-pointer" onClick={() => removeEnumOption(opt)} />
                           </Badge>
                         ))}
                       </div>
@@ -632,17 +632,17 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                   )}
 
                   {(fieldForm.type === 'object' || fieldForm.type === 'list_of_objects') && (
-                    <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-3">
-                      <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+                    <div className="p-4 bg-paper border border-line rounded-md space-y-3">
+                      <div className="flex justify-between items-center pb-2 border-b border-line">
                         <div>
-                          <label className="text-xs font-bold text-slate-800 uppercase tracking-wider block">Nested Properties Schema</label>
-                          <span className="text-[10px] text-slate-400">Define sub-fields for this complex field.</span>
+                          <label className="font-mono text-[11px] font-semibold text-ink uppercase tracking-[0.16em] block">Nested Properties Schema</label>
+                          <span className="text-[11px] text-ink-faint">Define sub-fields for this complex field.</span>
                         </div>
                         <Button
                           size="sm"
                           variant="outline"
                           type="button"
-                          className="h-7 text-[10px] font-bold rounded-lg border-slate-200 text-slate-700 hover:bg-slate-50"
+                          className="h-7 text-[11px] font-semibold rounded-md border-dashed border-line text-ink-faint hover:text-pine hover:border-pine"
                           onClick={startSubFieldAdd}
                         >
                           <Plus className="w-3 h-3 mr-1" /> Add Property
@@ -652,21 +652,21 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                       {/* Sub-field list */}
                       <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                         {(fieldForm.schema || []).map((sub, sIdx) => (
-                          <div key={sIdx} className="flex justify-between items-center p-2 bg-slate-50 rounded-lg border border-slate-100 text-xs">
+                          <div key={sIdx} className="flex justify-between items-center p-2 bg-card-warm rounded-md border border-line text-xs">
                             <div className="min-w-0 flex-grow pr-2">
                               <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-slate-800 truncate">{sub.label}</span>
-                                <Badge variant="outline" className="text-[8px] px-1 py-0 border-slate-200 text-slate-400 uppercase font-bold">{sub.type}</Badge>
-                                {sub.required && <Badge className="text-[7px] uppercase font-black bg-red-50 text-red-500 border border-red-100 py-0 px-1">REQ</Badge>}
+                                <span className="font-semibold text-ink truncate">{sub.label}</span>
+                                <Badge variant="outline" className="font-mono text-[11px] px-1 py-0 border-line text-ink-faint uppercase font-semibold">{sub.type}</Badge>
+                                {sub.required && <Badge className="font-mono text-[7px] uppercase font-semibold bg-terracotta-soft text-terracotta border border-terracotta/20 py-0 px-1">REQ</Badge>}
                               </div>
-                              <code className="text-[9px] text-indigo-650 font-mono truncate block">{sub.path}</code>
+                              <code className="text-[11px] font-mono text-ink-soft truncate block">{sub.path}</code>
                             </div>
                             <div className="flex items-center gap-1 shrink-0">
                               <button
                                 type="button"
                                 disabled={sIdx === 0}
                                 onClick={() => reorderSubField(sIdx, 'up')}
-                                className="p-1 text-slate-450 hover:text-slate-700 hover:bg-slate-200 rounded disabled:opacity-30 cursor-pointer border-none bg-transparent"
+                                className="p-1 text-ink-faint hover:text-ink hover:bg-paper rounded disabled:opacity-30 cursor-pointer border-none bg-transparent"
                               >
                                 ▲
                               </button>
@@ -674,21 +674,21 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                                 type="button"
                                 disabled={sIdx === (fieldForm.schema || []).length - 1}
                                 onClick={() => reorderSubField(sIdx, 'down')}
-                                className="p-1 text-slate-455 hover:text-slate-700 hover:bg-slate-200 rounded disabled:opacity-30 cursor-pointer border-none bg-transparent"
+                                className="p-1 text-ink-faint hover:text-ink hover:bg-paper rounded disabled:opacity-30 cursor-pointer border-none bg-transparent"
                               >
                                 ▼
                               </button>
                               <button
                                 type="button"
                                 onClick={() => startSubFieldEdit(sIdx)}
-                                className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-slate-200 rounded cursor-pointer border-none bg-transparent"
+                                className="p-1 text-ink-faint hover:text-pine hover:bg-paper rounded cursor-pointer border-none bg-transparent"
                               >
                                 <Edit className="w-3 h-3" />
                               </button>
                               <button
                                 type="button"
                                 onClick={() => deleteSubField(sIdx)}
-                                className="p-1 text-slate-400 hover:text-red-500 hover:bg-slate-200 rounded cursor-pointer border-none bg-transparent"
+                                className="p-1 text-ink-faint hover:text-terracotta hover:bg-terracotta-soft rounded cursor-pointer border-none bg-transparent"
                               >
                                 <Trash2 className="w-3 h-3" />
                               </button>
@@ -696,7 +696,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                           </div>
                         ))}
                         {(!fieldForm.schema || fieldForm.schema.length === 0) && (
-                          <div className="text-center py-4 text-slate-400 italic text-[10px]">
+                          <div className="text-center py-4 text-ink-faint italic text-[11px]">
                             No sub-fields defined. Add at least one property.
                           </div>
                         )}
@@ -704,15 +704,15 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
 
                       {/* Inline Sub-field Editor Dialog/Panel */}
                       {subFieldForm && (
-                        <div className="p-3 border border-indigo-100 bg-indigo-50/20 rounded-xl space-y-3 mt-2">
-                          <div className="flex justify-between items-center pb-1 border-b border-indigo-50">
-                            <span className="text-[10px] font-black text-indigo-900 uppercase">
+                        <div className="p-3 border border-inkblue/20 bg-inkblue-soft/40 rounded-md space-y-3 mt-2">
+                          <div className="flex justify-between items-center pb-1 border-b border-inkblue/15">
+                            <span className="font-mono text-[11px] font-semibold text-inkblue uppercase">
                               {editingSubFieldIdx === (fieldForm.schema || []).length ? 'Add Sub-Field' : 'Edit Sub-Field'}
                             </span>
                             <button
                               type="button"
                               onClick={() => { setSubFieldForm(null); setEditingSubFieldIdx(null); }}
-                              className="text-slate-400 hover:text-slate-600 border-none bg-transparent cursor-pointer"
+                              className="text-ink-faint hover:text-ink border-none bg-transparent cursor-pointer"
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -720,32 +720,32 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
 
                           <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-0.5">
-                              <label className="text-[9px] font-black text-slate-450 uppercase">Sub Path</label>
+                              <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase">Sub Path</label>
                               <Input
                                 value={subFieldForm.path}
                                 onChange={e => setSubFieldForm(prev => prev ? ({ ...prev, path: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '') }) : null)}
                                 placeholder="e.g. street"
-                                className="h-7 text-xs bg-white border-slate-200 rounded-lg"
+                                className="h-7 text-xs bg-card-warm border-line rounded-md focus-visible:ring-pine/25"
                               />
                             </div>
                             <div className="space-y-0.5">
-                              <label className="text-[9px] font-black text-slate-455 uppercase">Label</label>
+                              <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase">Label</label>
                               <Input
                                 value={subFieldForm.label}
                                 onChange={e => setSubFieldForm(prev => prev ? ({ ...prev, label: e.target.value }) : null)}
                                 placeholder="e.g. Street Address"
-                                className="h-7 text-xs bg-white border-slate-200 rounded-lg"
+                                className="h-7 text-xs bg-card-warm border-line rounded-md focus-visible:ring-pine/25"
                               />
                             </div>
                           </div>
 
                           <div className="grid grid-cols-2 gap-2">
                             <div className="space-y-0.5">
-                              <label className="text-[9px] font-black text-slate-450 uppercase">Type</label>
+                              <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase">Type</label>
                               <select
                                 value={subFieldForm.type}
                                 onChange={e => setSubFieldForm(prev => prev ? ({ ...prev, type: e.target.value as any, enum_options: e.target.value === 'enum' ? prev.enum_options || [] : [] }) : null)}
-                                className="w-full h-7 px-1.5 bg-white border border-slate-200 rounded-lg text-xs focus:outline-none"
+                                className="w-full h-7 px-1.5 bg-card-warm border border-line rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-pine/25"
                               >
                                 <option value="string">String (Text)</option>
                                 <option value="date">Date</option>
@@ -758,12 +758,12 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                               </select>
                             </div>
                             <div className="flex items-center pt-3 pl-2">
-                              <label className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600 cursor-pointer">
+                              <label className="flex items-center gap-1.5 text-[11px] font-semibold text-ink-soft cursor-pointer">
                                 <input
                                   type="checkbox"
                                   checked={subFieldForm.required}
                                   onChange={e => setSubFieldForm(prev => prev ? ({ ...prev, required: e.target.checked }) : null)}
-                                  className="rounded border-slate-300 text-blue-650"
+                                  className="rounded border-line text-pine"
                                 />
                                 Required
                               </label>
@@ -772,13 +772,13 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
 
                           {subFieldForm.type === 'enum' && (
                             <div className="space-y-1.5">
-                              <label className="text-[8px] font-black text-slate-450 uppercase block">Enum Options</label>
+                              <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase block">Enum Options</label>
                               <div className="flex gap-1">
                                 <Input
                                   value={newEnumOption}
                                   onChange={e => setNewEnumOption(e.target.value)}
                                   placeholder="e.g. primary"
-                                  className="h-6 text-[10px] bg-white border-slate-200 rounded"
+                                  className="h-6 text-[11px] bg-card-warm border-line rounded focus-visible:ring-pine/25"
                                   onKeyDown={e => {
                                     if (e.key === 'Enter') {
                                       e.preventDefault();
@@ -792,7 +792,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                                 <Button
                                   size="sm"
                                   variant="secondary"
-                                  className="h-6 text-[9px] px-2 rounded font-bold"
+                                  className="h-6 text-[11px] px-2 rounded-md font-semibold"
                                   onClick={() => {
                                     if (newEnumOption.trim() && !subFieldForm.enum_options?.includes(newEnumOption.trim())) {
                                       setSubFieldForm(prev => prev ? ({ ...prev, enum_options: [...(prev.enum_options || []), newEnumOption.trim()] }) : null);
@@ -805,10 +805,10 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                               </div>
                               <div className="flex flex-wrap gap-1 pt-1">
                                 {subFieldForm.enum_options?.map(opt => (
-                                  <Badge key={opt} variant="secondary" className="bg-slate-100 text-slate-650 flex items-center gap-1.5 py-0.5 px-2 text-[9px]">
+                                  <Badge key={opt} variant="secondary" className="bg-paper border border-line text-ink-soft flex items-center gap-1.5 py-0.5 px-2 text-[11px]">
                                     {opt}
                                     <X
-                                      className="w-2.5 h-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                      className="w-2.5 h-2.5 text-ink-faint hover:text-ink cursor-pointer"
                                       onClick={() => setSubFieldForm(prev => prev ? ({ ...prev, enum_options: (prev.enum_options || []).filter(o => o !== opt) }) : null)}
                                     />
                                   </Badge>
@@ -819,7 +819,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
 
                           {/* Subfield sub-schema (recursive info) */}
                           {(subFieldForm.type === 'object' || subFieldForm.type === 'list_of_objects') && (
-                            <div className="p-2 border border-dashed border-indigo-200 rounded-lg bg-indigo-50/10 text-[10px] text-indigo-700">
+                            <div className="p-2 border border-dashed border-inkblue/25 rounded-md bg-inkblue-soft/30 text-[11px] text-inkblue">
                               ℹ️ This sub-field can also contain child schema properties! Direct JSON edits or visual tree builder support nested properties recursively.
                             </div>
                           )}
@@ -827,7 +827,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                           <Button
                             size="sm"
                             type="button"
-                            className="w-full h-8 bg-indigo-650 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs"
+                            className="w-full h-8 bg-pine hover:bg-pine-deep text-primary-foreground font-semibold rounded-md text-xs"
                             onClick={saveSubFieldForm}
                           >
                             Save Sub-Property
@@ -838,14 +838,14 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                   )}
 
                   {/* Dynamic Validation Support (Rank 1) */}
-                  <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Validation Rules</label>
+                  <div className="p-3 bg-paper border border-line rounded-md space-y-2">
+                    <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.16em] block">Validation Rules</label>
                     <div className="flex gap-2">
                       <Input
                         value={newValidationRef}
                         onChange={e => setNewValidationRef(e.target.value)}
                         placeholder="e.g. email, phone, regex:^[0-9]{5}$"
-                        className="h-8 bg-slate-50 border-slate-200 rounded-lg text-xs"
+                        className="h-8 bg-card-warm border-line rounded-md text-xs focus-visible:ring-pine/25"
                         onKeyDown={e => {
                           if (e.key === 'Enter') {
                             e.preventDefault();
@@ -853,39 +853,39 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                           }
                         }}
                       />
-                      <Button size="sm" variant="secondary" className="h-8 rounded-lg font-bold text-xs" onClick={addValidationRef}>Add</Button>
+                      <Button size="sm" variant="secondary" className="h-8 rounded-md font-semibold text-xs" onClick={addValidationRef}>Add</Button>
                     </div>
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {fieldForm.validation_refs?.map(ref => (
-                        <Badge key={ref} variant="secondary" className="bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center gap-1.5 py-0.5 px-2 text-xs">
+                        <Badge key={ref} variant="secondary" className="bg-paper hover:bg-line border border-line text-ink-soft flex items-center gap-1.5 py-0.5 px-2 text-xs">
                           {ref}
-                          <X className="w-3 h-3 text-slate-400 hover:text-slate-600 cursor-pointer" onClick={() => removeValidationRef(ref)} />
+                          <X className="w-3 h-3 text-ink-faint hover:text-ink cursor-pointer" onClick={() => removeValidationRef(ref)} />
                         </Badge>
                       ))}
                       {(!fieldForm.validation_refs || fieldForm.validation_refs.length === 0) && (
-                        <span className="text-[10px] text-slate-400 font-semibold italic">No custom rules set.</span>
+                        <span className="text-[11px] text-ink-faint font-semibold italic">No custom rules set.</span>
                       )}
                     </div>
                   </div>
 
                   {/* Calculated / Computed Fields (Rank 5) */}
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Calculated Formula (Expression)</label>
+                    <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.16em] block">Calculated Formula (Expression)</label>
                     <Input
                       value={fieldForm.calculation || ''}
                       onChange={e => setFieldForm(prev => ({ ...prev, calculation: e.target.value }))}
                       placeholder="e.g. {invoice.subtotal} * 1.15"
-                      className="h-10 bg-white border-slate-200 rounded-xl font-mono text-xs"
+                      className="h-10 bg-card-warm border-line rounded-md font-mono text-xs focus-visible:ring-pine/25"
                     />
-                    <span className="text-[10px] text-slate-450 block leading-tight">
+                    <span className="text-[11px] text-ink-faint block leading-tight">
                       Evaluates mathematical or string operations at resolution runtime. Lock is shown in the workspace.
                     </span>
                   </div>
 
                   {/* Conditional Logic (Rank 4) */}
-                  <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-3">
+                  <div className="p-3 bg-paper border border-line rounded-md space-y-3">
                     <div className="flex justify-between items-center">
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Conditional Logic</label>
+                      <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.16em] block">Conditional Logic</label>
                       <button
                         type="button"
                         onClick={() => {
@@ -896,7 +896,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                             setFieldForm(prev => ({ ...prev, conditions: { operator: 'and', rules: [{ depends_on: '', op: 'eq', value: '' }] } }))
                           }
                         }}
-                        className="text-[9px] font-black text-blue-650 hover:text-blue-750 uppercase tracking-widest bg-blue-50 px-2 py-0.5 rounded cursor-pointer border-none bg-transparent"
+                        className="text-[11px] font-mono font-semibold text-pine hover:text-pine-deep uppercase tracking-[0.16em] bg-pine-soft px-2 py-0.5 rounded-md cursor-pointer border-none"
                       >
                         {fieldForm.conditions && ('operator' in fieldForm.conditions) && ('rules' in fieldForm.conditions || Array.isArray((fieldForm.conditions as any).rules)) ? 'Switch to Simple' : 'Switch to Complex'}
                       </button>
@@ -904,12 +904,12 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
 
                     {!fieldForm.conditions || Object.keys(fieldForm.conditions).length === 0 ? (
                       <div className="flex flex-col items-center py-2 text-center">
-                        <span className="text-[10px] text-slate-400 font-semibold mb-2">No visibility conditions set. Field is always active.</span>
+                        <span className="text-[11px] text-ink-faint font-semibold mb-2">No visibility conditions set. Field is always active.</span>
                         <Button
                           size="sm"
                           variant="outline"
                           type="button"
-                          className="h-7 text-[10px] font-bold rounded-lg border-slate-200"
+                          className="h-7 text-[11px] font-semibold rounded-md border-dashed border-line text-ink-faint hover:text-pine hover:border-pine"
                           onClick={() => setFieldForm(prev => ({ ...prev, conditions: { depends_on: '', op: 'eq', value: '' } }))}
                         >
                           + Add Visibility Rule
@@ -917,7 +917,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                       </div>
                     ) : (fieldForm.conditions && ('operator' in fieldForm.conditions) && ('rules' in fieldForm.conditions || Array.isArray((fieldForm.conditions as any).rules))) ? (
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Raw JSON Conditions Definition</label>
+                        <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.12em]">Raw JSON Conditions Definition</label>
                         <textarea
                           value={JSON.stringify(fieldForm.conditions, null, 2)}
                           onChange={e => {
@@ -927,15 +927,15 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                             } catch (err) { }
                           }}
                           placeholder='{ "operator": "and", "rules": [...] }'
-                          className="w-full h-32 p-3 font-mono text-xs border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-slate-900 bg-slate-50"
+                          className="w-full h-32 p-3 font-mono text-xs border border-line rounded-md focus:outline-none focus:ring-1 focus:ring-pine/25 bg-card-warm"
                         />
-                        <span className="text-[9px] text-slate-400 block leading-tight">Must be valid JSON object with rules.</span>
+                        <span className="text-[11px] text-ink-faint block leading-tight">Must be valid JSON object with rules.</span>
                       </div>
                     ) : (
                       <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-2">
                           <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Depends On Field Path</label>
+                            <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.12em]">Depends On Field Path</label>
                             <Input
                               value={(fieldForm.conditions as any)?.depends_on || ''}
                               onChange={e => setFieldForm(prev => ({
@@ -943,18 +943,18 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                                 conditions: { ...(prev.conditions || {}), depends_on: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '') }
                               }))}
                               placeholder="e.g. user.age"
-                              className="h-8 bg-slate-50 border-slate-250 rounded-lg text-xs"
+                              className="h-8 bg-card-warm border-line rounded-md text-xs focus-visible:ring-pine/25"
                             />
                           </div>
                           <div className="space-y-1">
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Comparison Operator</label>
+                            <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.12em]">Comparison Operator</label>
                             <select
                               value={(fieldForm.conditions as any)?.op || (fieldForm.conditions as any)?.operator || 'eq'}
                               onChange={e => setFieldForm(prev => ({
                                 ...prev,
                                 conditions: { ...(prev.conditions || {}), op: e.target.value, operator: undefined }
                               }))}
-                              className="w-full h-8 px-2 bg-slate-50 border border-slate-250 rounded-lg text-xs focus:outline-none"
+                              className="w-full h-8 px-2 bg-card-warm border border-line rounded-md text-xs focus:outline-none focus:ring-1 focus:ring-pine/25"
                             >
                               <option value="eq">Equals (eq)</option>
                               <option value="neq">Not Equals (neq)</option>
@@ -968,7 +968,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                           </div>
                         </div>
                         <div className="space-y-1">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">Comparison Value</label>
+                          <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.12em]">Comparison Value</label>
                           <Input
                             value={
                               fieldForm.conditions && 'value' in fieldForm.conditions ? String(fieldForm.conditions.value) :
@@ -998,12 +998,12 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                               })
                             }}
                             placeholder="e.g. 18, true, [val1, val2]"
-                            className="h-8 bg-slate-50 border-slate-250 rounded-lg text-xs"
+                            className="h-8 bg-card-warm border-line rounded-md text-xs focus-visible:ring-pine/25"
                           />
                         </div>
                         <button
                           type="button"
-                          className="text-[9px] font-bold text-red-500 hover:text-red-650 block mt-2 border-none bg-transparent cursor-pointer"
+                          className="text-[11px] font-semibold text-terracotta hover:underline block mt-2 border-none bg-transparent cursor-pointer"
                           onClick={() => setFieldForm(prev => {
                             const { conditions, ...rest } = prev
                             return rest as any
@@ -1016,43 +1016,43 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Help Text</label>
+                    <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.16em]">Help Text</label>
                     <Input
                       value={fieldForm.help_text}
                       onChange={e => setFieldForm(prev => ({ ...prev, help_text: e.target.value }))}
                       placeholder="e.g. Enter a valid formatted date."
-                      className="h-10 bg-white border-slate-200 rounded-xl"
+                      className="h-10 bg-card-warm border-line rounded-md focus-visible:ring-pine/25"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">AI Question (Default)</label>
+                    <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.16em]">AI Question (Default)</label>
                     <Textarea
                       value={fieldForm.default_question}
                       onChange={e => setFieldForm(prev => ({ ...prev, default_question: e.target.value }))}
                       placeholder="What is your date of birth?"
-                      className="min-h-16 bg-white border-slate-200 rounded-xl"
+                      className="min-h-16 bg-card-warm border-line rounded-md focus-visible:ring-pine/25"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">AI Question (Clarification)</label>
+                    <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.16em]">AI Question (Clarification)</label>
                     <Textarea
                       value={fieldForm.clarification_question}
                       onChange={e => setFieldForm(prev => ({ ...prev, clarification_question: e.target.value }))}
                       placeholder="Please specify your date of birth in YYYY-MM-DD format."
-                      className="min-h-16 bg-white border-slate-200 rounded-xl"
+                      className="min-h-16 bg-card-warm border-line rounded-md focus-visible:ring-pine/25"
                     />
                   </div>
 
-                  <Button className="w-full h-11 bg-slate-900 hover:bg-indigo-650 font-bold rounded-xl shadow-md cursor-pointer text-white" onClick={saveFieldForm}>
+                  <Button className="w-full h-11 bg-pine hover:bg-pine-deep font-semibold rounded-md shadow-none cursor-pointer text-primary-foreground" onClick={saveFieldForm}>
                     Save Field Node Properties
                   </Button>
                 </div>
               ) : (
-                <div className="text-center py-16 text-slate-400 space-y-3">
-                  <HelpCircle className="w-12 h-12 text-slate-300 mx-auto" />
-                  <p className="font-semibold text-xs uppercase tracking-wider">Select a Field Node to edit, or add a new field node using the visual editor.</p>
+                <div className="text-center py-16 text-ink-faint space-y-3">
+                  <HelpCircle className="w-12 h-12 text-line-strong mx-auto" />
+                  <p className="font-mono font-semibold text-[11px] uppercase tracking-[0.16em]">Select a Field Node to edit, or add a new field node using the visual editor.</p>
                 </div>
               )}
             </div>
@@ -1062,21 +1062,21 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
         {builderTab === 'groups' && (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <span className="text-sm font-bold text-slate-800 uppercase tracking-wider">Intake Section Groups</span>
+              <span className="font-mono text-[11px] font-semibold text-ink-soft uppercase tracking-[0.16em]">Intake Section Groups</span>
               <Button
                 variant="outline"
                 className={cn(
-                  "border-slate-200 text-slate-700 rounded-xl font-bold transition-all duration-300",
+                  "border-dashed border-line text-ink-faint rounded-md font-semibold transition-all duration-300",
                   isAddingGroup
-                    ? "bg-emerald-50 text-emerald-600 border-emerald-250 scale-95"
-                    : "hover:bg-slate-50"
+                    ? "bg-leaf-soft text-leaf border-leaf scale-95"
+                    : "hover:text-pine hover:border-pine"
                 )}
                 onClick={addFieldGroup}
                 disabled={isAddingGroup}
               >
                 {isAddingGroup ? (
                   <>
-                    <Check className="w-4 h-4 mr-2 text-emerald-500 animate-bounce" /> Section Created!
+                    <Check className="w-4 h-4 mr-2 text-leaf" /> Section Created!
                   </>
                 ) : (
                   <>
@@ -1088,41 +1088,41 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {draftTemplate.field_groups.map((group, groupIdx) => (
-                <div key={group.group_id} className="p-6 border border-slate-150 rounded-2xl bg-white space-y-4 border shadow-sm">
+                <div key={group.group_id} className="p-6 border border-line rounded-lg bg-card-warm space-y-4 shadow-sm">
                   <div className="flex justify-between items-start">
                     <div className="space-y-1.5 flex-grow mr-4">
                       <Input
                         value={group.label}
                         onChange={e => updateFieldGroupText(groupIdx, 'label', e.target.value)}
                         placeholder="Group Title (e.g. Demographics)"
-                        className="font-bold text-slate-800 border-b border-transparent hover:border-slate-200 focus:border-slate-900 focus:outline-none rounded px-1.5 h-8 bg-transparent"
+                        className="font-serif font-semibold text-ink border-b border-transparent hover:border-line focus:border-pine focus:outline-none rounded px-1.5 h-8 bg-transparent"
                       />
                       <Input
                         value={group.description}
                         onChange={e => updateFieldGroupText(groupIdx, 'description', e.target.value)}
                         placeholder="Section description summary..."
-                        className="text-xs text-slate-500 border-b border-transparent hover:border-slate-200 focus:border-slate-900 focus:outline-none rounded px-1.5 h-6 bg-transparent"
+                        className="text-xs text-ink-soft border-b border-transparent hover:border-line focus:border-pine focus:outline-none rounded px-1.5 h-6 bg-transparent"
                       />
                     </div>
-                    <button onClick={() => deleteFieldGroup(groupIdx)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-slate-50 rounded-lg cursor-pointer border-none bg-transparent">
+                    <button onClick={() => deleteFieldGroup(groupIdx)} className="p-2 text-ink-faint hover:text-terracotta hover:bg-terracotta-soft rounded-md cursor-pointer border-none bg-transparent">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
 
-                  <div className="space-y-2 border-t border-slate-100 pt-3">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Assigned Field Nodes</span>
+                  <div className="space-y-2 border-t border-line pt-3">
+                    <span className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.16em] block">Assigned Field Nodes</span>
                     <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
                       {draftTemplate.schema.map(field => (
-                        <label key={field.path} className="flex items-center gap-2 text-xs font-semibold text-slate-755 py-1 hover:bg-slate-50 rounded px-1.5 cursor-pointer">
+                        <label key={field.path} className="flex items-center gap-2 text-xs font-semibold text-ink-soft py-1 hover:bg-paper rounded px-1.5 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={group.field_paths.includes(field.path)}
                             onChange={() => toggleFieldInGroup(groupIdx, field.path)}
-                            className="rounded border-slate-300 text-blue-650 focus:ring-blue-500"
+                            className="rounded border-line text-pine focus:ring-pine/40"
                           />
                           <div className="flex-grow">
-                            <span className="text-slate-850 font-bold block">{field.label}</span>
-                            <code className="text-[9px] text-slate-400 font-mono">{field.path}</code>
+                            <span className="text-ink font-semibold block">{field.label}</span>
+                            <code className="text-[11px] font-mono text-ink-faint">{field.path}</code>
                           </div>
                         </label>
                       ))}
@@ -1137,7 +1137,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
         {builderTab === 'ai' && (
           <div className="max-w-xl space-y-6">
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Conversational Tone</label>
+              <label className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-faint">Conversational Tone</label>
               <Input
                 value={draftTemplate.conversation_config?.tone || ''}
                 onChange={e => setDraftTemplate(prev => ({
@@ -1150,12 +1150,12 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                   }
                 }))}
                 placeholder="e.g. empathetic, supportive, yet professional and direct"
-                className="h-11 rounded-xl bg-slate-50 border-slate-200"
+                className="h-11 rounded-md bg-card-warm border-line focus-visible:ring-pine/25"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Max fields in single agent question turn</label>
+              <label className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-faint">Max fields in single agent question turn</label>
               <Input
                 type="number"
                 value={draftTemplate.conversation_config?.max_grouped_fields || 2}
@@ -1169,12 +1169,12 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                   }
                 }))}
                 placeholder="e.g. 2"
-                className="h-11 rounded-xl bg-slate-50 border-slate-200"
+                className="h-11 rounded-md bg-card-warm border-line focus-visible:ring-pine/25"
               />
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Agent Explanation Style</label>
+              <label className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-faint">Agent Explanation Style</label>
               <Input
                 value={draftTemplate.conversation_config?.explanation_style || 'clear'}
                 onChange={e => setDraftTemplate(prev => ({
@@ -1187,7 +1187,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                   }
                 }))}
                 placeholder="e.g. clear, simple"
-                className="h-11 rounded-xl bg-slate-50 border-slate-200"
+                className="h-11 rounded-md bg-card-warm border-line focus-visible:ring-pine/25"
               />
             </div>
           </div>
@@ -1196,8 +1196,8 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
         {builderTab === 'json' && (
           <div className="space-y-4 h-full flex flex-col">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block">Edit template parameters directly as raw JSON</span>
-              <Button variant="outline" className="border-slate-200 font-bold rounded-xl" onClick={handleApplyJson}>
+              <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-faint block">Edit template parameters directly as raw JSON</span>
+              <Button variant="outline" className="border-line font-semibold rounded-md" onClick={handleApplyJson}>
                 <RefreshCw className="w-4 h-4 mr-2" /> Apply JSON Schema
               </Button>
             </div>
@@ -1205,7 +1205,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
               value={jsonText}
               onChange={e => setJsonText(e.target.value)}
               placeholder="Paste raw Intake Template JSON config..."
-              className="min-h-[400px] flex-grow font-mono text-sm rounded-2xl border border-slate-700 bg-slate-950 text-slate-100 p-4 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              className="min-h-[400px] flex-grow font-mono text-[13px] rounded-lg border border-pine-deep bg-pine-deep text-[#e8e6da] p-4 focus:outline-none focus:ring-2 focus:ring-pine/40"
             />
           </div>
         )}
