@@ -301,6 +301,41 @@ async def refresh_validation_issues(
         if value in (None, "", []):
             continue
 
+        if template_field.type == "document":
+            uploaded_file = value.get("_file") if isinstance(value, dict) else None
+            file = uploaded_file if isinstance(uploaded_file, dict) else {}
+            evidence = (
+                await session.get(EvidenceRecord, file.get("evidence_id"))
+                if file.get("evidence_id")
+                else None
+            )
+            analysis = (
+                (evidence.parsed_payload or {}).get("document_analysis", {})
+                if evidence
+                else {}
+            )
+            detected = analysis.get("detected") or {}
+            config = template_field.document
+            if (
+                evidence is None
+                or evidence.case_id != case_id
+                or config is None
+                or detected.get("country") != config.country
+                or detected.get("document_type") != config.document_type
+                or analysis.get("status") not in {"matched", "detected", "needs_review"}
+            ):
+                add_issue(
+                    field_path=field_path,
+                    rule_id="document_upload",
+                    message="A matching uploaded document is required.",
+                )
+            validate_nested_value(
+                field_path,
+                template_field.model_copy(update={"type": "object"}),
+                value,
+                add_issue,
+            )
+            continue
         if template_field.type in ("object", "list_of_objects"):
             validate_nested_value(field_path, template_field, value, add_issue)
             continue

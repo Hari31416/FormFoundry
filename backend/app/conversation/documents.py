@@ -18,7 +18,7 @@ async def choose_document_upload_question(
 ) -> NextQuestionPayload | None:
     required_sources: dict[tuple[str, str], list[TemplateField]] = {}
     for field in detail.template.template_schema:
-        source = field.document_source
+        source = field.document if field.type == "document" else field.document_source
         if (
             source
             and field.required

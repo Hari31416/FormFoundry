@@ -56,7 +56,9 @@ because older state formats vary. Dates are checked for calendar validity when
 numeric; other printed date formats need review. Missing optional back-side fields
 are not invented or required.
 
-Declared uploads populate case candidates only when the analysis is `matched`.
+Declared uploads populate scalar bindings only when the analysis is `matched`.
+Document nodes retain recognized files that need review, with failed extracted values
+left empty. Type mismatches do not populate the claimed document node.
 Other declared outcomes remain visible for review. Generic uploads retain the existing
 form extraction path, even when they are not recognized as identity documents.
 Schemas can bind a top-level scalar field to a document field using `document_source`.
@@ -157,8 +159,8 @@ A field binding uses the catalog's country, type, and field identifier:
 
 Bindings are validated against the document registry. They support top-level scalar
 fields, including repeated scalars, and cannot be combined with calculated values.
-The JSON schema editor preserves these bindings. The visual editor preserves existing
-bindings; adding/editing a binding itself currently uses the JSON editor.
+These scalar bindings remain available in the API. The visual builder uses Document
+fields with multiple extraction mappings, described below.
 
 Generate synthetic ReportLab fixtures from the repository root:
 
@@ -253,3 +255,60 @@ URLs, which require separate browser connectivity and CORS configuration. Case o
 and schema access checks still apply. The response includes the actual media type and
 an attachment filename, and CORS exposes `Content-Disposition` so the frontend can use it.
 PDF and JSON downloads use the same authenticated blob path. Missing files return 404.
+
+## Document fields in the schema builder
+
+Choose **Add Field Node**, then **Field Data Type → Document (File upload)**. Only then
+does the supported document-type selector appear. Select one document type, select any
+values to extract, and give each selected value a dictionary key. Save the document
+field, then save the template configuration. Ordinary scalar fields do not show document
+configuration. Existing document fields reopen with their mapping keys intact.
+
+A Document field remains one node and one case field state. It is not expanded into
+independent scalar fields. It accepts an uploaded image/PDF, and its value contains a
+`_file` reference plus the selected extraction dictionary. For example:
+
+```json
+{
+  "path": "identity",
+  "label": "PAN upload",
+  "type": "document",
+  "required": true,
+  "default_question": "Please upload PAN.",
+  "clarification_question": "Please upload a readable PAN.",
+  "document": {
+    "country": "IN",
+    "document_type": "pan",
+    "extractions": [
+      {"field": "full_name", "key": "legal_name"},
+      {"field": "date_of_birth", "key": "birth_date"}
+    ]
+  }
+}
+```
+
+After processing, `identity` contains `_file` with an evidence ID and filename, plus
+`legal_name` and `birth_date`. Missing or invalid extracted values remain null. An empty
+extraction list is allowed for an upload-only field. Dictionary keys must be unique,
+start with a letter, and use only letters, digits, and underscores. The reserved `_file`
+key cannot be an extraction key. The selected document and extraction fields are
+validated against the server catalog.
+
+The field renders an actual file input in the case review UI, alongside the filename and
+mapped values. Required Document fields also participate in the early upload question.
+They cannot be populated by a conversational model or replaced by a typed string. File
+references are validated against evidence belonging to the case and matching the selected
+document type. Replacing a document retains old evidence but replaces the field's active
+candidate and requires confirmation again. PDF/JSON exports preserve the mapped values;
+PDF display includes the filename without exposing internal file IDs.
+
+Version 2 of `indian-document-intake` demonstrates Document fields for Aadhaar, PAN, and
+an optional driving licence. Version 1 retains its older scalar field layout.
+
+### Titles and validation errors
+
+Title patterns may reference scalar extraction keys, such as `{identity.legal_name}`.
+Nested object scalar fields also work. Whole documents, internal file metadata, unknown
+keys, and format conversions are rejected. The builder lists available title paths.
+Titles wait until every configured value is available. Schema creation/update errors
+show FastAPI's actual validation messages rather than `[object Object]`.

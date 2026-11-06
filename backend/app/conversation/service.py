@@ -80,6 +80,8 @@ def build_question_candidates(detail: CaseDetail) -> list[QuestionCandidate]:
 
     candidates: list[QuestionCandidate] = []
     for index, template_field in enumerate(detail.template.template_schema):
+        if template_field.type == "document":
+            continue
         if not is_field_active(template_field, detail.current_schema_state):
             continue
 
@@ -276,7 +278,10 @@ async def question_state(session: AsyncSession, detail: CaseDetail) -> str:
         "schema_state": detail.current_schema_state,
         "user_turn": latest_user_id,
     }
-    if any(field.document_source for field in detail.template.template_schema):
+    if any(
+        field.document_source or field.type == "document"
+        for field in detail.template.template_schema
+    ):
         records = (
             (
                 await session.execute(

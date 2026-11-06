@@ -180,6 +180,12 @@ def format_field_value(field_def: dict, raw_val: Any) -> str:
     if is_missing_value(raw_val):
         return "<font color='#64748b'><i>Not provided</i></font>"
 
+    if field_def.get("type") == "document" and isinstance(raw_val, dict):
+        visible = {
+            "file": (raw_val.get("_file") or {}).get("filename"),
+            **{key: value for key, value in raw_val.items() if key != "_file"},
+        }
+        return format_html_object(visible)
     if field_def.get("type") in ("object", "list_of_objects"):
         return format_html_object(raw_val)
 
@@ -627,7 +633,7 @@ async def generate_pdf_artifact(session: AsyncSession, case_id: str) -> Artifact
 
             is_long = False
             raw_str = str(raw_val) if raw_val is not None else ""
-            if field.get("type") in ("object", "list_of_objects"):
+            if field.get("type") in ("object", "list_of_objects", "document"):
                 is_long = True
             elif field.get("repeated") or isinstance(raw_val, list):
                 is_long = True

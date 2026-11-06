@@ -36,7 +36,7 @@ def test_malformed_envelope_is_retried_with_explicit_empty_array_contract(
     client, monkeypatch
 ):
     template = TemplateDefinition.model_validate(
-        client.get("/api/v1/templates/indian-document-intake").json()
+        client.get("/api/v1/templates/indian-document-intake?template_version=1").json()
     )
     model = AsyncMock(side_effect=[{}, {"candidates": []}])
     monkeypatch.setattr(extraction, "generate_json", model)
@@ -50,7 +50,7 @@ def test_malformed_envelope_is_retried_with_explicit_empty_array_contract(
 
 def test_persistently_malformed_envelope_is_not_silently_accepted(client, monkeypatch):
     template = TemplateDefinition.model_validate(
-        client.get("/api/v1/templates/indian-document-intake").json()
+        client.get("/api/v1/templates/indian-document-intake?template_version=1").json()
     )
     model = AsyncMock(return_value={})
     monkeypatch.setattr(extraction, "generate_json", model)
@@ -63,7 +63,9 @@ def test_grounded_fields_survive_failure_in_another_extraction_stage(
     client, monkeypatch, tmp_path
 ):
     mock_document_processing(monkeypatch)
-    definition = client.get("/api/v1/templates/indian-document-intake").json()
+    definition = client.get(
+        "/api/v1/templates/indian-document-intake?template_version=1"
+    ).json()
     definition["template_id"] = "mixed-document-extraction"
     next(
         field

@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import JSON, DateTime, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.documents.models import DocumentFieldSource
+from app.documents.models import DocumentFieldSource, DocumentKind
 from app.documents.registry import get_definition
 from app.models.base import Base
 
@@ -21,7 +21,29 @@ FieldType = Literal[
     "number",
     "object",
     "list_of_objects",
+    "document",
 ]
+
+
+class DocumentExtraction(BaseModel):
+    field: str
+    key: str = Field(pattern=r"^[A-Za-z][A-Za-z0-9_]{0,63}$")
+
+
+class DocumentConfiguration(DocumentKind):
+    extractions: list[DocumentExtraction] = Field(default_factory=list, max_length=30)
+
+    @model_validator(mode="after")
+    def validate_extractions(self) -> DocumentConfiguration:
+        definition = get_definition(self)
+        if definition is None:
+            raise ValueError("Unsupported document type")
+        keys = [item.key for item in self.extractions]
+        if len(set(keys)) != len(keys):
+            raise ValueError("Document dictionary keys must be unique")
+        if any(item.field not in definition.fields for item in self.extractions):
+            raise ValueError("Unsupported extraction field for this document")
+        return self
 
 
 class TemplateField(BaseModel):
@@ -42,6 +64,7 @@ class TemplateField(BaseModel):
     conditions: dict[str, Any] = Field(default_factory=dict)
     allow_document_extraction: bool = True
     document_source: DocumentFieldSource | None = None
+    document: DocumentConfiguration | None = None
     calculation: str | None = None
     nested_schema: list[TemplateField] | None = Field(
         default=None, alias="schema", serialization_alias="schema"
@@ -49,6 +72,37 @@ class TemplateField(BaseModel):
 
     @model_validator(mode="after")
     def validate_document_source(self) -> TemplateField:
+        if self.type == "document":
+            if self.document is None:
+                raise ValueError("Document fields require a document configuration")
+            if self.repeated or self.calculation or self.document_source:
+                raise ValueError(
+                    "Document fields cannot be lists, calculations, or scalar bindings"
+                )
+            self.nested_schema = [
+                TemplateField(
+                    path=item.key,
+                    label=item.key.replace("_", " ").title(),
+                    type=(
+                        "integer"
+                        if item.field == "year_of_birth"
+                        else (
+                            "date"
+                            if item.field
+                            in {"date_of_birth", "issue_date", "expiry_date"}
+                            else "string"
+                        )
+                    ),
+                    default_question="",
+                    clarification_question="",
+                    sensitivity="sensitive",
+                )
+                for item in self.document.extractions
+            ]
+        elif self.document is not None:
+            raise ValueError("Only Document fields can have document configuration")
+        if any(child.type == "document" for child in self.nested_schema or []):
+            raise ValueError("Document fields must be top-level fields")
         if any(child.document_source is not None for child in self.nested_schema or []):
             raise ValueError(
                 "Document sources are supported only on top-level scalar fields"
@@ -69,6 +123,22 @@ class TemplateField(BaseModel):
                     "Document sources require a scalar field without a calculation"
                 )
         return self
+
+
+def title_field_catalog(
+    fields: list[TemplateField], prefix: str = ""
+) -> dict[str, TemplateField]:
+    result: dict[str, TemplateField] = {}
+    for field in fields:
+        path = (
+            field.path
+            if not prefix or field.path.startswith(prefix + ".")
+            else f"{prefix}.{field.path}"
+        )
+        result[path] = field
+        if field.type in {"object", "document"}:
+            result.update(title_field_catalog(field.nested_schema or [], path))
+    return result
 
 
 class TemplateFieldGroup(BaseModel):
@@ -100,7 +170,7 @@ class TemplateDefinitionBase(BaseModel):
         pattern = self.conversation_config.get("title_pattern", "")
         if not isinstance(pattern, str) or len(pattern) > 200:
             raise ValueError("Title pattern must be a string of at most 200 characters")
-        fields = {field.path: field for field in self.template_schema}
+        fields = title_field_catalog(self.template_schema)
         for _, path, spec, conversion in Formatter().parse(pattern):
             if path is None:
                 continue
@@ -108,7 +178,7 @@ class TemplateDefinitionBase(BaseModel):
                 raise ValueError(
                     "Title placeholders must use schema field paths without formatting"
                 )
-            if fields[path].type in ("object", "list_of_objects"):
+            if fields[path].type in ("object", "list_of_objects", "document"):
                 raise ValueError("Title placeholders must reference scalar fields")
         if "{{" in pattern or "}}" in pattern:
             raise ValueError("Use single braces around title field paths")

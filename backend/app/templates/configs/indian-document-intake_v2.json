@@ -1,0 +1,188 @@
+{
+  "template_id": "indian-document-intake",
+  "template_version": 2,
+  "name": "Indian document intake",
+  "domain": "identity",
+  "description": "Upload Aadhaar and PAN, optionally a driving licence. Each document field stores a file and its configured extraction dictionary.",
+  "schema": [
+    {
+      "path": "aadhaar",
+      "label": "Aadhaar document",
+      "type": "document",
+      "required": true,
+      "default_question": "Please upload your Aadhaar document.",
+      "clarification_question": "Please upload a readable Aadhaar document.",
+      "sensitivity": "sensitive",
+      "document": {
+        "country": "IN",
+        "document_type": "aadhaar",
+        "extractions": [
+          {
+            "field": "full_name",
+            "key": "full_name"
+          },
+          {
+            "field": "document_number",
+            "key": "document_number"
+          },
+          {
+            "field": "address",
+            "key": "address"
+          },
+          {
+            "field": "date_of_birth",
+            "key": "date_of_birth"
+          },
+          {
+            "field": "year_of_birth",
+            "key": "year_of_birth"
+          }
+        ]
+      }
+    },
+    {
+      "path": "pan",
+      "label": "PAN document",
+      "type": "document",
+      "required": true,
+      "default_question": "Please upload your PAN document.",
+      "clarification_question": "Please upload a readable PAN document.",
+      "sensitivity": "sensitive",
+      "document": {
+        "country": "IN",
+        "document_type": "pan",
+        "extractions": [
+          {
+            "field": "full_name",
+            "key": "full_name"
+          },
+          {
+            "field": "document_number",
+            "key": "document_number"
+          },
+          {
+            "field": "date_of_birth",
+            "key": "date_of_birth"
+          }
+        ]
+      }
+    },
+    {
+      "path": "applicant.include_driving_licence",
+      "label": "Include a driving licence",
+      "type": "boolean",
+      "required": true,
+      "default_question": "Would you like to include a driving licence in this intake?",
+      "clarification_question": "Would you like to include a driving licence in this intake?",
+      "help_text": "Ask the applicant. A driving licence is optional; false keeps driving-licence fields inactive. Do not infer this choice from Aadhaar or PAN.",
+      "sensitivity": "standard",
+      "validation_refs": [
+        "required"
+      ],
+      "render_targets": [
+        "applicant_include_driving_licence"
+      ],
+      "allow_document_extraction": false
+    },
+    {
+      "path": "driving_licence",
+      "label": "Driving licence",
+      "type": "document",
+      "required": true,
+      "default_question": "Please upload your Driving licence.",
+      "clarification_question": "Please upload a readable Driving licence.",
+      "sensitivity": "sensitive",
+      "document": {
+        "country": "IN",
+        "document_type": "driving_licence",
+        "extractions": [
+          {
+            "field": "full_name",
+            "key": "full_name"
+          },
+          {
+            "field": "document_number",
+            "key": "document_number"
+          },
+          {
+            "field": "expiry_date",
+            "key": "expiry_date"
+          },
+          {
+            "field": "date_of_birth",
+            "key": "date_of_birth"
+          },
+          {
+            "field": "address",
+            "key": "address"
+          },
+          {
+            "field": "vehicle_classes",
+            "key": "vehicle_classes"
+          }
+        ]
+      },
+      "conditions": {
+        "depends_on": "applicant.include_driving_licence",
+        "equals": true
+      }
+    }
+  ],
+  "field_groups": [
+    {
+      "group_id": "aadhaar",
+      "label": "Aadhaar document",
+      "description": "",
+      "field_paths": [
+        "aadhaar"
+      ]
+    },
+    {
+      "group_id": "pan",
+      "label": "PAN document",
+      "description": "",
+      "field_paths": [
+        "pan"
+      ]
+    },
+    {
+      "group_id": "driving_choice",
+      "label": "Optional driving licence",
+      "field_paths": [
+        "applicant.include_driving_licence"
+      ]
+    },
+    {
+      "group_id": "driving_licence",
+      "label": "Driving licence",
+      "description": "",
+      "field_paths": [
+        "driving_licence"
+      ]
+    }
+  ],
+  "validation_rules": [
+    {
+      "rule_id": "required",
+      "type": "requiredness"
+    },
+    {
+      "rule_id": "document_number_format",
+      "type": "format"
+    }
+  ],
+  "conversation_config": {
+    "tone": "clear and helpful",
+    "explanation_style": "Ask for uploads first; accept explicit typed answers for missing fields. Never claim authenticity or KYC approval.",
+    "reask_cooldown_turns": 1,
+    "max_grouped_fields": 2
+  },
+  "supported_artifacts": [
+    "pdf",
+    "json_export"
+  ],
+  "renderer_config": {
+    "artifact_type": "pdf",
+    "pdf_title": "Indian document intake summary"
+  }
+}

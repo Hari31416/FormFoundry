@@ -14,7 +14,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.cases.models import CaseFileRecord, FieldStateRecord, FieldStateStatus
 from app.llm import generate_json
 from app.prompts import render_prompt
-from app.templates.models import TemplateDefinitionRecord, TemplateField
+from app.templates.models import (
+    TemplateDefinitionRecord,
+    TemplateField,
+    title_field_catalog,
+)
 from app.templates.runtime import is_field_active
 
 logger = logging.getLogger(__name__)
@@ -44,6 +48,19 @@ async def refresh_case_title(
         and state.resolved_value is not None
         and state.resolved_value != ""
     }
+    fields = [TemplateField.model_validate(item) for item in template.schema]
+    for path, field in title_field_catalog(fields).items():
+        if field.type in {"object", "list_of_objects", "document"} or path in values:
+            continue
+        for root, value in list(values.items()):
+            if not path.startswith(root + "."):
+                continue
+            cursor = value
+            for segment in path[len(root) + 1 :].split("."):
+                cursor = cursor.get(segment) if isinstance(cursor, dict) else None
+            if cursor is not None and cursor != "":
+                values[path] = cursor
+                break
     pattern = template.conversation_config.get("title_pattern", "").strip()
     if pattern:
         paths = PLACEHOLDER.findall(pattern)
@@ -61,12 +78,11 @@ async def refresh_case_title(
     if clean_title(metadata.get("title")):
         return
 
-    fields = [TemplateField.model_validate(item) for item in template.schema]
     eligible = [
         field
         for field in fields
         if field.sensitivity == "standard"
-        and field.type not in ("object", "list_of_objects")
+        and field.type not in ("object", "list_of_objects", "document")
         and is_field_active(field, case.current_schema_state)
     ]
     captured = [

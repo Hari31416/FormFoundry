@@ -87,7 +87,7 @@ def mock_document_processing(monkeypatch):
 
 
 def test_new_schema_is_seeded_with_document_bindings(client):
-    response = client.get(f"/api/v1/templates/{TEMPLATE_ID}")
+    response = client.get(f"/api/v1/templates/{TEMPLATE_ID}?template_version=1")
     assert response.status_code == 200
     template = response.json()
     assert template["name"] == "Indian document intake"
@@ -187,7 +187,7 @@ def test_mismatched_document_creates_no_bound_candidates(client, monkeypatch, tm
 
 def test_optional_driving_fields_do_not_block_validation(client):
     case_id = create_document_case(client)
-    template = client.get(f"/api/v1/templates/{TEMPLATE_ID}").json()
+    template = client.get(f"/api/v1/templates/{TEMPLATE_ID}?template_version=1").json()
     fields = [
         TemplateField.model_validate(item)
         for item in template["schema"]

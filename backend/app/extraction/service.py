@@ -7,10 +7,10 @@ from functools import partial
 from time import perf_counter
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.cases.models import CaseFileRecord
+from app.cases.models import CaseFileRecord, FieldStateRecord
 from app.conversation.context import load_conversation_context
 from app.core.config import get_settings
 from app.documents.models import (
@@ -210,6 +210,13 @@ def coerce_candidate_value(field: TemplateField, value: Any) -> Any | None:
             return None
     if field.type == "enum":
         return normalize_enum_value(value, field.enum_options)
+    if field.type == "document":
+        if not isinstance(value, dict) or not isinstance(value.get("_file"), dict):
+            return None
+        result = coerce_candidate_value(
+            field.model_copy(update={"type": "object", "document": None}), value
+        )
+        return result
     if field.type == "object":
         dict_val = None
         if isinstance(value, dict):
@@ -330,6 +337,15 @@ async def extract_candidates_with_llm(
     *,
     evidence_text: str | None = None,
 ) -> list[CandidateProposal]:
+    template = template.model_copy(
+        update={
+            "template_schema": [
+                field for field in template.template_schema if field.type != "document"
+            ]
+        }
+    )
+    if not template.template_schema:
+        return []
     started_at = perf_counter()
     field_lookup = {field.path: field for field in template.template_schema}
     log_context = {
@@ -881,6 +897,95 @@ async def run_extraction_job(
                     ),
                 },
             )
+            if (
+                document_analysis
+                and document_analysis.detected
+                and document_analysis.status in {"matched", "detected", "needs_review"}
+            ):
+                for field in template.template_schema:
+                    configuration = field.document
+                    if field.type != "document" or configuration is None:
+                        continue
+                    kind = document_analysis.detected
+                    if (
+                        configuration.country != kind.country
+                        or configuration.document_type != kind.document_type
+                    ):
+                        continue
+                    document_value: dict[str, Any] = {
+                        "_file": {
+                            "evidence_id": record.evidence_id,
+                            "filename": (record.parsed_payload or {}).get(
+                                "filename", record.source_subtype
+                            ),
+                        }
+                    }
+                    refs: list[dict[str, Any]] = [
+                        {
+                            "analysis_id": document_analysis.analysis_id,
+                            "evidence_id": record.evidence_id,
+                        }
+                    ]
+                    for mapping in configuration.extractions:
+                        extracted = document_analysis.fields.get(mapping.field)
+                        invalid = any(
+                            check.field == mapping.field
+                            and check.outcome in {"fail", "error"}
+                            for check in document_analysis.checks
+                        )
+                        if extracted and not invalid:
+                            target = next(
+                                item
+                                for item in field.nested_schema or []
+                                if item.path == mapping.key
+                            )
+                            document_value[mapping.key] = coerce_candidate_value(
+                                target, extracted.value
+                            )
+                            refs.append(
+                                {
+                                    "source_quote": extracted.source_quote,
+                                    "document_field": mapping.field,
+                                    "dictionary_key": mapping.key,
+                                }
+                            )
+                        else:
+                            document_value[mapping.key] = None
+                    await session.execute(
+                        delete(FieldCandidateRecord).where(
+                            FieldCandidateRecord.case_id == case_id,
+                            FieldCandidateRecord.field_path == field.path,
+                            FieldCandidateRecord.extractor_type == "document_upload",
+                        )
+                    )
+                    state = await session.scalar(
+                        select(FieldStateRecord).where(
+                            FieldStateRecord.case_id == case_id,
+                            FieldStateRecord.field_path == field.path,
+                        )
+                    )
+                    if (
+                        state
+                        and isinstance(state.resolved_value, dict)
+                        and (state.resolved_value.get("_file") or {}).get("evidence_id")
+                        != record.evidence_id
+                    ):
+                        state.status = "missing"
+                        state.resolved_value = None
+                        state.source_evidence_ids = []
+                    candidates.append(
+                        FieldCandidateRecord(
+                            case_id=case_id,
+                            field_path=field.path,
+                            candidate_value=document_value,
+                            confidence=document_analysis.classification_confidence
+                            or 0.8,
+                            source_evidence_ids=[record.evidence_id],
+                            source_refs=refs,
+                            extractor_type="document_upload",
+                            rationale="Uploaded document with configured extraction dictionary.",
+                        )
+                    )
             # Declared document mismatches and incomplete analyses remain reviewable,
             # but must not silently populate the case as the claimed document.
             if (
@@ -940,6 +1045,7 @@ async def run_extraction_job(
                             field
                             for field in template.template_schema
                             if field.document_source is None
+                            and field.type != "document"
                             and field.allow_document_extraction
                         ]
                     }
