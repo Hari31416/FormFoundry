@@ -15,10 +15,11 @@ async function mockWorkspace(page: Page, fail = false) {
   const gate = new Promise<void>((resolve) => { release = resolve })
   let turns = [initialTurn]
   let submissions = 0
-  await page.addInitScript(() => localStorage.setItem('i18nextLng', 'en'))
+  await page.addInitScript(() => { localStorage.setItem('i18nextLng', 'en'); localStorage.setItem('formfoundry_access_token', 'test-token') })
   await page.route('**/api/v1/**', async (route) => {
     const path = new URL(route.request().url()).pathname
     const json = (body: unknown, status = 200) => route.fulfill({ status, json: body })
+    if (path.endsWith('/auth/me')) return json({ id: 'test', username: 'admin', role: 'admin', disabled: false, expires_at: null })
     if (path.endsWith('/languages/detect')) return json({ language: 'en' })
     if (path.endsWith('/languages/config')) return json({ is_tts_enabled: false })
     if (path.endsWith('/conversation/turns')) {

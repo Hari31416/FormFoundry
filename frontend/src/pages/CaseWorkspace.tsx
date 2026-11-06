@@ -1,3 +1,4 @@
+import { useAuth } from '@/lib/auth'
 import React, { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -166,6 +167,7 @@ function isQuestionOutstanding(field: TemplateField, state: FieldState): boolean
 }
 
 export default function CaseWorkspace() {
+  const { logout } = useAuth()
   const { caseId } = useParams<{ caseId: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -744,6 +746,7 @@ export default function CaseWorkspace() {
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0 max-w-full">
           {/* Language Selector Dropdown */}
+          <button onClick={logout} className="text-xs underline">{t('auth_sign_out')}</button>
           <LanguageSelector onLanguageChange={(code) => updateLanguageMutation.mutate(code)} className="border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 hover:border-primary-foreground/30 shadow-none [&_svg]:text-primary-foreground/70" />
 
           <div className="hidden sm:block h-5 w-px bg-primary-foreground/15 mx-1" />

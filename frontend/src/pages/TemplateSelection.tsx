@@ -1,4 +1,5 @@
 import React from 'react'
+import { useAuth } from '@/lib/auth'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { Plus, Trash2, Edit, Database, Menu, Search } from 'lucide-react'
@@ -29,6 +30,8 @@ const defaultBlankTemplate = (id: string, name: string): TemplateDefinition => (
 })
 
 export default function TemplateSelection() {
+  const { user } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const navigate = useNavigate()
   const { templateId } = useParams<{ templateId?: string }>()
   const [searchParams] = useSearchParams()
@@ -88,7 +91,7 @@ export default function TemplateSelection() {
 
   const currentSchema = templateId ? schemas.find(p => p.template.template_id === templateId) : null
   const isLoading = templatesLoading || casesLoading
-  const isArchitectView = architect && !isEditing
+  const isArchitectView = isAdmin && architect && !isEditing
   const newSchemaActive = isEditing && !activeTemplate
   const architectActive = architect || isEditing
 
@@ -128,7 +131,7 @@ export default function TemplateSelection() {
         </header>
 
         <main className="flex-1 px-3 sm:px-5 py-4 sm:py-5 overflow-y-auto">
-          {isEditing ? (
+          {isAdmin && isEditing ? (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-5xl">
               <TemplateVisualBuilder draftTemplate={draftTemplate} setDraftTemplate={setDraftTemplate} activeTemplate={activeTemplate}
                 onCancel={() => setIsEditing(false)} onSave={handleSaveTemplate} isPending={createTemplateMutation.isPending || updateTemplateMutation.isPending} />
@@ -195,7 +198,7 @@ export default function TemplateSelection() {
           <Link to="/" className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink-soft">{t('nav_overview')}</Link>
           <Link to="/?filter=needs-attention" className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink-soft">{t('needs_short', { count: totalAwaiting })}</Link>
           <button onClick={() => setMobileOpen(true)} className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink-soft cursor-pointer">{t('nav_schemas')}</button>
-          <button onClick={() => setArchitect(true)} className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink-soft cursor-pointer">{t('nav_architect')}</button>
+          {isAdmin && <button onClick={() => setArchitect(true)} className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink-soft cursor-pointer">{t('nav_architect')}</button>}
         </nav>
       </div>
 

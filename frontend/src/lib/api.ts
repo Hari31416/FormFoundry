@@ -6,6 +6,19 @@ export const api = axios.create({
   baseURL: API_BASE_URL,
 })
 
+api.interceptors.request.use(config => {
+  const token = localStorage.getItem('formfoundry_access_token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
+  return config
+})
+api.interceptors.response.use(response => response, error => {
+  if (axios.isAxiosError(error) && error.response?.status === 401 && error.config?.url !== '/auth/token') {
+    localStorage.removeItem('formfoundry_access_token')
+    window.dispatchEvent(new Event('formfoundry:unauthorized'))
+  }
+  return Promise.reject(error)
+})
+
 export type CaseStatus =
   | 'draft'
   | 'collecting_input'
@@ -231,5 +244,13 @@ export const getLanguageConfig = () =>
 export const textToSpeech = (text: string, language: string) =>
   api.post('/languages/tts', { text, language }, { responseType: 'blob' }).then((res) => res.data)
 
-export const getDownloadUrl = (caseId: string, artifactId: string) =>
-  `${API_BASE_URL}/cases/${caseId}/artifacts/${artifactId}/download`
+export const downloadArtifact = async (caseId: string, artifactId: string) => {
+  const response = await api.get(`/cases/${caseId}/artifacts/${artifactId}/download`, { responseType: 'blob' })
+  const url = URL.createObjectURL(response.data)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  const disposition = response.headers['content-disposition'] || ''
+  anchor.download = /filename="?([^";]+)"?/.exec(disposition)?.[1] || `artifact-${artifactId}`
+  anchor.click()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}

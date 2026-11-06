@@ -36,7 +36,7 @@ import {
   CaseDetail,
   FieldState,
   Evidence,
-  getDownloadUrl
+  downloadArtifact
 } from '@/lib/api'
 import { FieldRow } from './FieldRow'
 import { useTranslation } from 'react-i18next'
@@ -568,11 +568,7 @@ export function DetailedWorkspaceView({
                       <span className="text-[11px] font-mono font-medium text-ink uppercase tracking-[0.08em] truncate">{art.artifact_type}</span>
                     </div>
                     {art.status === 'generated' ? (
-                      <Button variant="ghost" size="icon" className="h-9 w-9 text-ink-faint hover:text-pine hover:bg-pine-soft rounded-md cursor-pointer">
-                        <a href={getDownloadUrl(caseId!, art.artifact_id)} target="_blank" rel="noreferrer">
-                          <Download className="w-4 h-4" />
-                        </a>
-                      </Button>
+                      <Button variant="ghost" size="icon" className="h-9 w-9 text-ink-faint hover:text-pine hover:bg-pine-soft rounded-md cursor-pointer" aria-label={t('download')} onClick={() => { void downloadArtifact(caseId!, art.artifact_id).catch(() => alert(t('auth_download_failed'))) }}><Download className="w-4 h-4" /></Button>
                     ) : (
                       <div className="h-2 w-2 bg-inkblue rounded-full mr-3" />
                     )}

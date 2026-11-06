@@ -1,6 +1,15 @@
 import { test, expect } from '@playwright/test'
 
 test.describe('FormFoundry E2E Case Lifecycle', () => {
+  test.skip(!process.env.E2E_USERNAME || !process.env.E2E_PASSWORD, 'Live lifecycle tests require E2E_USERNAME and E2E_PASSWORD for an account with schema access.')
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem('i18nextLng', 'en'))
+    await page.goto('/login')
+    await page.getByLabel('Username', { exact: true }).fill(process.env.E2E_USERNAME!)
+    await page.getByLabel('Password', { exact: true }).fill(process.env.E2E_PASSWORD!)
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+    await expect(page).not.toHaveURL(/\/login$/)
+  })
   test('should create, interview, verify, and approve a case', async ({ page }) => {
     // 1. Navigate to the landing page
     await page.goto('/')

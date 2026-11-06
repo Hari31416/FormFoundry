@@ -1,6 +1,7 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { LayoutDashboard, Clock, Layers, Plus, Settings, ChevronsLeft, ChevronsRight, X, Shield, Activity, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 import type { TemplateDefinition, CaseFile } from '@/lib/api'
 
@@ -31,6 +32,8 @@ const iconFor = (domain: string) => {
 }
 
 function SidebarContent({ collapsed, schemas, totalAwaiting, onArchitect, onNewSchema, onNavigate, architectActive, newSchemaActive, onCloseMobile }: Props & { onCloseMobile?: () => void }) {
+  const { user, logout } = useAuth()
+  const isAdmin = user?.role === 'admin'
   const loc = useLocation()
   const { t } = useTranslation()
   const filter = new URLSearchParams(loc.search).get('filter')
@@ -92,16 +95,18 @@ function SidebarContent({ collapsed, schemas, totalAwaiting, onArchitect, onNewS
             </NavLink>
           )
         })}
-        <button onClick={() => { onNewSchema(); onCloseMobile?.() }} aria-current={newSchemaActive ? 'page' : undefined} className={cn('w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] font-medium cursor-pointer transition-colors', newSchemaActive ? 'bg-paper text-ink' : 'text-white/50 hover:bg-white/5 hover:text-white')}>
+        {isAdmin && <button onClick={() => { onNewSchema(); onCloseMobile?.() }} aria-current={newSchemaActive ? 'page' : undefined} className={cn('w-full flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[12px] font-medium cursor-pointer transition-colors', newSchemaActive ? 'bg-paper text-ink' : 'text-white/50 hover:bg-white/5 hover:text-white')}>
           <span className={cn('w-7 h-7 rounded-md grid place-items-center shrink-0', newSchemaActive ? 'bg-pine-soft text-pine' : 'border border-dashed border-white/20')}><Plus className="w-3.5 h-3.5" /></span>
           {!collapsed && <span>{t('nav_new_schema')}</span>}
-        </button>
+        </button>}
       </div>
 
       <div className="px-2 py-2 border-t border-white/10 space-y-0.5 shrink-0 bg-[#0f2e22]">
-        <button onClick={() => { onArchitect(); onCloseMobile?.() }} aria-label={t('template_architect')} className={cn('flex items-center gap-2.5 w-full rounded-md px-2.5 py-2 text-[12.5px] font-medium cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60', (architectActive && !newSchemaActive) ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/5 hover:text-white')}>
+        {isAdmin && <button onClick={() => { onArchitect(); onCloseMobile?.() }} aria-label={t('template_architect')} className={cn('flex items-center gap-2.5 w-full rounded-md px-2.5 py-2 text-[12.5px] font-medium cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60', (architectActive && !newSchemaActive) ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/5 hover:text-white')}>
           <Settings className="w-4 h-4 shrink-0" />{!collapsed && <span>{t('nav_architect')}</span>}
-        </button>
+        </button>}
+        {isAdmin && <Link to="/admin/users" title={t('auth_manage_access')} className="block rounded-md px-2.5 py-2 text-xs text-white/80 hover:bg-white/10">{collapsed ? <Shield className="w-4 h-4" /> : t('auth_manage_access')}</Link>}
+        <button onClick={logout} title={t('auth_sign_out')} className="w-full text-left rounded-md px-2.5 py-2 text-xs text-white/80 hover:bg-white/10">{collapsed ? <span aria-label={t('auth_sign_out')}>↪</span> : `${user?.username} · ${t('auth_sign_out')}`}</button>
       </div>
     </div>
   )

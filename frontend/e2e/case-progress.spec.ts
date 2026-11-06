@@ -12,9 +12,9 @@ test('shows captured progress before answers are confirmed', async ({ page }) =>
     created_at: '2026-11-06T05:00:00Z', updated_at: '2026-11-06T05:00:00Z',
     completion_pct: 50, fields_total: 2, fields_collected: 1, fields_confirmed: 0, fields_waived: 0,
   }
-  await page.addInitScript(() => localStorage.setItem('i18nextLng', 'en'))
+  await page.addInitScript(() => { localStorage.setItem('i18nextLng', 'en'); localStorage.setItem('formfoundry_access_token', 'test-token') })
   await page.route('**/api/v1/**', route => route.fulfill({
-    json: new URL(route.request().url()).pathname.endsWith('/templates') ? [template] : [caseFile],
+    json: new URL(route.request().url()).pathname.endsWith('/auth/me') ? { id: 'test', username: 'admin', role: 'admin' } : new URL(route.request().url()).pathname.endsWith('/templates') ? [template] : [caseFile],
   }))
   await page.goto('/')
   const row = page.locator(`a[href="/cases/${caseId}"]`)

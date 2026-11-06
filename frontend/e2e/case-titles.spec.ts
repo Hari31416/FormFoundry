@@ -19,10 +19,11 @@ async function mockCases(page: Page, failRename = false) {
     template, field_states: [{ field_path: 'topic', status: 'proposed', resolved_value: 'Leaking tap', confidence: 1 }],
   }
   let savedTemplate: any = null
-  await page.addInitScript(() => localStorage.setItem('i18nextLng', 'en'))
+  await page.addInitScript(() => { localStorage.setItem('i18nextLng', 'en'); localStorage.setItem('formfoundry_access_token', 'test-token') })
   await page.route('**/api/v1/**', async route => {
     const path = new URL(route.request().url()).pathname
     const json = (body: unknown, status = 200) => route.fulfill({ json: body, status })
+    if (path.endsWith('/auth/me')) return json({ id: 'test', username: 'admin', role: 'admin', disabled: false, expires_at: null })
     if (path.endsWith('/title')) {
       if (failRename) return json({ detail: 'Unavailable' }, 503)
       detail = { ...detail, metadata: { title: route.request().postDataJSON().title, title_source: 'manual' } }
