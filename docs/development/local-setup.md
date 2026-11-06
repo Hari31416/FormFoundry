@@ -101,3 +101,8 @@ Once running, you can verify the status of the services:
   - Double-check external API keys (`BHASHINI_API_KEY` or `SARVAM_API_KEY` for cloud providers) if provider translations are failing.
   - Review backend logs (`make logs-backend`) to check for `LanguageManager` initialization warnings or connection failures.
 - **Frontend Build**: If you encounter issues with Vite or translation loaders, try clearing `frontend/node_modules` and re-running `make frontend-setup`.
+
+## Authentication
+
+Before starting the backend, configure `JWT_SECRET` and the initial administrator
+credentials as described in [Authentication and schema access](authentication.md).
