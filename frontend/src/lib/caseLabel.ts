@@ -1,5 +1,6 @@
 import i18next from 'i18next'
 import type { CaseFile } from './api'
+import { getActiveLocale } from './dateLocale'
 
 function findFullName(value: unknown): string | null {
   if (!value || typeof value !== 'object') return null
@@ -30,7 +31,7 @@ export function getCaseTitle(c: CaseFile): string {
 export function formatCaseDate(iso: string): string {
   const d = new Date(iso)
   if (isNaN(d.getTime())) return ''
-  return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d)
+  return new Intl.DateTimeFormat(getActiveLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(d)
 }
 
 export function getShortId(c: CaseFile): string {
@@ -40,13 +41,13 @@ export function getShortId(c: CaseFile): string {
 export function formatCompactTime(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'now'
+  if (mins < 1) return i18next.t('time_now')
   if (mins < 60) return `${mins}m`
   const hrs = Math.floor(mins / 60)
   if (hrs < 24) return `${hrs}h`
   const days = Math.floor(hrs / 24)
   if (days < 30) return `${days}d`
-  return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(new Date(iso))
+  return new Intl.DateTimeFormat(getActiveLocale(), { day: 'numeric', month: 'short' }).format(new Date(iso))
 }
 
 export function formatProgress(c: CaseFile): string {
