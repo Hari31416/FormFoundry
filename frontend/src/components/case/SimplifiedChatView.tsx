@@ -1,4 +1,5 @@
 import React from 'react'
+import { DocumentTypeSelect, DocumentAnalysisSummary, DocumentUploadQuestion, type DocumentUploadMutation } from './DocumentSupport'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   Sparkles,
@@ -76,7 +77,7 @@ interface SimplifiedChatViewProps {
   chatInput: string
   setChatInput: (input: string) => void
   submitTurnMutation: any
-  uploadFileMutation: any
+  uploadFileMutation: DocumentUploadMutation
   uploadError: string | null
   setUploadError: (err: string | null) => void
   caseId: string | undefined
@@ -139,6 +140,7 @@ export function SimplifiedChatView({
   handleStopAudio
 }: SimplifiedChatViewProps) {
   const { t } = useTranslation()
+  const [documentType, setDocumentType] = React.useState('')
   const validationRules = caseDetail?.template.validation_rules ?? []
   // Find the index of the latest assistant message to attach active question decorations
   const lastAssistantIdx = React.useMemo(() => {
@@ -226,7 +228,7 @@ export function SimplifiedChatView({
 
                   {isAssistant ? (
                     <div className="space-y-3">
-                      {isLatestAssistant && fieldLabels.length > 0 && (
+                      {isLatestAssistant && nextQuestion.kind !== 'document_upload' && fieldLabels.length > 0 && (
                         <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                           {fieldLabels.map((lbl: string) => (
                             <Badge key={lbl} variant="outline" className="text-[11px] font-mono font-medium border-marigold/40 text-marigold bg-marigold-soft uppercase tracking-[0.16em] h-4">
@@ -261,6 +263,9 @@ export function SimplifiedChatView({
                           </Button>
                         )}
                       </div>
+                      {isLatestAssistant && nextQuestion.kind === 'document_upload' && (
+                        <DocumentUploadQuestion documents={nextQuestion.documents ?? []} mutation={uploadFileMutation} clearError={() => setUploadError(null)} error={uploadError} disabled={submitTurnMutation.isPending} />
+                      )}
                       {playingQuestion === msg.message && audioInstance && (
                         <div className="flex items-center space-x-3 p-3 bg-paper border border-line rounded-lg mt-2 animate-in fade-in slide-in-from-top-2 duration-200">
                           <div className="flex items-center space-x-1 shrink-0">
@@ -353,6 +358,9 @@ export function SimplifiedChatView({
                     </p>
                   )}
 
+                  {!isAssistant && (
+                    <DocumentAnalysisSummary analysis={evidence?.find((item) => item.evidence_id === msg.metadata?.evidence_id)?.document_analysis} />
+                  )}
                   <div className={cn("text-[11px] mt-2 font-mono font-medium uppercase tracking-[0.16em] leading-none text-right", isAssistant ? "text-ink-faint" : "text-primary-foreground/70")}>
                     {new Date(msg.created_at).toLocaleTimeString(getActiveLocale(), { hour: '2-digit', minute: '2-digit' })}
                   </div>
@@ -623,9 +631,12 @@ export function SimplifiedChatView({
       </ScrollArea>
 
       {/* Sticky Bottom Input Bar (if next question outstanding) */}
-      {nextQuestion && (
+      {nextQuestion && nextQuestion.kind !== 'document_upload' && (
         <div className="border-t border-line bg-card-warm/90 backdrop-blur-md px-4 py-2 shrink-0 relative">
           <div className="max-w-3xl mx-auto">
+            <div className="mb-2">
+              <DocumentTypeSelect value={documentType} onChange={setDocumentType} disabled={uploadFileMutation.isPending || submitTurnMutation.isPending} />
+            </div>
             <div className="flex items-end gap-2 bg-card-warm border border-line rounded-lg shadow-sm p-2">
               <Button
                 variant="ghost"
@@ -645,7 +656,7 @@ export function SimplifiedChatView({
                 onChange={(event) => {
                   setUploadError(null)
                   const file = event.target.files?.[0]
-                  if (file) uploadFileMutation.mutate(file)
+                  if (file) uploadFileMutation.mutate({ file, documentType })
                   event.target.value = ''
                 }}
                 disabled={uploadFileMutation.isPending || submitTurnMutation.isPending}

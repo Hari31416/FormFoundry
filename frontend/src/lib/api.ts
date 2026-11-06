@@ -51,6 +51,7 @@ export interface TemplateField {
   default_question: string
   clarification_question: string
   help_text: string
+  document_source?: { country: string; document_type: string; field: string } | null
   conditions?: Record<string, any>
   validation_refs?: string[]
   calculation?: string | null
@@ -126,6 +127,52 @@ export interface CaseDetail extends CaseFile {
   field_states: FieldState[]
 }
 
+export interface DocumentKind {
+  country: string
+  document_type: string
+}
+
+export interface DocumentDefinition extends DocumentKind {
+  version: string
+  type_indicators: string[]
+  fields: string[]
+  required_fields: string[]
+}
+
+export interface DocumentCheck {
+  code: string
+  scope: 'classification' | 'extraction' | 'format' | 'authenticity' | 'holder'
+  outcome: 'pass' | 'fail' | 'inconclusive' | 'skipped' | 'error'
+  field: string | null
+}
+
+export interface DocumentAnalysis {
+  schema_version: 1
+  analysis_id: string
+  analyzed_at: string
+  declared: DocumentKind | null
+  detected: DocumentKind | null
+  classification_confidence?: number | null
+  type_source_quote?: string | null
+  status: 'matched' | 'detected' | 'mismatch' | 'needs_review' | 'error'
+  fields: Record<string, { value: string; source_quote: string; confidence: number }>
+  checks: DocumentCheck[]
+  stages: Array<{
+    stage: string
+    version: string
+    status: 'completed' | 'error'
+    error_code: string | null
+    checks: DocumentCheck[]
+    regions: Array<{ page: number; x0: number; y0: number; x1: number; y1: number; label: string; confidence: number }>
+  }>
+  authenticity_checked: boolean
+}
+
+export interface DocumentUpload {
+  file: File
+  documentType?: string
+}
+
 export interface Evidence {
   evidence_id: string
   case_id: string
@@ -134,6 +181,7 @@ export interface Evidence {
   storage_uri: string
   raw_text?: string
   parsed_payload: Record<string, any>
+  document_analysis?: DocumentAnalysis | null
   metadata: Record<string, any>
   source_refs: Array<Record<string, any>>
   created_by: string
@@ -156,6 +204,8 @@ export interface Artifact {
 }
 
 export interface NextQuestion {
+  kind?: 'field' | 'document_upload'
+  documents?: DocumentKind[]
   field_path: string
   field_paths: string[]
   field_labels: string[]
@@ -206,9 +256,16 @@ export const getConversationTurns = (id: string) => api.get<ConversationTurn[]>(
 
 export const addTextEvidence = (id: string, text: string) =>
   api.post(`/cases/${id}/evidence/text`, { text }).then((res) => res.data)
-export const uploadFileEvidence = (id: string, file: File) => {
+export const getDocumentTypes = () =>
+  api.get<DocumentDefinition[]>('/documents/types').then((res) => res.data)
+
+export const uploadFileEvidence = (id: string, file: File, documentType?: string) => {
   const formData = new FormData()
   formData.append('file', file)
+  if (documentType) {
+    formData.append('document_type', documentType)
+    formData.append('document_country', 'IN')
+  }
   return api.post(`/cases/${id}/evidence/upload`, formData).then((res) => res.data)
 }
 

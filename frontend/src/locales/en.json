@@ -409,5 +409,49 @@
   "auth_save_failed": "Could not load or save changes. Try again.",
   "auth_sign_out": "Sign out",
   "auth_download_failed": "Could not download the file. Check your access and try again.",
-  "download": "Download"
+  "download": "Download",
+  "documents": {
+    "upload_type": "Document type",
+    "auto": "Auto / other document",
+    "expected": "You selected {{type}}.",
+    "basic_only": "Basic document checks only. Authenticity has not been checked.",
+    "extracted_fields": "Extracted information",
+    "review_check": "Check needs review",
+    "types": {
+      "aadhaar": "Aadhaar",
+      "pan": "PAN",
+      "driving_licence": "Driving licence"
+    },
+    "status": {
+      "matched": "Type matches",
+      "detected": "Type detected",
+      "mismatch": "Document type mismatch",
+      "needs_review": "Needs review",
+      "error": "Analysis unavailable"
+    },
+    "checks": {
+      "document_unrecognized": "Document type could not be identified confidently.",
+      "type_evidence_missing": "The document heading could not be confirmed.",
+      "field_evidence_missing": "A field could not be supported by the document text.",
+      "field_low_confidence": "A field could not be read confidently.",
+      "required_field": "A required field could not be read.",
+      "field_format": "A field has an invalid or unrecognized format.",
+      "document_type": "The document does not match the selected type.",
+      "document_unreadable": "No readable document text was found."
+    },
+    "fields": {
+      "document_number": "Document number",
+      "full_name": "Full name",
+      "date_of_birth": "Date of birth",
+      "year_of_birth": "Year of birth",
+      "gender": "Gender",
+      "address": "Address",
+      "father_name": "Father's name",
+      "issue_date": "Issue date",
+      "expiry_date": "Expiry date",
+      "vehicle_classes": "Vehicle classes"
+    },
+    "upload_only": "Upload an image or PDF for each document. This question accepts files only.",
+    "upload_named": "Upload {{type}}"
+  }
 }

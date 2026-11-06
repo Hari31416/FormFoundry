@@ -38,6 +38,7 @@ import {
   textToSpeech,
   uploadFileEvidence,
   Evidence,
+  DocumentUpload,
   getConversationTurns,
   updateCaseLanguage
 } from '@/lib/api'
@@ -474,7 +475,7 @@ export default function CaseWorkspace() {
   })
 
   const uploadFileMutation = useMutation({
-    mutationFn: (file: File) => uploadFileEvidence(caseId!, file),
+    mutationFn: ({ file, documentType }: DocumentUpload) => uploadFileEvidence(caseId!, file, documentType),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['evidence', caseId] })
       queryClient.invalidateQueries({ queryKey: ['case', caseId] })
@@ -697,7 +698,7 @@ export default function CaseWorkspace() {
     return state?.status === 'confirmed'
   })
 
-  const isApproveReady = caseDetail?.status === 'ready_for_review' && allFieldsConfirmed && !(validation?.some((v) => v.blocking))
+  const isApproveReady = nextQuestion?.kind !== 'document_upload' && caseDetail?.status === 'ready_for_review' && allFieldsConfirmed && !(validation?.some((v) => v.blocking))
 
   const isInitializing = isLoadingCase || (nextQuestionQuery.isLoading && (!turns || turns.length === 0))
 

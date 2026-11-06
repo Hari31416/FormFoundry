@@ -1,4 +1,5 @@
 import React from 'react'
+import { DocumentTypeSelect, DocumentAnalysisSummary, DocumentUploadQuestion, type DocumentUploadMutation } from './DocumentSupport'
 import { motion } from 'framer-motion'
 import {
   Check,
@@ -56,7 +57,7 @@ interface DetailedWorkspaceViewProps {
   onEditField: (path: string, value: any) => Promise<void>
   isEvidenceModalOpen: boolean
   setIsEvidenceModalOpen: (open: boolean) => void
-  uploadFileMutation: any
+  uploadFileMutation: DocumentUploadMutation
   uploadError: string | null
   setUploadError: (err: string | null) => void
   addTextMutation: any
@@ -132,6 +133,7 @@ export function DetailedWorkspaceView({
   handleStopAudio
 }: DetailedWorkspaceViewProps) {
   const { t } = useTranslation()
+  const [documentType, setDocumentType] = React.useState('')
   const validationRules = caseDetail?.template.validation_rules ?? []
   return (
     <>
@@ -258,6 +260,7 @@ export function DetailedWorkspaceView({
                           {ev.raw_text || ev.parsed_payload?.extracted_text || t('extraction_pending')}
                           "
                         </p>
+                        <DocumentAnalysisSummary analysis={ev.document_analysis} />
                         {typeof ev.parsed_payload?.page_count === 'number' && (
                           <p className="mt-3 text-[11px] font-mono font-medium uppercase tracking-[0.18em] text-ink-faint">
                             {t(ev.parsed_payload.page_count === 1 ? 'pdf_page' : 'pdf_page_plural', { count: ev.parsed_payload.page_count })}
@@ -287,11 +290,11 @@ export function DetailedWorkspaceView({
                           </div>
                           <h3 className="text-xl font-serif font-semibold text-ink tracking-tight">{t('new_intake_evidence')}</h3>
                         </div>
-                        <textarea
+                        {nextQuestion?.kind !== 'document_upload' && <textarea
                           id="evidence-text"
                           placeholder={t('paste_notes_placeholder')}
                           className="w-full h-48 p-5 bg-paper border border-line rounded-md focus:ring-2 focus:ring-pine/25 focus:outline-none resize-none text-ink placeholder:text-ink-faint transition-all"
-                        />
+                        />}
                         <div className="mt-4 rounded-md border border-line bg-paper p-4">
                           <div className="flex items-start justify-between gap-4">
                             <div>
@@ -300,6 +303,9 @@ export function DetailedWorkspaceView({
                                 {t('vision_ocr_desc')}
                               </p>
                             </div>
+                          </div>
+                          <div className="mt-3">
+                            <DocumentTypeSelect value={documentType} onChange={setDocumentType} disabled={uploadFileMutation.isPending} />
                           </div>
                           <input
                             id="evidence-file"
@@ -310,7 +316,7 @@ export function DetailedWorkspaceView({
                               setUploadError(null)
                               const file = event.target.files?.[0]
                               if (file) {
-                                uploadFileMutation.mutate(file)
+                                uploadFileMutation.mutate({ file, documentType })
                               }
                             }}
                             disabled={uploadFileMutation.isPending}
@@ -346,7 +352,7 @@ export function DetailedWorkspaceView({
                                 addTextMutation.mutate(el.value)
                               }
                             }}
-                            disabled={addTextMutation.isPending || uploadFileMutation.isPending}
+                            disabled={nextQuestion?.kind === 'document_upload' || addTextMutation.isPending || uploadFileMutation.isPending}
                           >
                             {addTextMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : t('confirm_ingestion')}
                           </Button>
@@ -401,6 +407,9 @@ export function DetailedWorkspaceView({
                       </Button>
                     )}
                   </div>
+                  {nextQuestion.kind === 'document_upload' && (
+                    <DocumentUploadQuestion documents={nextQuestion.documents ?? []} mutation={uploadFileMutation} clearError={() => setUploadError(null)} error={uploadError} disabled={submitTurnMutation.isPending} />
+                  )}
                   {playingQuestion === nextQuestion.question && audioInstance && (
                     <div className="flex items-center space-x-3 p-3 bg-paper border border-line rounded-md mt-2 animate-in fade-in slide-in-from-top-2 duration-200">
                       <div className="flex items-center space-x-1 shrink-0">
@@ -459,7 +468,7 @@ export function DetailedWorkspaceView({
                       </Button>
                     </div>
                   )}
-                  {nextQuestion.field_labels.length > 0 && (
+                  {nextQuestion.kind !== 'document_upload' && nextQuestion.field_labels.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {nextQuestion.field_labels.map((label: string) => (
                         <Badge key={label} variant="outline" className="font-mono text-[11px] font-medium border-line-strong text-ink-soft bg-transparent uppercase tracking-[0.08em] rounded-md">
@@ -523,7 +532,7 @@ export function DetailedWorkspaceView({
               )}
             </div>
 
-            <div className="pt-2">
+            {nextQuestion?.kind !== 'document_upload' && <div className="pt-2">
               <div className="relative">
                 <textarea
                   value={chatInput}
@@ -549,7 +558,7 @@ export function DetailedWorkspaceView({
               {submitTurnMutation.isError && (
                 <p role="alert" className="mt-2 text-xs text-terracotta">{t('message_send_error')}</p>
               )}
-            </div>
+            </div>}
           </div>
 
           <div className="space-y-4 px-2">
