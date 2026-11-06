@@ -92,6 +92,7 @@ def test_evaluate_condition_rich() -> None:
     }
 
     # 1. Comparisons (gte, lt, in)
+    assert evaluate_condition({"depends_on": "user.age", "op": "gte"}, schema) is False
     assert (
         evaluate_condition({"depends_on": "user.age", "op": "gte", "value": 18}, schema)
         is True

@@ -59,6 +59,8 @@ def evaluate_condition(
         if op_val in ("not_in", "not_contains"):
             return isinstance(val, list) and actual_value not in val
 
+        if val is None:
+            return False
         if actual_value is not None:
             try:
                 act_num = float(actual_value)
