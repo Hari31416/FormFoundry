@@ -79,6 +79,9 @@ class CaseFilePayload(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime
     updated_at: datetime
+    completion_pct: float = 0.0
+    fields_confirmed: int = 0
+    fields_total: int = 0
 
 
 class CaseDetail(CaseFilePayload):

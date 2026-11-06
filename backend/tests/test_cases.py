@@ -19,6 +19,9 @@ def test_case_creation_persists_empty_field_states(client: TestClient) -> None:
     assert case_payload["created_by"] == "test-user"
     assert case_payload["metadata"] == {"intake_channel": "manual"}
     assert all(field["status"] == "missing" for field in case_payload["field_states"])
+    assert case_payload["completion_pct"] == 0.0
+    assert case_payload["fields_confirmed"] == 0
+    assert case_payload["fields_total"] == len(case_payload["field_states"])
 
     case_id = case_payload["case_id"]
     schema_state_response = client.get(f"/api/v1/cases/{case_id}/schema-state")
@@ -89,3 +92,17 @@ def test_delete_case(client: TestClient) -> None:
     # 4. Verify case no longer exists
     get_again_response = client.get(f"/api/v1/cases/{case_id}")
     assert get_again_response.status_code == 404
+
+
+def test_list_cases_includes_completion(client: TestClient) -> None:
+    create_response = client.post(
+        "/api/v1/cases",
+        json={"template_id": "fir-report-intake", "template_version": 1},
+    )
+    assert create_response.status_code == 201
+    list_response = client.get(
+        "/api/v1/cases", params={"template_id": "fir-report-intake"}
+    )
+    assert list_response.status_code == 200
+    rows = list_response.json()
+    assert rows and "completion_pct" in rows[0] and "fields_total" in rows[0]

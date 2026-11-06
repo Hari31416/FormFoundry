@@ -40,7 +40,30 @@ def build_empty_schema_state(field_paths: list[str]) -> dict[str, Any]:
     return payload
 
 
-def serialize_case(record: CaseFileRecord) -> CaseFilePayload:
+def _completion_from_states(
+    field_states: list[FieldStateRecord | FieldStatePayload],
+) -> tuple[float, int, int]:
+    total = len(field_states)
+    if total == 0:
+        return 0.0, 0, 0
+    confirmed = 0
+    for fs in field_states:
+        val = getattr(fs.status, "value", fs.status)
+        if val in ("confirmed", "waived"):
+            confirmed += 1
+    return round(confirmed / total * 100, 1), confirmed, total
+
+
+def serialize_case(
+    record: CaseFileRecord, field_states: list[FieldStateRecord] | None = None
+) -> CaseFilePayload:
+    if field_states is not None:
+        pct, confirmed, total = _completion_from_states(field_states)
+    else:
+        # Fallback for callers without field states: derive from status only.
+        pct, confirmed, total = (
+            (100.0, 0, 0) if record.status in ("approved", "completed") else (0.0, 0, 0)
+        )
     return CaseFilePayload(
         case_id=record.case_id,
         template_id=record.template_id,
@@ -53,6 +76,9 @@ def serialize_case(record: CaseFileRecord) -> CaseFilePayload:
         metadata=record.case_metadata,
         created_at=record.created_at,
         updated_at=record.updated_at,
+        completion_pct=pct,
+        fields_confirmed=confirmed,
+        fields_total=total,
     )
 
 
@@ -136,7 +162,7 @@ async def create_case(session: AsyncSession, payload: CaseCreateRequest) -> Case
     )
 
     return CaseDetail(
-        **serialize_case(case_record).model_dump(),
+        **serialize_case(case_record, field_states=field_state_records).model_dump(),
         template=serialize_template(template_record),
         field_states=[serialize_field_state(record) for record in field_state_records],
     )
@@ -198,7 +224,7 @@ async def get_case_detail(session: AsyncSession, case_id: str) -> CaseDetail:
     )
 
     return CaseDetail(
-        **serialize_case(case_record).model_dump(),
+        **serialize_case(case_record, field_states=field_states).model_dump(),
         template=serialize_template(template_record),
         field_states=[serialize_field_state(record) for record in field_states],
     )
@@ -229,7 +255,25 @@ async def list_cases(
             "returned_count": len(records),
         },
     )
-    return [serialize_case(record) for record in records]
+    if not records:
+        return []
+    case_ids = [r.case_id for r in records]
+    fs_rows = (
+        (
+            await session.execute(
+                select(FieldStateRecord).where(FieldStateRecord.case_id.in_(case_ids))
+            )
+        )
+        .scalars()
+        .all()
+    )
+    by_case: dict[str, list[FieldStateRecord]] = {cid: [] for cid in case_ids}
+    for fs in fs_rows:
+        by_case[fs.case_id].append(fs)
+    return [
+        serialize_case(record, field_states=by_case.get(record.case_id, []))
+        for record in records
+    ]
 
 
 async def get_schema_state(session: AsyncSession, case_id: str) -> SchemaStateResponse:
