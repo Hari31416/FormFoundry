@@ -100,6 +100,9 @@ export interface CaseFile {
   metadata: Record<string, any>
   created_at: string
   updated_at: string
+  completion_pct: number
+  fields_confirmed: number
+  fields_total: number
 }
 
 export interface CaseDetail extends CaseFile {

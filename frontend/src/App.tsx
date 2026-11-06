@@ -5,6 +5,12 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import TemplateSelection from '@/pages/TemplateSelection'
 import CaseWorkspace from '@/pages/CaseWorkspace'
+import { useParams } from 'react-router-dom'
+
+function LegacyProjectRedirect() {
+  const { templateId } = useParams<{ templateId: string }>()
+  return <Navigate to={`/schemas/${templateId}`} replace />
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,16 +26,18 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <BrowserRouter>
-          <div className="min-h-screen bg-slate-50/50">
+          <div className="min-h-screen">
             <Routes>
               <Route path="/" element={<TemplateSelection />} />
+              <Route path="/schemas/:templateId" element={<TemplateSelection />} />
+              <Route path="/projects/:templateId" element={<LegacyProjectRedirect />} />
               <Route path="/cases/:caseId" element={<CaseWorkspace />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
         </BrowserRouter>
       </TooltipProvider>
-      <ReactQueryDevtools initialIsOpen={false} />
+      {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
     </QueryClientProvider>
   )
 }
