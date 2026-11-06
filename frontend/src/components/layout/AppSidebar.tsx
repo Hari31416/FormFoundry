@@ -1,5 +1,5 @@
 import { Link, NavLink, useLocation } from 'react-router-dom'
-import { LayoutDashboard, Clock, Layers, Plus, Settings, ChevronsLeft, ChevronsRight, X, Shield, Activity, Sparkles } from 'lucide-react'
+import { LayoutDashboard, Clock, Layers, Plus, Settings, ChevronsLeft, ChevronsRight, X, Shield, Activity, Sparkles, LogOut } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useAuth } from '@/lib/auth'
 import { cn } from '@/lib/utils'
@@ -41,6 +41,7 @@ function SidebarContent({ collapsed, schemas, totalAwaiting, onArchitect, onNewS
   const isOverview = !suppressNav && loc.pathname === '/' && !filter
   const isNeeds = !suppressNav && loc.pathname === '/' && filter === 'needs-attention'
   const isAll = !suppressNav && loc.pathname === '/' && filter === 'all'
+  const isAdminUsers = loc.pathname === '/admin/users'
   const navLinkClass = (active: boolean) => cn(
     'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[12.5px] font-medium transition-colors',
     active ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/5 hover:text-white'
@@ -105,8 +106,8 @@ function SidebarContent({ collapsed, schemas, totalAwaiting, onArchitect, onNewS
         {isAdmin && <button onClick={() => { onArchitect(); onCloseMobile?.() }} aria-label={t('template_architect')} className={cn('flex items-center gap-2.5 w-full rounded-md px-2.5 py-2 text-[12.5px] font-medium cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60', (architectActive && !newSchemaActive) ? 'bg-white/10 text-white' : 'text-white/70 hover:bg-white/5 hover:text-white')}>
           <Settings className="w-4 h-4 shrink-0" />{!collapsed && <span>{t('nav_architect')}</span>}
         </button>}
-        {isAdmin && <Link to="/admin/users" title={t('auth_manage_access')} className="block rounded-md px-2.5 py-2 text-xs text-white/80 hover:bg-white/10">{collapsed ? <Shield className="w-4 h-4" /> : t('auth_manage_access')}</Link>}
-        <button onClick={logout} title={t('auth_sign_out')} className="w-full text-left rounded-md px-2.5 py-2 text-xs text-white/80 hover:bg-white/10">{collapsed ? <span aria-label={t('auth_sign_out')}>↪</span> : `${user?.username} · ${t('auth_sign_out')}`}</button>
+        {isAdmin && <Link to="/admin/users" title={t('auth_manage_access')} aria-current={isAdminUsers ? 'page' : undefined} className={cn(navLinkClass(isAdminUsers), 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60')}><Shield className="w-4 h-4 shrink-0" />{!collapsed && <span className="truncate">{t('auth_manage_access')}</span>}</Link>}
+        <button onClick={logout} title={t('auth_sign_out')} className={cn(navLinkClass(false), 'w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60')}><LogOut className="w-4 h-4 shrink-0" />{!collapsed && <span className="truncate">{user?.username} · {t('auth_sign_out')}</span>}</button>
       </div>
     </div>
   )
@@ -120,8 +121,9 @@ export default function AppSidebar(props: Props) {
         <div className="flex-1 min-h-0">
           <SidebarContent {...props} />
         </div>
-        <button onClick={props.onToggle} aria-label={props.collapsed ? t('expand_sidebar') : t('collapse_sidebar')} className="shrink-0 m-2 h-7 rounded-md border border-white/15 text-white/60 hover:text-white hover:bg-white/5 grid place-items-center cursor-pointer">
-          {props.collapsed ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}
+        <button onClick={props.onToggle} aria-label={props.collapsed ? t('expand_sidebar') : t('collapse_sidebar')} title={props.collapsed ? t('expand_sidebar') : t('collapse_sidebar')} className={cn('shrink-0 mx-2 mb-2 h-9 flex items-center gap-2.5 rounded-md px-2.5 text-white/60 hover:bg-white/5 hover:text-white transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60', props.collapsed && 'justify-center px-0')}>
+          {props.collapsed ? <ChevronsRight className="w-4 h-4 shrink-0" /> : <ChevronsLeft className="w-4 h-4 shrink-0" />}
+          {!props.collapsed && <span className="text-[12.5px] font-medium">{t('collapse_sidebar')}</span>}
         </button>
       </aside>
 

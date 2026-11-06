@@ -1,17 +1,18 @@
 import React from 'react'
 import { useAuth } from '@/lib/auth'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
-import { Plus, Trash2, Edit, Database, Menu, Search } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate, useParams, useSearchParams, useLocation, Link } from 'react-router-dom'
+import { Plus, Trash2, Edit, Database, Search } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
-import { createCase, getTemplates, getCases, createTemplate, updateTemplate, deleteTemplate, deleteCase, type TemplateDefinition } from '@/lib/api'
+import { createCase, createTemplate, updateTemplate, deleteTemplate, deleteCase, type TemplateDefinition } from '@/lib/api'
+import { useSchemaSummaries } from '@/lib/useSchemaSummaries'
 import { LanguageSelector } from '@/components/case/LanguageSelector'
-import AppSidebar from '@/components/layout/AppSidebar'
+import AppShell from '@/components/layout/AppShell'
 import OverviewView from '@/pages/views/OverviewView'
 import SchemaDetailView from '@/pages/views/SchemaDetailView'
 import { SchemaVisualizerDialog } from '@/components/case/SchemaVisualizerDialog'
@@ -39,8 +40,6 @@ export default function TemplateSelection() {
   const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
 
-  const [collapsed, setCollapsed] = React.useState(() => localStorage.getItem('sidebar-collapsed') === '1')
-  const [mobileOpen, setMobileOpen] = React.useState(false)
   const [architect, setArchitect] = React.useState(false)
   const [caseSearch, setCaseSearch] = React.useState('')
   const [versionOverrides, setVersionOverrides] = React.useState<Record<string, number>>({})
@@ -50,8 +49,7 @@ export default function TemplateSelection() {
   const [activeTemplate, setActiveTemplate] = React.useState<TemplateDefinition | null>(null)
   const [draftTemplate, setDraftTemplate] = React.useState<TemplateDefinition>(() => defaultBlankTemplate('', ''))
 
-  const { data: templates, isLoading: templatesLoading } = useQuery({ queryKey: ['templates'], queryFn: getTemplates })
-  const { data: cases, isLoading: casesLoading } = useQuery({ queryKey: ['cases'], queryFn: () => getCases({ limit: 100 }) })
+  const { templates, cases, schemas, casesByTemplate, isLoading } = useSchemaSummaries()
 
   const createCaseMutation = useMutation({ mutationFn: createCase, onSuccess: (d) => navigate(`/cases/${d.case_id}`) })
   const createTemplateMutation = useMutation({ mutationFn: createTemplate, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['templates'] }); setIsEditing(false); setActiveTemplate(null) }, onError: (e: any) => alert(t('alert_create_template_failed', { error: e.response?.data?.detail || e.message })) })
@@ -69,68 +67,47 @@ export default function TemplateSelection() {
     else createTemplateMutation.mutate(draftTemplate)
   }
 
-  const grouped = React.useMemo(() => {
-    const m: Record<string, TemplateDefinition[]> = {}
-    templates?.forEach(t => { (m[t.template_id] ||= []).push(t) })
-    return m
-  }, [templates])
-
-  const casesByTemplate = React.useMemo(() => {
-    const m: Record<string, NonNullable<typeof cases>> = {}
-    cases?.forEach(c => { (m[c.template_id] ||= []).push(c) })
-    return m
-  }, [cases])
-
-  const schemas = React.useMemo(() => Object.values(grouped).map(versions => {
-    const latest = [...versions].sort((a, b) => b.template_version - a.template_version)[0]
-    const list = casesByTemplate[latest.template_id] || []
-    return { template: latest, versions, total: list.length, awaiting: list.filter(c => !['approved', 'completed', 'failed'].includes(c.status)).length }
-  }).sort((a, b) => b.awaiting - a.awaiting || b.total - a.total), [grouped, casesByTemplate])
-
-  const totalAwaiting = React.useMemo(() => (cases || []).filter(c => !['approved', 'completed', 'failed'].includes(c.status)).length, [cases])
-
   const currentSchema = templateId ? schemas.find(p => p.template.template_id === templateId) : null
-  const isLoading = templatesLoading || casesLoading
   const isArchitectView = isAdmin && architect && !isEditing
   const newSchemaActive = isEditing && !activeTemplate
   const architectActive = architect || isEditing
 
   const handleNewSchema = () => { setArchitect(true); handleStartNewTemplate() }
-  const handleCancelEditing = () => { setIsEditing(false); setActiveTemplate(null) }
 
-  const toggleCollapsed = () => { setCollapsed(v => { localStorage.setItem('sidebar-collapsed', v ? '0' : '1'); return !v }) }
+  const location = useLocation()
+  React.useEffect(() => {
+    const state = location.state as { architect?: 'design' | 'new' } | null
+    if (state?.architect === 'design') setArchitect(true)
+    else if (state?.architect === 'new') handleNewSchema()
+    if (state?.architect) navigate(location.pathname + location.search, { replace: true, state: null })
+  }, [location.state])
 
   return (
-    <div className="min-h-screen flex bg-paper">
-      <AppSidebar collapsed={collapsed} onToggle={toggleCollapsed} mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)}
-        schemas={schemas} totalAwaiting={totalAwaiting} onArchitect={() => { setArchitect(true); setIsEditing(false) }} onNewSchema={handleNewSchema} onNavigate={() => { setArchitect(false); setIsEditing(false); setActiveTemplate(null) }} architectActive={architectActive} newSchemaActive={newSchemaActive} />
-
-      <div className="flex-1 min-w-0 flex flex-col min-h-screen overflow-x-hidden">
-        <header className="min-h-11 shrink-0 border-b border-line bg-card-warm/80 backdrop-blur-sm flex flex-wrap items-center gap-2 px-3 sm:px-4 py-1.5 sticky top-0 z-30">
-          <button onClick={() => setMobileOpen(true)} aria-label={t('open_nav_menu')} className="md:hidden p-1.5 rounded-md hover:bg-paper cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine/50 min-w-[40px] min-h-[40px] grid place-items-center"><Menu className="w-5 h-5" /></button>
-          <Link to="/" className="flex md:hidden items-center gap-2">
-            <span className="w-6 h-6 rounded bg-pine text-paper grid place-items-center font-serif font-bold text-xs">F</span>
-            <span className="font-serif font-semibold text-sm">FormFoundry</span>
-          </Link>
-          {templateId && !isArchitectView ? (
-            <select value={templateId} onChange={e => navigate(`/schemas/${e.target.value}`)} aria-label={t('select_schema')} className="md:hidden max-w-[160px] flex-1 text-xs font-semibold border border-line rounded-md px-2 py-1.5 bg-white">
-              <option value="/">{t('nav_overview')}</option>
-              {schemas.map(p => <option key={p.template.template_id} value={p.template.template_id}>{p.template.name}</option>)}
-            </select>
-          ) : null}
-          <div className="ml-auto flex items-center gap-2 min-w-0 flex-1 sm:flex-none justify-end">
-            <div className="relative w-full sm:w-56 max-w-[260px]">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-faint" />
-              <Input type="search" aria-label={t('search_cases_aria')} placeholder={t('search_cases_placeholder')} title={t('search_cases_title')} value={caseSearch} onChange={e => setCaseSearch(e.target.value)} className="pl-8 pr-8 h-8 text-xs bg-white w-full" />
-              {caseSearch && (
-                <button onClick={() => setCaseSearch('')} aria-label={t('clear_search')} className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 grid place-items-center text-[13px] text-ink-faint hover:text-ink cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine/50">×</button>
-              )}
-            </div>
-            <LanguageSelector />
+    <AppShell
+      onArchitect={() => { setArchitect(true); setIsEditing(false) }}
+      onNewSchema={handleNewSchema}
+      onNavigate={() => { setArchitect(false); setIsEditing(false); setActiveTemplate(null) }}
+      architectActive={architectActive}
+      newSchemaActive={newSchemaActive}
+      headerBefore={templateId && !isArchitectView ? (
+        <select value={templateId} onChange={e => navigate(`/schemas/${e.target.value}`)} aria-label={t('select_schema')} className="md:hidden max-w-[160px] flex-1 text-xs font-semibold border border-line rounded-md px-2 py-1.5 bg-white">
+          <option value="/">{t('nav_overview')}</option>
+          {schemas.map(p => <option key={p.template.template_id} value={p.template.template_id}>{p.template.name}</option>)}
+        </select>
+      ) : null}
+      headerEnd={(
+        <>
+          <div className="relative w-full sm:w-56 max-w-[260px]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-faint" />
+            <Input type="search" aria-label={t('search_cases_aria')} placeholder={t('search_cases_placeholder')} title={t('search_cases_title')} value={caseSearch} onChange={e => setCaseSearch(e.target.value)} className="pl-8 pr-8 h-8 text-xs bg-white w-full" />
+            {caseSearch && (
+              <button onClick={() => setCaseSearch('')} aria-label={t('clear_search')} className="absolute right-1.5 top-1/2 -translate-y-1/2 w-6 h-6 grid place-items-center text-[13px] text-ink-faint hover:text-ink cursor-pointer rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine/50">×</button>
+            )}
           </div>
-        </header>
-
-        <main className="flex-1 px-3 sm:px-5 py-4 sm:py-5 overflow-y-auto">
+          <LanguageSelector />
+        </>
+      )}
+    >
           {isAdmin && isEditing ? (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="max-w-5xl">
               <TemplateVisualBuilder draftTemplate={draftTemplate} setDraftTemplate={setDraftTemplate} activeTemplate={activeTemplate}
@@ -192,18 +169,9 @@ export default function TemplateSelection() {
           ) : (
             <OverviewView templates={templates || []} cases={cases || []} filter={filter} search={caseSearch} t={t} />
           )}
-        </main>
-
-        <nav className="md:hidden sticky bottom-0 z-30 border-t border-line bg-white/95 backdrop-blur flex justify-around py-1.5 text-[10px] font-semibold">
-          <Link to="/" className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink-soft">{t('nav_overview')}</Link>
-          <Link to="/?filter=needs-attention" className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink-soft">{t('needs_short', { count: totalAwaiting })}</Link>
-          <button onClick={() => setMobileOpen(true)} className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink-soft cursor-pointer">{t('nav_schemas')}</button>
-          {isAdmin && <button onClick={() => setArchitect(true)} className="flex flex-col items-center gap-0.5 px-3 py-1 text-ink-soft cursor-pointer">{t('nav_architect')}</button>}
-        </nav>
-      </div>
 
       <SchemaVisualizerDialog template={viewingSchema} isOpen={!!viewingSchema} onClose={() => setViewingSchema(null)} onLaunchCase={handleCreateCase} t={t} />
       <TemplateCasesDialog template={viewingCases} isOpen={!!viewingCases} onClose={() => setViewingCases(null)} cases={viewingCases ? (casesByTemplate[viewingCases.template_id] || []) : []} onDeleteCase={handleDeleteCase} t={t} />
-    </div>
+    </AppShell>
   )
 }

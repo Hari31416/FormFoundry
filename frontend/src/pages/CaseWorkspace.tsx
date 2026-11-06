@@ -7,7 +7,8 @@ import {
   Plus,
   ArrowLeft,
   MessageSquare,
-  Layout
+  Layout,
+  LogOut
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -745,8 +746,10 @@ export default function CaseWorkspace() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0 max-w-full">
-          {/* Language Selector Dropdown */}
-          <button onClick={logout} className="text-xs underline">{t('auth_sign_out')}</button>
+          <button onClick={logout} title={t('auth_sign_out')} aria-label={t('auth_sign_out')} className="flex items-center gap-1.5 h-10 px-2.5 rounded-md border border-primary-foreground/15 bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
+            <LogOut className="w-4 h-4" />
+            <span className="hidden xl:inline text-[11px] font-semibold">{t('auth_sign_out')}</span>
+          </button>
           <LanguageSelector onLanguageChange={(code) => updateLanguageMutation.mutate(code)} className="border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 hover:border-primary-foreground/30 shadow-none [&_svg]:text-primary-foreground/70" />
 
           <div className="hidden sm:block h-5 w-px bg-primary-foreground/15 mx-1" />

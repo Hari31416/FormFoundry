@@ -1,12 +1,12 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { api, getTemplates } from '@/lib/api'
 import type { SessionUser } from '@/lib/auth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { LanguageSelector } from '@/components/case/LanguageSelector'
+import AppShell from '@/components/layout/AppShell'
 
 function UserAccess({ user }: { user: SessionUser }) {
   const { t } = useTranslation()
@@ -44,7 +44,7 @@ function UserAccess({ user }: { user: SessionUser }) {
     <section className="bg-white border border-line rounded-lg p-5 space-y-4">
       <div className="flex items-center gap-3 flex-wrap">
         <h2 className="font-semibold flex-1">{user.username}</h2>
-        <span className="text-xs text-ink-faint">
+        <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-ink-faint">
           {t(user.role === 'admin' ? 'auth_admin' : 'auth_user')}
         </span>
         {user.role !== 'admin' && (
@@ -61,7 +61,7 @@ function UserAccess({ user }: { user: SessionUser }) {
         <p className="text-sm text-ink-soft">{t('auth_admin_all_schemas')}</p>
       ) : (
         <>
-          <p className="text-xs text-ink-faint">{t('auth_access_help')}</p>
+          <p className="text-xs text-ink-soft">{t('auth_access_help')}</p>
           {access.isLoading || templates.isLoading ? (
             <p role="status">{t('auth_loading')}</p>
           ) : (
@@ -73,6 +73,7 @@ function UserAccess({ user }: { user: SessionUser }) {
                 >
                   <input
                     type="checkbox"
+                    className="w-4 h-4 accent-pine cursor-pointer"
                     disabled={
                       save.isPending || access.isError || templates.isError
                     }
@@ -91,6 +92,7 @@ function UserAccess({ user }: { user: SessionUser }) {
             </div>
           )}
           <Button
+            className="disabled:bg-pine-soft disabled:text-ink-faint disabled:opacity-100"
             disabled={
               selected === null ||
               save.isPending ||
@@ -123,6 +125,7 @@ function UserAccess({ user }: { user: SessionUser }) {
 export default function AccessManagement() {
   const { t } = useTranslation()
   const client = useQueryClient()
+  const navigate = useNavigate()
   const users = useQuery({
     queryKey: ['users'],
     queryFn: () => api.get<SessionUser[]>('/auth/users').then((r) => r.data),
@@ -138,24 +141,23 @@ export default function AccessManagement() {
     },
   })
   return (
-    <main className="min-h-screen bg-paper p-5 sm:p-10">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <Link to="/" className="text-sm text-pine underline">
-            {t('back_to_overview')}
-          </Link>
-          <LanguageSelector />
-        </div>
+    <AppShell
+      onArchitect={() =>
+        navigate('/', { state: { architect: 'design' } })
+      }
+      onNewSchema={() => navigate('/', { state: { architect: 'new' } })}
+    >
+      <div className="max-w-5xl space-y-6">
         <div>
-          <h1 className="font-serif text-3xl">{t('auth_manage_access')}</h1>
-          <p className="text-sm text-ink-soft mt-2">{t('auth_manage_help')}</p>
+          <h1 className="text-[22px] leading-none font-semibold text-ink">{t('auth_manage_access')}</h1>
+          <p className="text-xs text-ink-soft mt-1.5">{t('auth_manage_help')}</p>
         </div>
         <form
           onSubmit={(event) => {
             event.preventDefault()
             create.mutate()
           }}
-          className="bg-card-warm border border-line rounded-lg p-5 space-y-4"
+          className="bg-white border border-line rounded-lg p-5 space-y-4"
         >
           <h2 className="font-semibold">{t('auth_create_user')}</h2>
           <div className="flex gap-3 flex-wrap">
@@ -203,6 +205,6 @@ export default function AccessManagement() {
           <UserAccess key={user.id} user={user} />
         ))}
       </div>
-    </main>
+    </AppShell>
   )
 }
