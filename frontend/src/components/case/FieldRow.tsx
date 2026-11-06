@@ -6,7 +6,8 @@ import {
   Quote,
   Check,
   Lock,
-  Pencil
+  Pencil,
+  ChevronDown
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,7 +26,7 @@ import { useTranslation } from 'react-i18next'
 
 export function RenderNestedObject({ value, schema }: { value: unknown; schema?: TemplateField[] }) {
   if (value === null || value === undefined || typeof value !== 'object') {
-    return <span className="text-slate-400 italic">Empty object</span>
+    return <span className="text-ink-faint italic">Empty object</span>
   }
 
   const obj = value as Record<string, unknown>
@@ -37,7 +38,7 @@ export function RenderNestedObject({ value, schema }: { value: unknown; schema?:
     : Object.keys(obj).map(k => ({ path: k, label: k.replace(/_/g, ' '), leaf: k, field: undefined }))
 
   return (
-    <div className="pl-3 py-2 border-l border-slate-100/80 space-y-1.5 bg-slate-50/50 rounded-r-xl pr-3 my-1">
+    <div className="pl-3 py-2 border-l border-line space-y-1.5 bg-paper rounded-r-md pr-3 my-1">
       {keysToRender.map(({ path, label, leaf, field }) => {
         const subVal = obj[path] !== undefined ? obj[path] : obj[leaf]
         const hasVal = subVal !== undefined && subVal !== null && subVal !== ''
@@ -45,11 +46,11 @@ export function RenderNestedObject({ value, schema }: { value: unknown; schema?:
         return (
           <div key={path} className="flex flex-col text-[11px] leading-tight">
             <div className="flex items-center space-x-1.5">
-              <span className="font-extrabold text-slate-500 text-[10px] tracking-wide uppercase">{label}:</span>
-              {!hasVal && <span className="text-slate-300 italic text-[10px]">(not provided)</span>}
+              <span className="font-semibold text-ink-faint text-[11px] tracking-[0.08em] uppercase font-mono">{label}:</span>
+              {!hasVal && <span className="text-ink-faint/70 italic text-[11px]">(not provided)</span>}
             </div>
             {hasVal && (
-              <div className="pl-2 mt-0.5 text-slate-800 font-bold font-mono">
+              <div className="pl-2 mt-0.5 text-ink font-semibold font-mono">
                 {field && (field.type === 'object' || field.type === 'list_of_objects') ? (
                   field.type === 'object' ? (
                     <RenderNestedObject value={subVal} schema={field.schema} />
@@ -59,17 +60,17 @@ export function RenderNestedObject({ value, schema }: { value: unknown; schema?:
                 ) : Array.isArray(subVal) ? (
                   <div className="flex flex-wrap gap-1 mt-0.5">
                     {subVal.map((item, i) => (
-                      <span key={i} className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[9px] font-extrabold">
+                      <span key={i} className="bg-paper border border-line text-ink-soft px-1.5 py-0.5 rounded text-[11px] font-mono font-medium">
                         {String(item)}
                       </span>
                     ))}
                   </div>
                 ) : typeof subVal === 'boolean' ? (
-                  <span className={subVal ? "text-green-600 font-extrabold text-[10px] uppercase" : "text-slate-500 font-extrabold text-[10px] uppercase"}>
+                  <span className={subVal ? "text-leaf font-semibold text-[11px] uppercase" : "text-ink-soft font-semibold text-[11px] uppercase"}>
                     {subVal ? 'true' : 'false'}
                   </span>
                 ) : (
-                  <span className="text-slate-800 text-[11px] font-sans break-all">{String(subVal)}</span>
+                  <span className="text-ink text-[11px] font-sans break-all">{String(subVal)}</span>
                 )}
               </div>
             )}
@@ -82,14 +83,14 @@ export function RenderNestedObject({ value, schema }: { value: unknown; schema?:
 
 export function RenderListOfObjects({ value, schema }: { value: unknown; schema?: TemplateField[] }) {
   if (!Array.isArray(value) || value.length === 0) {
-    return <span className="text-slate-400 italic">Empty list</span>
+    return <span className="text-ink-faint italic">Empty list</span>
   }
 
   return (
     <div className="space-y-2 mt-1">
       {value.map((item, idx) => (
-        <div key={idx} className="relative border border-slate-100 bg-white rounded-xl shadow-xs p-2 overflow-hidden hover:border-blue-100 transition-colors">
-          <div className="absolute top-0 right-0 bg-slate-50 border-bl border-slate-100 text-[8px] font-black text-slate-400 px-2 py-0.5 rounded-bl-lg uppercase tracking-wider">
+        <div key={idx} className="relative border border-line bg-card-warm rounded-md shadow-xs p-2 overflow-hidden hover:border-line-strong transition-colors">
+          <div className="absolute top-0 right-0 bg-paper border-bl border-line text-[11px] font-mono font-medium text-ink-faint px-2 py-0.5 rounded-bl-md uppercase tracking-[0.14em]">
             Item #{idx + 1}
           </div>
           <div className="mt-1">
@@ -131,13 +132,13 @@ export function FieldBadge({ status }: { status: FieldStatus }) {
   const { t } = useTranslation()
   switch (status) {
     case 'confirmed':
-      return <Badge className="bg-green-500/10 text-green-600 hover:bg-green-500/10 border-green-200/50 text-[9px] uppercase font-black px-1.5 h-4">{t('field_status_confirmed')}</Badge>
+      return <Badge className="bg-leaf-soft text-leaf hover:bg-leaf-soft border-leaf/30 text-[11px] uppercase font-mono font-medium px-1.5 h-4 rounded">{t('field_status_confirmed')}</Badge>
     case 'proposed':
-      return <Badge className="bg-blue-500/10 text-blue-600 hover:bg-blue-500/10 border-blue-200/50 text-[9px] uppercase font-black px-1.5 h-4">{t('field_status_proposed')}</Badge>
+      return <Badge className="bg-inkblue-soft text-inkblue hover:bg-inkblue-soft border-inkblue/30 text-[11px] uppercase font-mono font-medium px-1.5 h-4 rounded">{t('field_status_proposed')}</Badge>
     case 'conflicted':
-      return <Badge className="bg-red-500/10 text-red-600 hover:bg-red-500/10 border-red-200/50 text-[9px] uppercase font-black px-1.5 h-4">{t('field_status_conflicted')}</Badge>
+      return <Badge className="bg-terracotta-soft text-terracotta hover:bg-terracotta-soft border-terracotta/30 text-[11px] uppercase font-mono font-medium px-1.5 h-4 rounded">{t('field_status_conflicted')}</Badge>
     case 'missing':
-      return <Badge variant="outline" className="text-slate-400 border-slate-200 text-[9px] uppercase font-black px-1.5 h-4">{t('field_status_missing')}</Badge>
+      return <Badge variant="outline" className="text-ink-faint border-line-strong text-[11px] uppercase font-mono font-medium px-1.5 h-4 rounded">{t('field_status_missing')}</Badge>
     default:
       return null
   }
@@ -151,22 +152,22 @@ export function EvidenceQuote({ ev }: { ev: Evidence }) {
   const isLongText = displayText.length > 120
 
   return (
-    <div className="relative pl-3 border-l-2 border-slate-100 hover:border-blue-200 transition-colors group/evidence">
+    <div className="relative pl-3 border-l-2 border-line-strong hover:border-pine transition-colors group/evidence">
       <p className={cn(
-        "text-[11px] text-slate-500 italic leading-relaxed transition-all",
+        "text-[11px] text-ink-soft italic leading-relaxed transition-all",
         !isExpanded && "line-clamp-2"
       )}>
         “{displayText}”
       </p>
       <div className="flex items-center justify-between mt-1">
-        <div className="text-[8px] font-bold text-slate-300 uppercase tracking-tighter">
+        <div className="text-[11px] font-mono font-medium text-ink-faint uppercase tracking-[0.14em]">
           {t('via')} {ev.source_type.replace('_', ' ')}
           {ev.source_subtype ? ` · ${ev.source_subtype}` : ''}
         </div>
         {isLongText && (
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="text-[9px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest transition-colors cursor-pointer"
+            className="text-[11px] font-semibold text-pine hover:text-pine-deep uppercase tracking-[0.16em] transition-colors cursor-pointer"
           >
             {isExpanded ? t('show_less') : t('show_more')}
           </button>
@@ -231,6 +232,7 @@ export function FieldRow({
   if (!field) return null
   const confidence = state?.confidence ?? 0
   const proposedState = state?.status === 'proposed' ? state : undefined
+  const [isEvidenceOpen, setIsEvidenceOpen] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [draftValue, setDraftValue] = useState<string>(
     formatDraftValue(field, state?.resolved_value),
@@ -490,32 +492,36 @@ export function FieldRow({
   return (
     <div className="group relative flex flex-col space-y-2">
       <Card className={cn(
-        "border-slate-200/60 shadow-sm transition-all duration-200 bg-white overflow-hidden rounded-2xl",
-        issues.some(i => i.blocking) ? "border-red-200 bg-red-50/10" : "hover:border-blue-200 hover:shadow-md"
+        "card-ledger transition-all duration-200 overflow-hidden rounded-lg",
+        issues.some(i => i.blocking)
+          ? "border-terracotta/40 bg-terracotta-soft/30 border-l-2 border-l-terracotta"
+          : state?.status === 'confirmed'
+            ? "border-l-2 border-l-leaf"
+            : "hover:border-line-strong"
       )}>
         <CardContent className="p-0 flex flex-col">
-          <div className="p-4 flex items-center justify-between">
+          <div className="p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0 sm:justify-between">
             <div className="flex-grow min-w-0 pr-4">
               <div className="flex items-center space-x-2 mb-1.5 flex-wrap gap-y-1">
-                <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">{field.label}</span>
+                <span className="text-[11px] font-sans font-semibold uppercase tracking-[0.08em] text-ink">{field.label}</span>
                 {isLocallyRejected ? (
-                  <Badge className="bg-red-500/10 text-red-600 hover:bg-red-500/10 border-red-200/50 text-[9px] uppercase font-black px-1.5 h-4">
+                  <Badge className="bg-terracotta-soft text-terracotta hover:bg-terracotta-soft border-terracotta/30 text-[11px] uppercase font-mono font-medium px-1.5 h-4 rounded">
                     {t('field_status_rejected_pending', { defaultValue: 'Rejected (Pending QA)' })}
                   </Badge>
                 ) : (
                   state && <FieldBadge status={state.status} />
                 )}
                 {field.required && (
-                  <span className="text-[9px] font-bold text-red-500/60 px-1 border border-red-100 rounded leading-none pt-0.5">REQ</span>
+                  <span className="text-[11px] font-mono font-medium text-ink-soft border border-line-strong bg-paper rounded px-1 leading-none py-0.5">REQ</span>
                 )}
                 {field.calculation && (
-                  <Badge className="bg-amber-500/10 text-amber-600 hover:bg-amber-500/10 border-amber-250 text-[9px] uppercase font-black px-1.5 h-4 flex items-center gap-1">
+                  <Badge className="bg-marigold-soft text-marigold hover:bg-marigold-soft border-marigold/30 text-[11px] uppercase font-mono font-medium px-1.5 h-4 rounded flex items-center gap-1">
                     <Lock className="w-2.5 h-2.5" />
                     {t('field_calculated', { defaultValue: 'Calculated' })}
                   </Badge>
                 )}
               </div>
-              <div className="text-[15px] font-bold text-slate-900 tabular-nums">
+              <div className="text-[15px] font-semibold text-ink tabular-nums">
                 {hasResolvedValue(state?.resolved_value) ? (
                   field.type === 'object' ? (
                     <RenderNestedObject value={state?.resolved_value} schema={field.schema} />
@@ -524,16 +530,16 @@ export function FieldRow({
                   ) : Array.isArray(state?.resolved_value) ? (
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {state.resolved_value.map((val: any, idx: number) => (
-                        <Badge key={idx} variant="secondary" className="bg-slate-100 text-slate-800 py-0.5 px-2 font-bold text-xs rounded-lg border-slate-200">
+                        <Badge key={idx} variant="secondary" className="bg-pine-soft text-pine-deep py-0.5 px-2 font-mono font-medium text-[11px] rounded-md border-pine/15">
                           {String(val)}
                         </Badge>
                       ))}
                     </div>
                   ) : (
-                    <span className="truncate block">{String(state?.resolved_value)}</span>
+                    <span className="break-words block">{String(state?.resolved_value)}</span>
                   )
                 ) : (
-                  <span className="text-slate-300 font-medium italic">{t('awaiting_data')}</span>
+                  <span className="text-ink-faint font-medium italic">{t('awaiting_data')}</span>
                 )}
               </div>
 
@@ -547,15 +553,15 @@ export function FieldRow({
                       aria-invalid={!!editError}
                       rows={6}
                       className={cn(
-                        "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-200",
-                        editError && "border-red-300 focus:ring-red-200"
+                        "w-full rounded-md border border-line bg-card-warm px-3 py-2 text-xs font-mono text-ink focus:outline-none focus:ring-2 focus:ring-pine/25",
+                        editError && "border-terracotta/50 focus:ring-terracotta/25"
                       )}
                     />
                   ) : field.type === 'enum' && !field.repeated ? (
                     <select
                       className={cn(
-                        "h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-200",
-                        editError && "border-red-300 focus:ring-red-200",
+                        "h-8 w-full rounded-md border border-line bg-card-warm px-2 text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-pine/25",
+                        editError && "border-terracotta/50 focus:ring-terracotta/25",
                       )}
                       value={draftValue}
                       onChange={(e) => setDraftValue(e.target.value)}
@@ -570,8 +576,8 @@ export function FieldRow({
                   ) : field.type === 'boolean' && !field.repeated ? (
                     <select
                       className={cn(
-                        "h-8 w-full rounded-lg border border-slate-200 bg-white px-2 text-sm font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-200",
-                        editError && "border-red-300 focus:ring-red-200",
+                        "h-8 w-full rounded-md border border-line bg-card-warm px-2 text-sm font-medium text-ink focus:outline-none focus:ring-2 focus:ring-pine/25",
+                        editError && "border-terracotta/50 focus:ring-terracotta/25",
                       )}
                       value={draftValue}
                       onChange={(e) => setDraftValue(e.target.value)}
@@ -581,12 +587,12 @@ export function FieldRow({
                       <option value="false">{t('no', { defaultValue: 'No' })}</option>
                     </select>
                   ) : (
-                    <Input
-                      value={draftValue}
-                      onChange={(e) => setDraftValue(e.target.value)}
-                      placeholder={t('edit_value_placeholder', { defaultValue: 'Enter value' })}
-                      aria-invalid={!!editError}
-                      className={cn("text-sm", editError && "border-red-300")}
+                      <Input
+                        value={draftValue}
+                        onChange={(e) => setDraftValue(e.target.value)}
+                        placeholder={t('edit_value_placeholder', { defaultValue: 'Enter value' })}
+                        aria-invalid={!!editError}
+                        className={cn("text-sm bg-card-warm border-line text-ink focus-visible:ring-pine/25", editError && "border-terracotta/50")}
                       type={
                         isDatePicker
                           ? 'date'
@@ -603,7 +609,7 @@ export function FieldRow({
                       }
                     />
                   )}
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-400 font-semibold uppercase tracking-widest">
+                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-ink-faint font-mono font-medium uppercase tracking-[0.16em]">
                     {formatHint && (
                       <span>{t('expected_format', { defaultValue: `Expected format: ${formatHint}`, format: formatHint })}</span>
                     )}
@@ -612,41 +618,41 @@ export function FieldRow({
                     )}
                   </div>
                   {editError && (
-                    <p className="text-[11px] text-red-600 font-semibold">{editError}</p>
+                    <p className="text-[11px] text-terracotta font-semibold">{editError}</p>
                   )}
                 </div>
               )}
 
               {confidence > 0 && state?.status !== 'confirmed' && (
                 <div className="mt-3 flex items-center space-x-3">
-                  <div className="w-20 h-1 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="w-20 h-1.5 bg-paper border border-line rounded-sm overflow-hidden">
                     <div
                       className={cn(
-                        'h-full rounded-full transition-all duration-1000',
-                        confidence > 0.8 ? 'bg-emerald-500' : confidence > 0.5 ? 'bg-blue-500' : 'bg-red-500',
+                        'h-full rounded-sm transition-all duration-1000',
+                        'bg-inkblue',
                       )}
                       style={{ width: `${confidence * 100}%` }}
                     />
                   </div>
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{(confidence * 100).toFixed(0)}% {t('certainty')}</span>
+                  <span className="text-[11px] font-mono font-medium text-ink-faint uppercase tracking-[0.16em]">{(confidence * 100).toFixed(0)}% {t('certainty')}</span>
                 </div>
               )}
             </div>
 
-            <div className="flex items-center space-x-2 shrink-0">
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               {proposedState && !isLocallyRejected && !isEditing && (
                 <>
                   <Button
                     size="sm"
-                    variant="outline"
-                    className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 text-[10px] font-black uppercase tracking-widest h-8 px-4 rounded-xl transition-all active:scale-95 cursor-pointer"
+                    variant="ghost"
+                    className="text-terracotta hover:bg-terracotta-soft text-[11px] font-semibold uppercase tracking-[0.16em] h-9 px-3 rounded-md transition-all active:scale-95 cursor-pointer"
                     onClick={() => onReject(proposedState.field_path)}
                   >
                     {t('reject_match')}
                   </Button>
                   <Button
                     size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest h-8 px-4 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95 cursor-pointer"
+                    className="bg-pine hover:bg-pine-deep text-primary-foreground text-[11px] font-semibold uppercase tracking-[0.16em] h-9 px-3 rounded-md shadow-sm transition-all active:scale-95 cursor-pointer"
                     onClick={() => onConfirm(proposedState.field_path)}
                   >
                     {t('confirm_match')}
@@ -658,14 +664,14 @@ export function FieldRow({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 text-[10px] font-black uppercase tracking-widest h-8 px-4 rounded-xl transition-all active:scale-95 cursor-pointer"
+                    className="border-line text-ink-soft hover:bg-paper hover:text-ink text-[11px] font-semibold uppercase tracking-[0.16em] h-9 px-3 rounded-md transition-all active:scale-95 cursor-pointer"
                     onClick={() => onUndoReject && onUndoReject(proposedState.field_path)}
                   >
                     {t('undo_rejection', { defaultValue: 'Undo' })}
                   </Button>
                   <Button
                     size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest h-8 px-4 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95 cursor-pointer"
+                    className="bg-pine hover:bg-pine-deep text-primary-foreground text-[11px] font-semibold uppercase tracking-[0.16em] h-9 px-3 rounded-md shadow-sm transition-all active:scale-95 cursor-pointer"
                     onClick={() => onConfirm(proposedState.field_path)}
                   >
                     {t('confirm_match')}
@@ -675,8 +681,8 @@ export function FieldRow({
               {canEdit && !isEditing && (
                 <Button
                   size="sm"
-                  variant="outline"
-                  className="border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-700 text-[10px] font-black uppercase tracking-widest h-8 px-3 rounded-xl transition-all active:scale-95 cursor-pointer"
+                  variant="ghost"
+                  className="text-ink-soft hover:bg-paper hover:text-ink text-[11px] font-semibold uppercase tracking-[0.16em] h-9 px-3 rounded-md transition-all active:scale-95 cursor-pointer"
                   onClick={handleStartEdit}
                 >
                   <Pencil className="w-3 h-3 mr-1.5" />
@@ -688,7 +694,7 @@ export function FieldRow({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-700 text-[10px] font-black uppercase tracking-widest h-8 px-3 rounded-xl transition-all active:scale-95 cursor-pointer"
+                    className="border-line text-ink-soft hover:bg-paper hover:text-ink text-[11px] font-semibold uppercase tracking-[0.16em] h-9 px-3 rounded-md transition-all active:scale-95 cursor-pointer"
                     onClick={handleCancelEdit}
                     disabled={isSaving}
                   >
@@ -696,7 +702,7 @@ export function FieldRow({
                   </Button>
                   <Button
                     size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest h-8 px-3 rounded-xl shadow-lg shadow-blue-600/20 transition-all active:scale-95 cursor-pointer"
+                    className="bg-pine hover:bg-pine-deep text-primary-foreground text-[11px] font-semibold uppercase tracking-[0.16em] h-9 px-3 rounded-md shadow-sm transition-all active:scale-95 cursor-pointer"
                     onClick={handleSaveEdit}
                     disabled={isSaving}
                   >
@@ -705,24 +711,36 @@ export function FieldRow({
                 </>
               )}
               {state?.status === 'confirmed' && (
-                <div className="p-1 px-2 bg-emerald-50 text-emerald-600 rounded-lg">
+                <div className="p-1.5 bg-leaf rounded-md text-primary-foreground">
                   <CheckCircle2 className="w-4 h-4" />
                 </div>
               )}
             </div>
           </div>
 
-          {/* Source Evidence Provenance */}
+          {/* Source Evidence Provenance (collapsed by default) */}
           {sourceEvidence.length > 0 && (
             <div className="px-4 pb-4">
-              <div className="pt-3 border-t border-slate-100 space-y-3">
-                <div className="flex items-center space-x-2 text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                  <Quote className="w-2.5 h-2.5" />
-                  <span>{t('source_provenance')}</span>
-                </div>
-                {sourceEvidence.map((ev) => (
-                  <EvidenceQuote key={ev.evidence_id} ev={ev} />
-                ))}
+              <div className="bg-paper border border-line rounded-md">
+                <button
+                  type="button"
+                  onClick={() => setIsEvidenceOpen((open) => !open)}
+                  aria-expanded={isEvidenceOpen}
+                  className="flex items-center justify-between w-full px-3 py-2 text-left cursor-pointer"
+                >
+                  <span className="flex items-center space-x-2 text-[11px] font-mono font-medium text-ink-faint uppercase tracking-[0.2em]">
+                    <Quote className="w-3 h-3" />
+                    <span>{t('source_provenance')} ({sourceEvidence.length})</span>
+                  </span>
+                  <ChevronDown className={cn('w-3.5 h-3.5 text-ink-faint transition-transform duration-200', isEvidenceOpen && 'rotate-180')} />
+                </button>
+                {isEvidenceOpen && (
+                  <div className="space-y-3 border-t border-line p-3">
+                    {sourceEvidence.map((ev) => (
+                      <EvidenceQuote key={ev.evidence_id} ev={ev} />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -738,8 +756,8 @@ export function FieldRow({
               animate={{ opacity: 1, x: 0 }}
               key={issue.issue_id}
               className={cn(
-                "flex items-center space-x-2 text-[10px] font-bold p-1 px-2 rounded-lg w-fit",
-                issue.blocking ? "bg-red-50 text-red-600 border border-red-100" : "bg-amber-50 text-amber-600 border border-amber-100"
+                "flex items-center space-x-2 text-[11px] font-semibold p-1 px-2 rounded-md w-fit border",
+                issue.blocking ? "bg-terracotta-soft text-terracotta border-terracotta/30" : "bg-marigold-soft text-marigold border-marigold/30"
               )}
             >
               <AlertCircle className="w-3 h-3" />

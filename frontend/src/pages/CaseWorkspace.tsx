@@ -4,13 +4,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Loader2,
   Plus,
-  Zap,
+  ArrowLeft,
   MessageSquare,
   Layout
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { Badge } from '@/components/ui/badge'
+
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import {
@@ -668,19 +668,23 @@ export default function CaseWorkspace() {
         ? t('completion_ready')
         : t('completion_complete')
 
-  const getStatusColor = (status: string) => {
+  const getStatusDot = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-700 border-green-200'
+      case 'approved':
+        return 'bg-leaf'
       case 'failed':
-        return 'bg-red-100 text-red-700 border-red-200'
+        return 'bg-terracotta'
       case 'extracting':
       case 'resolving':
-        return 'bg-blue-100 text-blue-700 border-blue-200'
+      case 'artifact_generating':
+        return 'bg-inkblue'
+      case 'ready_for_review':
+        return 'bg-marigold-bright'
       case 'awaiting_user':
-        return 'bg-amber-100 text-amber-700 border-amber-200'
+        return 'bg-marigold-bright'
       default:
-        return 'bg-slate-100 text-slate-700 border-slate-200'
+        return 'bg-primary-foreground/50'
     }
   }
 
@@ -695,18 +699,15 @@ export default function CaseWorkspace() {
 
   if (isInitializing) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center bg-slate-50/20 font-sans">
-        <div className="flex flex-col items-center max-w-sm text-center px-8 py-10 rounded-3xl bg-white shadow-xl shadow-slate-200/50 border border-slate-100/80 backdrop-blur-md animate-in fade-in zoom-in-95 duration-300">
-          <div className="relative mb-6">
-            <div className="absolute inset-0 rounded-full bg-blue-100/60 blur-xl animate-pulse" />
-            <div className="relative p-4 bg-gradient-to-tr from-blue-50 to-white rounded-2xl border border-blue-100 shadow-inner">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-            </div>
+      <div className="h-screen flex flex-col items-center justify-center bg-paper font-sans">
+        <div className="flex flex-col items-center max-w-sm text-center px-8 py-10 rounded-lg card-ledger animate-in fade-in zoom-in-95 duration-300">
+          <div className="w-12 h-12 rounded-md bg-pine flex items-center justify-center mb-5">
+            <Loader2 className="w-6 h-6 animate-spin text-primary-foreground" />
           </div>
-          <h3 className="text-sm font-black text-slate-900 mb-2 uppercase tracking-widest">
+          <h3 className="font-mono text-[11px] font-medium text-ink mb-2 uppercase tracking-[0.22em]">
             {isLoadingCase ? t('loading_case') : t('preparing_assistant')}
           </h3>
-          <p className="text-xs font-bold text-slate-400 leading-relaxed">
+          <p className="text-xs text-ink-soft leading-relaxed">
             {isLoadingCase
               ? t('loading_case_desc')
               : t('preparing_assistant_desc')
@@ -718,35 +719,42 @@ export default function CaseWorkspace() {
   }
 
   return (
-    <div className="h-dvh min-h-screen flex flex-col bg-slate-50/20 overflow-hidden font-sans">
-      <header className="h-14 border-b border-slate-200/50 bg-white/80 backdrop-blur-md px-6 flex items-center justify-between shrink-0 shadow-sm z-10">
-        <div className="flex items-center space-x-4">
-          <div className="p-1.5 bg-blue-600 rounded-lg cursor-pointer hover:bg-blue-700 transition-colors" onClick={() => navigate('/')}>
-            <Zap className="w-4 h-4 text-white" />
-          </div>
-          <div className="flex flex-col">
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-bold text-slate-900">{caseDetail ? t('template_' + caseDetail.template.template_id + '_name', { defaultValue: caseDetail.template.name }) : ''}</span>
-              <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded leading-none">#{caseId?.slice(0, 8)}</span>
+    <div className="h-dvh min-h-screen flex flex-col bg-paper overflow-hidden font-sans">
+      <header className="min-h-14 h-auto bg-pine-deep text-primary-foreground px-4 sm:px-6 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 py-1.5 border-b border-pine-deep z-10">
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            className="w-9 h-9 rounded-md bg-primary-foreground/10 border border-primary-foreground/15 flex items-center justify-center hover:bg-primary-foreground/20 transition-colors cursor-pointer shrink-0"
+            onClick={() => navigate('/')}
+            aria-label="Back to intake hub"
+            title="Back to Intake Hub"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-[13px] font-semibold text-primary-foreground truncate">{caseDetail ? t('template_' + caseDetail.template.template_id + '_name', { defaultValue: caseDetail.template.name }) : ''}</span>
+              <span className="font-mono text-[11px] text-primary-foreground/60 bg-primary-foreground/10 px-1.5 py-0.5 rounded leading-none shrink-0">#{caseId?.slice(0, 8)}</span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           {/* Language Selector Dropdown */}
-          <LanguageSelector onLanguageChange={(code) => updateLanguageMutation.mutate(code)} />
+          <LanguageSelector onLanguageChange={(code) => updateLanguageMutation.mutate(code)} className="border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 hover:border-primary-foreground/30 shadow-none [&_svg]:text-primary-foreground/70" />
 
-          <div className="hidden sm:block h-4 w-px bg-slate-200 mx-1" />
+          <div className="hidden sm:block h-5 w-px bg-primary-foreground/15 mx-1" />
 
           {/* Toggle View Mode */}
-          <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200/60 shadow-sm mr-2 select-none">
+          <div className="flex items-center bg-pine/60 p-0.5 rounded-md border border-primary-foreground/10 select-none" role="group" aria-label="View mode">
             <button
               onClick={() => setIsSimplifiedView(true)}
+              aria-pressed={isSimplifiedView}
+              aria-label={t('chat_view')}
               className={cn(
-                "flex items-center space-x-1.5 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer",
+                "flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-[5px] text-[11px] font-semibold uppercase tracking-[0.14em] transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 min-h-[40px]",
                 isSimplifiedView
-                  ? "bg-white text-blue-600 shadow-sm"
-                  : "text-slate-400 hover:text-slate-600"
+                  ? "bg-primary-foreground text-pine-deep shadow-sm"
+                  : "text-primary-foreground/60 hover:text-primary-foreground"
               )}
             >
               <MessageSquare className="w-3 h-3" />
@@ -754,11 +762,13 @@ export default function CaseWorkspace() {
             </button>
             <button
               onClick={() => setIsSimplifiedView(false)}
+              aria-pressed={!isSimplifiedView}
+              aria-label={t('detailed_view')}
               className={cn(
-                "flex items-center space-x-1.5 px-3 py-1 rounded-md text-[10px] font-black uppercase tracking-wider transition-all duration-200 cursor-pointer",
+                "flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-[5px] text-[11px] font-semibold uppercase tracking-[0.14em] transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 min-h-[40px]",
                 !isSimplifiedView
-                  ? "bg-white text-blue-600 shadow-sm"
-                  : "text-slate-400 hover:text-slate-600"
+                  ? "bg-primary-foreground text-pine-deep shadow-sm"
+                  : "text-primary-foreground/60 hover:text-primary-foreground"
               )}
             >
               <Layout className="w-3 h-3" />
@@ -767,37 +777,41 @@ export default function CaseWorkspace() {
           </div>
 
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="hidden sm:flex h-8 w-8 p-0 rounded-lg border-slate-200 hover:bg-slate-50 hover:text-blue-600 transition-all shadow-sm"
+            aria-label="New case"
+            className="flex h-10 px-2.5 sm:w-9 sm:p-0 rounded-md border border-primary-foreground/15 bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
             onClick={() => navigate('/')}
           >
             <Plus className="w-4 h-4" />
+            <span className="sm:hidden ml-1 text-[11px] font-semibold">New</span>
           </Button>
 
-          <div className="hidden sm:block h-4 w-px bg-slate-200 mx-1" />
+          <div className="hidden sm:block h-5 w-px bg-primary-foreground/15 mx-1" />
 
-          <Badge className={cn('px-2.5 py-0.5 font-bold text-[9px] uppercase tracking-wider border rounded-full', getStatusColor(caseDetail?.status || ''))}>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 font-mono text-[11px] font-medium uppercase tracking-[0.14em] border rounded border-primary-foreground/30 text-primary-foreground/90">
+            <span className={cn('w-1.5 h-1.5 rounded-full', getStatusDot(caseDetail?.status || ''))} />
             {t('case_status_' + caseDetail?.status)}
-          </Badge>
+          </span>
 
           {caseDetail?.metadata?.preferred_language && caseDetail?.metadata?.preferred_language !== 'en' && (
-            <Badge className="px-2.5 py-0.5 font-bold text-[9px] uppercase tracking-wider border rounded-full bg-blue-50 text-blue-700 border-blue-200">
+            <span className="hidden lg:inline-block px-2.5 py-1 font-mono text-[11px] font-medium uppercase tracking-[0.14em] border rounded border-primary-foreground/30 text-primary-foreground/90">
               {t('language')}: {caseDetail.metadata.preferred_language === 'hi' ? 'हिन्दी' : 'English'}
-            </Badge>
+            </span>
           )}
 
-          <div className="h-4 w-px bg-slate-200 mx-1" />
-
           {caseDetail?.status === 'ready_for_review' && (
-            <Button
-              size="sm"
-              className="bg-green-600 hover:bg-green-700 text-white font-bold h-8 rounded-lg shadow-sm px-4 text-xs transition-all ring-offset-2 focus:ring-2 focus:ring-green-500/20 cursor-pointer"
-              onClick={() => approveMutation.mutate()}
-              disabled={approveMutation.isPending || validation?.some((v) => v.blocking) || !allFieldsConfirmed}
-            >
-              {t('approve_and_close')}
-            </Button>
+            <>
+              <div className="hidden sm:block h-5 w-px bg-primary-foreground/15 mx-1" />
+              <Button
+                size="sm"
+                className="bg-leaf hover:bg-leaf/85 text-primary-foreground font-semibold h-9 rounded-md px-4 text-[11px] uppercase tracking-[0.1em] transition-all cursor-pointer border border-leaf/40"
+                onClick={() => approveMutation.mutate()}
+                disabled={approveMutation.isPending || validation?.some((v) => v.blocking) || !allFieldsConfirmed}
+              >
+                {t('approve_and_close')}
+              </Button>
+            </>
           )}
 
           {caseDetail?.status === 'approved' && caseDetail.template.supported_artifacts.length > 0 && (
@@ -810,7 +824,7 @@ export default function CaseWorkspace() {
         </div>
       </header>
 
-      <main className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
+      <main className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
         {isSimplifiedView ? (
           <SimplifiedChatView
             caseDetail={caseDetail}
