@@ -3,12 +3,15 @@ from __future__ import annotations
 import html
 import json
 import re
+from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 
 from fastapi import HTTPException, Response, status
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse
+from minio.error import S3Error
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -322,7 +325,7 @@ async def generate_pdf_artifact(session: AsyncSession, case_id: str) -> Artifact
             for evidence_id in (record.source_evidence_ids or [])
         }
     )
-    evidence_records: list[EvidenceRecord] = []
+    evidence_records: Sequence[EvidenceRecord] = []
     if evidence_ids:
         evidence_records = (
             (
@@ -851,18 +854,33 @@ async def get_artifact_download_response(
             status_code=status.HTTP_404_NOT_FOUND, detail="Artifact not found"
         )
 
-    storage = get_storage_service()
-    download_url = await storage.get_download_url(artifact.storage_uri)
-
-    if download_url.startswith("local://"):
-        local_path = get_settings().local_storage_path / download_url.replace(
-            "local://", ""
+    media_type = (
+        "application/json"
+        if artifact.artifact_type == "json_export"
+        else "application/pdf"
+    )
+    filename = Path(artifact.storage_uri).name
+    if artifact.storage_uri.startswith("local://"):
+        local_path = (
+            get_settings().local_storage_path
+            / artifact.storage_uri.removeprefix("local://")
         )
-        media_type = (
-            "application/json"
-            if artifact.artifact_type == "json_export"
-            else "application/pdf"
-        )
-        return FileResponse(local_path, media_type=media_type, filename=local_path.name)
-
-    return RedirectResponse(download_url)
+        if not local_path.is_file():
+            raise HTTPException(404, "Artifact file not found")
+        return FileResponse(local_path, media_type=media_type, filename=filename)
+    try:
+        payload = await get_storage_service().read_bytes(artifact.storage_uri)
+    except FileNotFoundError as exc:
+        raise HTTPException(404, "Artifact file not found") from exc
+    except S3Error as exc:
+        code = 404 if exc.code in {"NoSuchKey", "NoSuchBucket", "NoSuchObject"} else 502
+        raise HTTPException(
+            code, "Artifact file could not be read from storage"
+        ) from exc
+    return Response(
+        content=payload,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename, safe='')}"
+        },
+    )

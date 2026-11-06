@@ -244,3 +244,12 @@ card. Completed cards remain readable after subsequent questions and page refres
 The display also groups old upload receipt messages and repeated upload prompts from
 existing cases, preserving their evidence associations without rewriting stored history.
 Conditional document batches remain separate when activated by later field answers.
+
+## Artifact downloads
+
+The authenticated download endpoint serves local files directly and proxies S3/RustFS
+file bytes through the API. It does not redirect browser requests to presigned storage
+URLs, which require separate browser connectivity and CORS configuration. Case ownership
+and schema access checks still apply. The response includes the actual media type and
+an attachment filename, and CORS exposes `Content-Disposition` so the frontend can use it.
+PDF and JSON downloads use the same authenticated blob path. Missing files return 404.

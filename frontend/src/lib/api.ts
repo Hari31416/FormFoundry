@@ -310,7 +310,10 @@ export const downloadArtifact = async (caseId: string, artifactId: string) => {
   const anchor = document.createElement('a')
   anchor.href = url
   const disposition = response.headers['content-disposition'] || ''
-  anchor.download = /filename="?([^";]+)"?/.exec(disposition)?.[1] || `artifact-${artifactId}`
+  const encodedName = /filename\*=UTF-8''([^;]+)/i.exec(disposition)?.[1]
+  anchor.download = encodedName ? decodeURIComponent(encodedName) : /filename="?([^";]+)"?/.exec(disposition)?.[1] || `artifact-${artifactId}`
+  document.body.appendChild(anchor)
   anchor.click()
+  anchor.remove()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
