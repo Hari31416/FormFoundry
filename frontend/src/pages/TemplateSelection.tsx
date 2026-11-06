@@ -1,5 +1,6 @@
 import React from 'react'
 import { useAuth } from '@/lib/auth'
+import { apiErrorMessage } from '@/lib/apiErrors'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams, useSearchParams, useLocation, Link } from 'react-router-dom'
 import { Plus, Trash2, Edit, Database, Search } from 'lucide-react'
@@ -52,10 +53,10 @@ export default function TemplateSelection() {
   const { templates, cases, schemas, casesByTemplate, isLoading } = useSchemaSummaries()
 
   const createCaseMutation = useMutation({ mutationFn: createCase, onSuccess: (d) => navigate(`/cases/${d.case_id}`) })
-  const createTemplateMutation = useMutation({ mutationFn: createTemplate, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['templates'] }); setIsEditing(false); setActiveTemplate(null) }, onError: (e: any) => alert(t('alert_create_template_failed', { error: e.response?.data?.detail || e.message })) })
-  const updateTemplateMutation = useMutation({ mutationFn: ({ id, version, data }: any) => updateTemplate(id, version, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['templates'] }); setIsEditing(false); setActiveTemplate(null) }, onError: (e: any) => alert(t('alert_update_template_failed', { error: e.response?.data?.detail || e.message })) })
-  const deleteTemplateMutation = useMutation({ mutationFn: ({ id, version }: any) => deleteTemplate(id, version), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['templates'] }), onError: (e: any) => alert(t('alert_delete_template_failed', { error: e.response?.data?.detail || e.message })) })
-  const deleteCaseMutation = useMutation({ mutationFn: deleteCase, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cases'] }), onError: (e: any) => alert(t('alert_delete_case_failed', { error: e.response?.data?.detail || e.message })) })
+  const createTemplateMutation = useMutation({ mutationFn: createTemplate, onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['templates'] }); setIsEditing(false); setActiveTemplate(null) }, onError: (e: any) => alert(t('alert_create_template_failed', { error: apiErrorMessage(e, t('auth_save_failed')) })) })
+  const updateTemplateMutation = useMutation({ mutationFn: ({ id, version, data }: any) => updateTemplate(id, version, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['templates'] }); setIsEditing(false); setActiveTemplate(null) }, onError: (e: any) => alert(t('alert_update_template_failed', { error: apiErrorMessage(e, t('auth_save_failed')) })) })
+  const deleteTemplateMutation = useMutation({ mutationFn: ({ id, version }: any) => deleteTemplate(id, version), onSuccess: () => queryClient.invalidateQueries({ queryKey: ['templates'] }), onError: (e: any) => alert(t('alert_delete_template_failed', { error: apiErrorMessage(e, t('auth_save_failed')) })) })
+  const deleteCaseMutation = useMutation({ mutationFn: deleteCase, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['cases'] }), onError: (e: any) => alert(t('alert_delete_case_failed', { error: apiErrorMessage(e, t('auth_save_failed')) })) })
 
   const handleDeleteCase = (id: string) => { if (confirm(t('alert_delete_case_confirm'))) deleteCaseMutation.mutate(id) }
   const handleCreateCase = (tid: string, ver: number) => createCaseMutation.mutate({ template_id: tid, template_version: ver, metadata: { preferred_language: i18n.language } })
