@@ -31,9 +31,13 @@ The `lifespan` async context manager handles startup and shutdown logic:
 - **Startup**:
   - Ensures the local storage directory exists.
   - Initializes the database connection and runs basic schema setup (`init_db`).
-  - Seeds the template registry from JSON configuration files (`ensure_seed_templates`).
+  - Bootstraps the administrator account. Templates remain in the database without filesystem synchronization.
 - **Shutdown**:
   - Database connections are closed automatically by the context manager.
+
+Example templates can be imported explicitly by running `uv run python seed_templates.py`
+from `backend/`. This inserts missing versions only; it does not overwrite or delete
+existing database templates. Restarting the app does not restore deleted templates.
 
 ## Middleware
 

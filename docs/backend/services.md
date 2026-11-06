@@ -23,7 +23,9 @@ A pluggable, centralized orchestrator that manages all regional language detecti
 
 Manages the template registry.
 
-- `ensure_seed_templates`: Loads templates from JSON on startup.
+- Templates created, updated, or deleted through the API are persisted only in the database. CRUD never writes or deletes configuration files.
+- `ensure_seed_templates`: Explicitly imports missing example versions from JSON. Run `uv run python seed_templates.py` from `backend/` when examples are needed. Existing database templates are never overwritten or deleted by this command.
+- Startup does not import or synchronize JSON files. Database edits and deletions survive restarts. Bundled JSON files are example inputs, not the live template registry.
 - `get_template_definition`: Retrieves specific versions of a template.
 
 ### Case Service (`app/cases/service.py`)

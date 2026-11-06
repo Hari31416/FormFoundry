@@ -19,7 +19,6 @@ from app.templates.service import (
     get_template,
     get_template_definition,
     list_templates,
-    save_template_config_to_file,
     serialize_template,
     upsert_template_record,
 )
@@ -96,14 +95,6 @@ async def update_template_route(
     updated_record = await upsert_template_record(session, payload)
     await session.commit()
 
-    try:
-        save_template_config_to_file(payload)
-    except Exception as e:
-        import logging
-
-        logger = logging.getLogger("app.templates.api")
-        logger.warning(f"Failed to update template config on disk: {e}")
-
     return serialize_template(updated_record)
 
 
@@ -154,17 +145,3 @@ async def delete_template_route(
             )
         )
     await session.commit()
-
-    try:
-        from app.core.config import get_settings
-
-        template_dir = get_settings().resolved_template_config_dir
-        for name in [f"{template_id}_v{template_version}.json", f"{template_id}.json"]:
-            file_path = template_dir / name
-            if file_path.exists():
-                file_path.unlink()
-    except Exception as e:
-        import logging
-
-        logger = logging.getLogger("app.templates.api")
-        logger.warning(f"Failed to delete template config on disk: {e}")

@@ -174,6 +174,11 @@ flowchart TD
    make frontend-setup
    ```
 
+Templates created in the builder are stored only in the database. To import the
+bundled examples into a new database, run `uv run python seed_templates.py` from
+`backend/`. This adds missing template versions without replacing existing ones.
+App startup does not synchronize templates with JSON files.
+
 ## Running the Application
 
 - **Start All**: `make start`

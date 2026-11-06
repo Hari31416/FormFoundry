@@ -9,8 +9,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from app.core.config import get_settings
-from app.db import dispose_engine
+from app.db import dispose_engine, get_session_maker
 from app.main import create_app
+from app.templates.service import ensure_seed_templates
 
 
 async def fake_generate_json(*, system_prompt: str, user_prompt: str) -> dict:
@@ -312,7 +313,12 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
         fake_extract_text_from_image_bytes,
     )
 
+    async def seed_test_templates():
+        async with get_session_maker()() as session:
+            await ensure_seed_templates(session)
+
     with TestClient(create_app()) as test_client:
+        test_client.portal.call(seed_test_templates)
         token = test_client.post(
             "/api/v1/auth/token",
             data={"username": "admin", "password": "test-admin-password"},

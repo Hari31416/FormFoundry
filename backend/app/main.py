@@ -12,7 +12,6 @@ from app.core.logging import configure_logging
 from app.core.request_id import RequestIdMiddleware
 from app.db import get_session_maker, init_db
 from app.languages.manager import close_language_manager
-from app.templates.service import ensure_seed_templates
 
 
 @asynccontextmanager
@@ -22,7 +21,6 @@ async def lifespan(_: FastAPI):
     await init_db()
     session_maker = get_session_maker()
     async with session_maker() as session:
-        await ensure_seed_templates(session)
         await bootstrap_admin(session)
     try:
         yield

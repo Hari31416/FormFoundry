@@ -38,20 +38,6 @@ def serialize_template(record: TemplateDefinitionRecord) -> TemplateDefinition:
     )
 
 
-def save_template_config_to_file(payload: TemplateDefinitionCreate) -> None:
-    if get_settings().environment == "test":
-        return
-    template_dir = get_settings().resolved_template_config_dir
-    template_dir.mkdir(parents=True, exist_ok=True)
-    file_name = f"{payload.template_id}_v{payload.template_version}.json"
-    file_path = template_dir / file_name
-
-    import json
-
-    data = json.loads(payload.model_dump_json(by_alias=True))
-    file_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
-
-
 async def create_template(
     session: AsyncSession, payload: TemplateDefinitionCreate
 ) -> TemplateDefinition:
@@ -80,25 +66,6 @@ async def create_template(
     session.add(record)
     await session.commit()
     await session.refresh(record)
-
-    try:
-        save_template_config_to_file(payload)
-        logger.info(
-            "templates.disk_save.completed",
-            extra={
-                "template_id": payload.template_id,
-                "template_version": payload.template_version,
-            },
-        )
-    except Exception as e:
-        logger.warning(
-            "templates.disk_save.failed",
-            extra={
-                "template_id": payload.template_id,
-                "template_version": payload.template_version,
-                "error": str(e),
-            },
-        )
 
     logger.info(
         "templates.create.completed",
@@ -193,33 +160,23 @@ async def upsert_template_record(
 
 
 async def ensure_seed_templates(session: AsyncSession) -> None:
-    logger.info("templates.seed_sync.started")
-    configured_templates = load_template_configs()
-    configured_keys = {
-        (template.template_id, template.template_version)
-        for template in configured_templates
+    """Explicitly import missing examples without changing persisted templates."""
+    configured_templates = {
+        (payload.template_id, payload.template_version): payload
+        for payload in load_template_configs()
     }
-    existing_records = (
-        (await session.execute(select(TemplateDefinitionRecord))).scalars().all()
-    )
-
-    deleted_count = 0
-    for record in existing_records:
-        if (record.template_id, record.template_version) not in configured_keys:
-            await session.delete(record)
-            deleted_count += 1
-
-    upserted_count = 0
-    for payload in configured_templates:
+    inserted_count = 0
+    for payload in configured_templates.values():
+        if await get_template(session, payload.template_id, payload.template_version):
+            continue
         await upsert_template_record(session, payload)
-        upserted_count += 1
+        inserted_count += 1
 
     await session.commit()
     logger.info(
-        "templates.seed_sync.completed",
+        "templates.seed.completed",
         extra={
-            "deleted_count": deleted_count,
-            "upserted_count": upserted_count,
+            "inserted_count": inserted_count,
             "total_configured": len(configured_templates),
         },
     )
