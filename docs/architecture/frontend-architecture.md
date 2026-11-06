@@ -53,6 +53,9 @@ Frontend localization is implemented via `react-i18next` and maintained under `s
 
 - `en.json`: Key-value map for all English UI elements, prompts, and tooltips.
 - `hi.json`: Fully localized Hindi translation map.
+- `src/lib/dateLocale.ts`: Maps the active i18n language to a `date-fns` locale (`enUS`/`hi`) and the BCP-47 tag used by `Intl` formatters, so relative times and absolute dates render in the viewer's language.
+
+All user-facing strings must go through `t()` — labels, placeholders, `aria-label`/`title` attributes, alert/confirm copy, and empty states. Both locale files are kept at exact key parity (verified in CI by comparing key sets); template names and descriptions sent from the backend fall back to their raw value via `t('template_*_name', { defaultValue: template.name })`. Adding a language means adding one JSON file, registering it in `src/i18n.ts`, and extending the `SUPPORTED_LANGUAGES` list in `LanguageSelector.tsx`.
 
 ### 1. Locale Persistence & Caching
 
