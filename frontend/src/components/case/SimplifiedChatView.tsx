@@ -40,6 +40,7 @@ import {
 } from '@/lib/api'
 import { FieldRow } from './FieldRow'
 import { useTranslation } from 'react-i18next'
+import { getActiveLocale } from '@/lib/dateLocale'
 
 interface SimplifiedChatViewProps {
   caseDetail: CaseDetail | undefined
@@ -353,7 +354,7 @@ export function SimplifiedChatView({
                   )}
 
                   <div className={cn("text-[11px] mt-2 font-mono font-medium uppercase tracking-[0.16em] leading-none text-right", isAssistant ? "text-ink-faint" : "text-primary-foreground/70")}>
-                    {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(msg.created_at).toLocaleTimeString(getActiveLocale(), { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
                 {!isAssistant && (
@@ -492,17 +493,17 @@ export function SimplifiedChatView({
                       </div>
                       <div>
                         <h4 className="text-xs font-semibold uppercase tracking-[0.16em] text-ink">
-                          {t('review_in_progress', { defaultValue: 'Review in Progress' })}
+                          {t('review_in_progress')}
                         </h4>
                         <p className="text-[11px] text-ink-soft mt-1 max-w-md leading-relaxed font-medium animate-none">
-                          {t('review_in_progress_desc', { defaultValue: 'Please approve or reject the remaining proposed fields to proceed.' })}
+                          {t('review_in_progress_desc')}
                         </p>
                       </div>
                       <Button
                         className="bg-paper/60 text-ink-faint border border-line font-semibold uppercase tracking-[0.16em] text-[11px] rounded-md h-10 px-8 cursor-not-allowed"
                         disabled
                       >
-                        {t('awaiting_verification_count', { count: unreviewedProposedCount, defaultValue: `Review Remaining (${unreviewedProposedCount})` })}
+                        {t('awaiting_verification_count', { count: unreviewedProposedCount })}
                       </Button>
                     </>
                   ) : localRejectedFields.size > 0 ? (
@@ -512,10 +513,10 @@ export function SimplifiedChatView({
                       </div>
                       <div>
                         <h4 className="text-xs font-semibold uppercase tracking-[0.16em] text-ink">
-                          {t('rejections_pending', { defaultValue: 'Review Completed with Rejections' })}
+                          {t('rejections_pending')}
                         </h4>
                         <p className="text-[11px] text-ink-soft mt-1 max-w-md leading-relaxed font-medium">
-                          {t('rejections_pending_desc', { defaultValue: 'You have rejected some fields. Start the intake chat again to clarify these details.' })}
+                          {t('rejections_pending_desc')}
                         </p>
                       </div>
                       <Button
@@ -528,7 +529,7 @@ export function SimplifiedChatView({
                         ) : (
                           <Zap className="w-3.5 h-3.5 mr-2" />
                         )}
-                        {t('start_qa_for_rejections', { count: localRejectedFields.size, defaultValue: `Start QA for Rejected Fields (${localRejectedFields.size})` })}
+                        {t('start_qa_for_rejections', { count: localRejectedFields.size })}
                       </Button>
                     </>
                   ) : (

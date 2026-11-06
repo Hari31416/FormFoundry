@@ -40,6 +40,7 @@ import {
 } from '@/lib/api'
 import { FieldRow } from './FieldRow'
 import { useTranslation } from 'react-i18next'
+import { getActiveLocale } from '@/lib/dateLocale'
 
 interface DetailedWorkspaceViewProps {
   activeTab: string
@@ -248,13 +249,13 @@ export function DetailedWorkspaceView({
                               {ev.source_subtype}
                             </span>
                           )}
-                          <span className="text-[11px] font-mono text-ink-faint tabular-nums">{new Date(ev.created_at).toLocaleString()}</span>
+                          <span className="text-[11px] font-mono text-ink-faint tabular-nums">{new Date(ev.created_at).toLocaleString(getActiveLocale())}</span>
                         </div>
                       </CardHeader>
                       <CardContent className="p-5">
                         <p className="text-[13px] text-ink-soft leading-relaxed font-medium italic">
                           "
-                          {ev.raw_text || ev.parsed_payload?.extracted_text || 'Extraction pending or no text detected yet.'}
+                          {ev.raw_text || ev.parsed_payload?.extracted_text || t('extraction_pending')}
                           "
                         </p>
                         {typeof ev.parsed_payload?.page_count === 'number' && (
@@ -478,20 +479,20 @@ export function DetailedWorkspaceView({
                     <div className="flex items-center gap-2 mb-1">
                       <Loader2 className="w-3.5 h-3.5 animate-spin text-marigold" />
                       <p className="text-[13px] font-semibold text-marigold leading-tight">
-                        {t('review_in_progress', { defaultValue: 'Review in Progress' })}
+                        {t('review_in_progress')}
                       </p>
                     </div>
                     <p className="text-[11px] text-marigold/80 font-medium leading-relaxed">
-                      {t('review_in_progress_side_desc', { defaultValue: `Please approve or reject all proposed fields. ${unreviewedProposedCount} fields remaining.` })}
+                      {t('review_in_progress_side_desc', { count: unreviewedProposedCount })}
                     </p>
                   </div>
                 ) : localRejectedFields.size > 0 ? (
                   <div className="bg-inkblue-soft/60 border border-inkblue/25 p-4 rounded-md space-y-3">
                     <p className="text-[13px] font-semibold text-inkblue leading-tight">
-                      {t('rejections_pending', { defaultValue: 'Review Completed with Rejections' })}
+                      {t('rejections_pending')}
                     </p>
                     <p className="text-[11px] text-inkblue/80 font-medium leading-relaxed">
-                      {t('rejections_pending_desc', { defaultValue: 'You have rejected some fields. Start the intake chat again to clarify these details.' })}
+                      {t('rejections_pending_desc')}
                     </p>
                     <Button
                       size="sm"
@@ -500,7 +501,7 @@ export function DetailedWorkspaceView({
                       disabled={bulkRejectMutation.isPending}
                     >
                       {bulkRejectMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin mr-1.5" /> : <Zap className="w-3 h-3 mr-1.5" />}
-                      {t('start_qa_for_rejections', { count: localRejectedFields.size, defaultValue: `Start QA (${localRejectedFields.size})` })}
+                      {t('start_qa_for_rejections', { count: localRejectedFields.size })}
                     </Button>
                   </div>
                 ) : (

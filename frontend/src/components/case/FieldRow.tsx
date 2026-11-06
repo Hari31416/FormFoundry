@@ -22,11 +22,12 @@ import {
   Evidence,
   ValidationRule
 } from '@/lib/api'
+import i18next from 'i18next'
 import { useTranslation } from 'react-i18next'
 
 export function RenderNestedObject({ value, schema }: { value: unknown; schema?: TemplateField[] }) {
   if (value === null || value === undefined || typeof value !== 'object') {
-    return <span className="text-ink-faint italic">Empty object</span>
+    return <span className="text-ink-faint italic">{i18next.t('empty_object')}</span>
   }
 
   const obj = value as Record<string, unknown>
@@ -47,7 +48,7 @@ export function RenderNestedObject({ value, schema }: { value: unknown; schema?:
           <div key={path} className="flex flex-col text-[11px] leading-tight">
             <div className="flex items-center space-x-1.5">
               <span className="font-semibold text-ink-faint text-[11px] tracking-[0.08em] uppercase font-mono">{label}:</span>
-              {!hasVal && <span className="text-ink-faint/70 italic text-[11px]">(not provided)</span>}
+              {!hasVal && <span className="text-ink-faint/70 italic text-[11px]">{i18next.t('not_provided')}</span>}
             </div>
             {hasVal && (
               <div className="pl-2 mt-0.5 text-ink font-semibold font-mono">
@@ -83,7 +84,7 @@ export function RenderNestedObject({ value, schema }: { value: unknown; schema?:
 
 export function RenderListOfObjects({ value, schema }: { value: unknown; schema?: TemplateField[] }) {
   if (!Array.isArray(value) || value.length === 0) {
-    return <span className="text-ink-faint italic">Empty list</span>
+    return <span className="text-ink-faint italic">{i18next.t('empty_list')}</span>
   }
 
   return (
@@ -91,7 +92,7 @@ export function RenderListOfObjects({ value, schema }: { value: unknown; schema?
       {value.map((item, idx) => (
         <div key={idx} className="relative border border-line bg-card-warm rounded-md shadow-xs p-2 overflow-hidden hover:border-line-strong transition-colors">
           <div className="absolute top-0 right-0 bg-paper border-bl border-line text-[11px] font-mono font-medium text-ink-faint px-2 py-0.5 rounded-bl-md uppercase tracking-[0.14em]">
-            Item #{idx + 1}
+            {i18next.t('item_number', { index: idx + 1 })}
           </div>
           <div className="mt-1">
             <RenderNestedObject value={item} schema={schema} />
@@ -305,7 +306,7 @@ export function FieldRow({
       (typeof value === 'string' && value.trim() === '') ||
       (Array.isArray(value) && value.length === 0)
     if (field.required && isEmpty) {
-      return t('validation_required', { defaultValue: 'This field is required.' })
+      return t('validation_required')
     }
     if (isEmpty) {
       return null
@@ -314,35 +315,35 @@ export function FieldRow({
     const items = field.repeated && Array.isArray(value) ? value : [value]
     for (const item of items) {
       if (field.type === 'enum' && !field.enum_options.includes(String(item))) {
-        return t('validation_enum', { defaultValue: 'Select a valid option.' })
+        return t('validation_enum')
       }
       if (field.type === 'date') {
         const dateRegex = new RegExp('^\\d{4}-\\d{2}-\\d{2}$')
         if (!dateRegex.test(String(item))) {
-          return t('validation_date', { defaultValue: 'Date format is invalid.' })
+          return t('validation_date')
         }
       }
       if (field.type === 'boolean' && typeof item !== 'boolean') {
-        return t('validation_boolean', { defaultValue: 'Select true or false.' })
+        return t('validation_boolean')
       }
       if (field.type === 'integer' && !Number.isInteger(item)) {
-        return t('validation_integer', { defaultValue: 'Enter a valid integer.' })
+        return t('validation_integer')
       }
       if (field.type === 'number' && (typeof item !== 'number' || Number.isNaN(item))) {
-        return t('validation_number', { defaultValue: 'Enter a valid number.' })
+        return t('validation_number')
       }
 
       for (const ref of validationRefs) {
         if (ref === 'email') {
           const emailRegex = new RegExp(emailPattern)
           if (!emailRegex.test(String(item))) {
-            return t('validation_email', { defaultValue: 'Email format is invalid.' })
+            return t('validation_email')
           }
         }
         if (ref === 'phone') {
           const phoneRegex = new RegExp(phonePattern)
           if (!phoneRegex.test(String(item))) {
-            return t('validation_phone', { defaultValue: 'Phone format is invalid.' })
+            return t('validation_phone')
           }
         }
         if (ref.startsWith('regex:')) {
@@ -350,7 +351,7 @@ export function FieldRow({
           try {
             const regex = new RegExp(pattern)
             if (!regex.test(String(item))) {
-              return t('validation_format', { defaultValue: 'Invalid format.' })
+              return t('validation_format')
             }
           } catch {
             // ignore invalid regex
@@ -359,19 +360,13 @@ export function FieldRow({
         if (ref.startsWith('min:')) {
           const threshold = Number(ref.split(':', 2)[1])
           if (typeof item === 'number' && !Number.isNaN(threshold) && item < threshold) {
-            return t('validation_min', {
-              defaultValue: `Value must be at least ${threshold}.`,
-              threshold,
-            })
+            return t('validation_min', { threshold })
           }
         }
         if (ref.startsWith('min_length:')) {
           const threshold = Number(ref.split(':', 2)[1])
           if (String(item).trim().length < threshold) {
-            return t('validation_min_length', {
-              defaultValue: `Value must be at least ${threshold} characters long.`,
-              threshold,
-            })
+            return t('validation_min_length', { threshold })
           }
         }
         const rulePattern = validationRuleMap.get(ref)?.pattern
@@ -379,7 +374,7 @@ export function FieldRow({
           try {
             const regex = new RegExp(rulePattern)
             if (!regex.test(String(item))) {
-              return t('validation_format', { defaultValue: 'Invalid format.' })
+              return t('validation_format')
             }
           } catch {
             // ignore invalid regex
@@ -398,21 +393,21 @@ export function FieldRow({
     if (field.type === 'integer') {
       const parsed = Number(raw)
       if (!Number.isInteger(parsed)) {
-        return { value: null, error: t('validation_integer', { defaultValue: 'Enter a valid integer.' }) }
+        return { value: null, error: t('validation_integer') }
       }
       return { value: parsed, error: null }
     }
     if (field.type === 'number') {
       const parsed = Number(raw)
       if (Number.isNaN(parsed)) {
-        return { value: null, error: t('validation_number', { defaultValue: 'Enter a valid number.' }) }
+        return { value: null, error: t('validation_number') }
       }
       return { value: parsed, error: null }
     }
     if (field.type === 'boolean') {
       if (raw === 'true') return { value: true, error: null }
       if (raw === 'false') return { value: false, error: null }
-      return { value: null, error: t('validation_boolean', { defaultValue: 'Select true or false.' }) }
+      return { value: null, error: t('validation_boolean') }
     }
     return { value: raw, error: null }
   }
@@ -421,19 +416,19 @@ export function FieldRow({
     const raw = draftValue.trim()
     if (field.type === 'object' || field.type === 'list_of_objects') {
       if (!raw) {
-        return { value: field.type === 'object' ? {} : [], error: field.required ? t('validation_required', { defaultValue: 'This field is required.' }) : null }
+        return { value: field.type === 'object' ? {} : [], error: field.required ? t('validation_required') : null }
       }
       try {
         const parsed = JSON.parse(raw)
         if (field.type === 'object' && (typeof parsed !== 'object' || Array.isArray(parsed) || parsed === null)) {
-          return { value: null, error: t('validation_must_be_object', { defaultValue: 'Value must be a valid JSON object.' }) }
+          return { value: null, error: t('validation_must_be_object') }
         }
         if (field.type === 'list_of_objects' && !Array.isArray(parsed)) {
-          return { value: null, error: t('validation_must_be_array', { defaultValue: 'Value must be a valid JSON array.' }) }
+          return { value: null, error: t('validation_must_be_array') }
         }
         return { value: parsed, error: null }
       } catch (err: any) {
-        return { value: null, error: t('validation_invalid_json', { defaultValue: `Invalid JSON: ${err.message}` }) }
+        return { value: null, error: t('validation_invalid_json', { error: err?.message || String(err) }) }
       }
     }
 
@@ -482,7 +477,7 @@ export function FieldRow({
     } catch (err: any) {
       const detail =
         err?.response?.data?.detail ||
-        t('edit_save_failed', { defaultValue: 'Failed to save changes.' })
+        t('edit_save_failed')
       setEditError(String(detail))
     } finally {
       setIsSaving(false)
@@ -506,18 +501,18 @@ export function FieldRow({
                 <span className="text-[11px] font-sans font-semibold uppercase tracking-[0.08em] text-ink">{field.label}</span>
                 {isLocallyRejected ? (
                   <Badge className="bg-terracotta-soft text-terracotta hover:bg-terracotta-soft border-terracotta/30 text-[11px] uppercase font-mono font-medium px-1.5 h-4 rounded">
-                    {t('field_status_rejected_pending', { defaultValue: 'Rejected (Pending QA)' })}
+                    {t('field_status_rejected_pending')}
                   </Badge>
                 ) : (
                   state && <FieldBadge status={state.status} />
                 )}
                 {field.required && (
-                  <span className="text-[11px] font-mono font-medium text-ink-soft border border-line-strong bg-paper rounded px-1 leading-none py-0.5">REQ</span>
+                  <span className="text-[11px] font-mono font-medium text-ink-soft border border-line-strong bg-paper rounded px-1 leading-none py-0.5">{t('req_badge')}</span>
                 )}
                 {field.calculation && (
                   <Badge className="bg-marigold-soft text-marigold hover:bg-marigold-soft border-marigold/30 text-[11px] uppercase font-mono font-medium px-1.5 h-4 rounded flex items-center gap-1">
                     <Lock className="w-2.5 h-2.5" />
-                    {t('field_calculated', { defaultValue: 'Calculated' })}
+                    {t('field_calculated')}
                   </Badge>
                 )}
               </div>
@@ -549,7 +544,7 @@ export function FieldRow({
                     <textarea
                       value={draftValue}
                       onChange={(e) => setDraftValue(e.target.value)}
-                      placeholder={t('edit_json_placeholder', { defaultValue: 'Enter valid JSON' })}
+                      placeholder={t('edit_json_placeholder')}
                       aria-invalid={!!editError}
                       rows={6}
                       className={cn(
@@ -566,7 +561,7 @@ export function FieldRow({
                       value={draftValue}
                       onChange={(e) => setDraftValue(e.target.value)}
                     >
-                      <option value="">{t('select_value', { defaultValue: 'Select a value' })}</option>
+                      <option value="">{t('select_value')}</option>
                       {field.enum_options.map((opt) => (
                         <option key={opt} value={opt}>
                           {opt}
@@ -582,15 +577,15 @@ export function FieldRow({
                       value={draftValue}
                       onChange={(e) => setDraftValue(e.target.value)}
                     >
-                      <option value="">{t('select_value', { defaultValue: 'Select a value' })}</option>
-                      <option value="true">{t('yes', { defaultValue: 'Yes' })}</option>
-                      <option value="false">{t('no', { defaultValue: 'No' })}</option>
+                      <option value="">{t('select_value')}</option>
+                      <option value="true">{t('yes')}</option>
+                      <option value="false">{t('no')}</option>
                     </select>
                   ) : (
                       <Input
                         value={draftValue}
                         onChange={(e) => setDraftValue(e.target.value)}
-                        placeholder={t('edit_value_placeholder', { defaultValue: 'Enter value' })}
+                        placeholder={t('edit_value_placeholder')}
                         aria-invalid={!!editError}
                         className={cn("text-sm bg-card-warm border-line text-ink focus-visible:ring-pine/25", editError && "border-terracotta/50")}
                       type={
@@ -611,10 +606,10 @@ export function FieldRow({
                   )}
                   <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-ink-faint font-mono font-medium uppercase tracking-[0.16em]">
                     {formatHint && (
-                      <span>{t('expected_format', { defaultValue: `Expected format: ${formatHint}`, format: formatHint })}</span>
+                      <span>{t('expected_format', { format: formatHint })}</span>
                     )}
                     {field.repeated && (
-                      <span>{t('comma_separated', { defaultValue: 'Comma-separated values' })}</span>
+                      <span>{t('comma_separated')}</span>
                     )}
                   </div>
                   {editError && (
@@ -667,7 +662,7 @@ export function FieldRow({
                     className="border-line text-ink-soft hover:bg-paper hover:text-ink text-[11px] font-semibold uppercase tracking-[0.16em] h-9 px-3 rounded-md transition-all active:scale-95 cursor-pointer"
                     onClick={() => onUndoReject && onUndoReject(proposedState.field_path)}
                   >
-                    {t('undo_rejection', { defaultValue: 'Undo' })}
+                    {t('undo_rejection')}
                   </Button>
                   <Button
                     size="sm"
@@ -686,7 +681,7 @@ export function FieldRow({
                   onClick={handleStartEdit}
                 >
                   <Pencil className="w-3 h-3 mr-1.5" />
-                  {t('edit_field', { defaultValue: 'Edit' })}
+                  {t('edit_field')}
                 </Button>
               )}
               {isEditing && (
@@ -706,7 +701,7 @@ export function FieldRow({
                     onClick={handleSaveEdit}
                     disabled={isSaving}
                   >
-                    {isSaving ? t('saving', { defaultValue: 'Saving...' }) : t('save', { defaultValue: 'Save' })}
+                    {isSaving ? t('saving') : t('save')}
                   </Button>
                 </>
               )}
