@@ -726,8 +726,8 @@ export default function CaseWorkspace() {
           <button
             className="w-9 h-9 rounded-md bg-primary-foreground/10 border border-primary-foreground/15 flex items-center justify-center hover:bg-primary-foreground/20 transition-colors cursor-pointer shrink-0"
             onClick={() => navigate('/')}
-            aria-label="Back to intake hub"
-            title="Back to Intake Hub"
+            aria-label={t('back_to_hub')}
+            title={t('back_to_hub')}
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
@@ -749,7 +749,7 @@ export default function CaseWorkspace() {
           <div className="hidden sm:block h-5 w-px bg-primary-foreground/15 mx-1" />
 
           {/* Toggle View Mode */}
-          <div className="flex items-center bg-pine/60 p-0.5 rounded-md border border-primary-foreground/10 select-none" role="group" aria-label="View mode">
+          <div className="flex items-center bg-pine/60 p-0.5 rounded-md border border-primary-foreground/10 select-none" role="group" aria-label={t('view_mode')}>
             <button
               onClick={() => setIsSimplifiedView(true)}
               aria-pressed={isSimplifiedView}
@@ -783,12 +783,12 @@ export default function CaseWorkspace() {
           <Button
             variant="ghost"
             size="sm"
-            aria-label="New case"
+            aria-label={t('new_case')}
             className="flex h-10 px-2.5 sm:w-9 sm:p-0 rounded-md border border-primary-foreground/15 bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
             onClick={() => navigate('/')}
           >
             <Plus className="w-4 h-4" />
-            <span className="sm:hidden ml-1 text-[11px] font-semibold">New</span>
+            <span className="sm:hidden ml-1 text-[11px] font-semibold">{t('new_word')}</span>
           </Button>
 
           <div className="hidden sm:block h-5 w-px bg-primary-foreground/15 mx-1" />

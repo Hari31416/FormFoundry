@@ -66,7 +66,7 @@ export function LanguageSelector({
       <DropdownMenuContent className="w-44 rounded-md p-1 shadow-lg border border-line bg-card-warm z-50">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-faint px-2.5 py-1.5 font-medium">
-            {t('select_language', { defaultValue: 'Select Language' })}
+            {t('select_language')}
           </DropdownMenuLabel>
           <DropdownMenuSeparator className="bg-line my-1" />
           {SUPPORTED_LANGUAGES.map((lang) => {
