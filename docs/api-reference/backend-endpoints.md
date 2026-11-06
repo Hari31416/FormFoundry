@@ -29,6 +29,17 @@ This is a summary of the key API endpoints available in the FormFoundry backend.
 | `POST` | `/api/v1/cases/{id}/evidence/text`   | Add a text note as evidence.           |
 | `POST` | `/api/v1/cases/{id}/evidence/upload` | Upload a file (PDF/Image) as evidence. |
 
+## Document analysis
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/api/v1/documents/types` | List supported document definitions. |
+| `GET` | `/api/v1/cases/{id}/evidence/{evidence_id}/document-analysis` | Read the latest basic analysis, or null if unprocessed. |
+
+The upload endpoint accepts optional multipart `document_type` and `document_country`
+fields. Evidence responses include `document_analysis`. See [document processing](../backend/documents.md)
+for result statuses, limits, and extension contracts.
+
 ## Extraction & Fields
 
 | Method | Path                                       | Description                                                         |

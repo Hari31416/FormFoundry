@@ -1,0 +1,407 @@
+{
+  "template_id": "indian-document-intake",
+  "template_version": 1,
+  "name": "Indian document intake",
+  "domain": "identity",
+  "description": "Collect information from Aadhaar and PAN, with an optional driving licence. Upload images or PDFs, review basic document checks, and confirm extracted fields. This workflow does not establish authenticity or KYC approval.",
+  "schema": [
+    {
+      "path": "aadhaar.full_name",
+      "label": "Name on Aadhaar",
+      "type": "string",
+      "required": true,
+      "default_question": "Upload your Aadhaar PDF or image, or provide the name printed on it.",
+      "clarification_question": "Upload your Aadhaar PDF or image, or provide the name printed on it.",
+      "help_text": "Read only from the Aadhaar document or an explicit answer about Aadhaar. Do not copy a name from PAN or driving licence.",
+      "sensitivity": "sensitive",
+      "validation_refs": [
+        "required"
+      ],
+      "render_targets": [
+        "aadhaar_full_name"
+      ],
+      "document_source": {
+        "country": "IN",
+        "document_type": "aadhaar",
+        "field": "full_name"
+      }
+    },
+    {
+      "path": "aadhaar.document_number",
+      "label": "Aadhaar number, masked accepted",
+      "type": "string",
+      "required": true,
+      "default_question": "Upload Aadhaar or provide its visible number. A masked number is accepted.",
+      "clarification_question": "Upload Aadhaar or provide its visible number. A masked number is accepted.",
+      "help_text": "Preserve masked characters and printed spacing. Never reconstruct hidden digits. Read only from Aadhaar.",
+      "sensitivity": "sensitive",
+      "validation_refs": [
+        "required",
+        "regex:^(?:[2-9][0-9]{3}[ -]?[0-9]{4}[ -]?[0-9]{4}|[Xx*]{4}[ -]?[Xx*]{4}[ -]?[0-9]{4})$"
+      ],
+      "render_targets": [
+        "aadhaar_document_number"
+      ],
+      "document_source": {
+        "country": "IN",
+        "document_type": "aadhaar",
+        "field": "document_number"
+      }
+    },
+    {
+      "path": "aadhaar.address",
+      "label": "Address on Aadhaar",
+      "type": "string",
+      "required": true,
+      "default_question": "Upload the address side of your Aadhaar or provide the address printed on it.",
+      "clarification_question": "Upload the address side of your Aadhaar or provide the address printed on it.",
+      "help_text": "Read only from Aadhaar. Include the complete printed address and PIN code. Do not copy an address from a different document.",
+      "sensitivity": "sensitive",
+      "validation_refs": [
+        "required"
+      ],
+      "render_targets": [
+        "aadhaar_address"
+      ],
+      "document_source": {
+        "country": "IN",
+        "document_type": "aadhaar",
+        "field": "address"
+      }
+    },
+    {
+      "path": "aadhaar.date_of_birth",
+      "label": "Date of birth on Aadhaar",
+      "type": "date",
+      "required": false,
+      "default_question": "What full date of birth is printed on Aadhaar, if available?",
+      "clarification_question": "What full date of birth is printed on Aadhaar, if available?",
+      "help_text": "Use only a complete date printed on Aadhaar. Do not infer day or month from a year; use aadhaar.year_of_birth when only a year is shown.",
+      "sensitivity": "sensitive",
+      "validation_refs": [],
+      "render_targets": [
+        "aadhaar_date_of_birth"
+      ],
+      "document_source": {
+        "country": "IN",
+        "document_type": "aadhaar",
+        "field": "date_of_birth"
+      }
+    },
+    {
+      "path": "aadhaar.year_of_birth",
+      "label": "Year of birth on Aadhaar",
+      "type": "integer",
+      "required": false,
+      "default_question": "What year of birth is printed on Aadhaar, if only a year is available?",
+      "clarification_question": "What year of birth is printed on Aadhaar, if only a year is available?",
+      "help_text": "Use when Aadhaar shows only a year of birth. Do not manufacture a full date.",
+      "sensitivity": "sensitive",
+      "validation_refs": [
+        "min:1900"
+      ],
+      "render_targets": [
+        "aadhaar_year_of_birth"
+      ],
+      "document_source": {
+        "country": "IN",
+        "document_type": "aadhaar",
+        "field": "year_of_birth"
+      }
+    },
+    {
+      "path": "pan.full_name",
+      "label": "Name on PAN",
+      "type": "string",
+      "required": true,
+      "default_question": "Upload your PAN PDF or image, or provide the name printed on it.",
+      "clarification_question": "Upload your PAN PDF or image, or provide the name printed on it.",
+      "help_text": "Read only from the PAN document or an explicit answer about PAN. Keep this separate from the names on Aadhaar and driving licence.",
+      "sensitivity": "sensitive",
+      "validation_refs": [
+        "required"
+      ],
+      "render_targets": [
+        "pan_full_name"
+      ],
+      "document_source": {
+        "country": "IN",
+        "document_type": "pan",
+        "field": "full_name"
+      }
+    },
+    {
+      "path": "pan.document_number",
+      "label": "PAN number",
+      "type": "string",
+      "required": true,
+      "default_question": "Upload PAN or provide its ten-character PAN number.",
+      "clarification_question": "Upload PAN or provide its ten-character PAN number.",
+      "help_text": "Read only the permanent account number from PAN. Normalize letters to uppercase and remove spaces.",
+      "sensitivity": "sensitive",
+      "validation_refs": [
+        "required",
+        "regex:^[A-Z]{5}[0-9]{4}[A-Z]$"
+      ],
+      "render_targets": [
+        "pan_document_number"
+      ],
+      "document_source": {
+        "country": "IN",
+        "document_type": "pan",
+        "field": "document_number"
+      }
+    },
+    {
+      "path": "pan.date_of_birth",
+      "label": "Date of birth on PAN",
+      "type": "date",
+      "required": true,
+      "default_question": "Upload PAN or provide the full date of birth printed on it.",
+      "clarification_question": "Upload PAN or provide the full date of birth printed on it.",
+      "help_text": "Read only from PAN. Normalize a complete printed date to YYYY-MM-DD.",
+      "sensitivity": "sensitive",
+      "validation_refs": [
+        "required"
+      ],
+      "render_targets": [
+        "pan_date_of_birth"
+      ],
+      "document_source": {
+        "country": "IN",
+        "document_type": "pan",
+        "field": "date_of_birth"
+      }
+    },
+    {
+      "path": "applicant.include_driving_licence",
+      "label": "Include a driving licence",
+      "type": "boolean",
+      "required": true,
+      "default_question": "Would you like to include a driving licence in this intake?",
+      "clarification_question": "Would you like to include a driving licence in this intake?",
+      "help_text": "Ask the applicant. A driving licence is optional; false keeps driving-licence fields inactive. Do not infer this choice from Aadhaar or PAN.",
+      "sensitivity": "standard",
+      "validation_refs": [
+        "required"
+      ],
+      "render_targets": [
+        "applicant_include_driving_licence"
+      ]
+    },
+    {
+      "path": "driving_licence.full_name",
+      "label": "Name on driving licence",
+      "type": "string",
+      "required": true,
+      "default_question": "Upload your driving licence or provide the name printed on it.",
+      "clarification_question": "Upload your driving licence or provide the name printed on it.",
+      "help_text": "Read only from the driving licence or an explicit answer about it. Keep the name separate from Aadhaar and PAN names.",
+      "sensitivity": "sensitive",
+      "validation_refs": [
+        "required"
+      ],
+      "render_targets": [
+        "driving_licence_full_name"
+      ],
+      "conditions": {
+        "depends_on": "applicant.include_driving_licence",
+        "equals": true
+      },
+      "document_source": {
+        "country": "IN",
+        "document_type": "driving_licence",
+        "field": "full_name"
+      }
+    },
+    {
+      "path": "driving_licence.document_number",
+      "label": "Driving licence number",
+      "type": "string",
+      "required": true,
+      "default_question": "Upload your driving licence or provide its licence number.",
+      "clarification_question": "Upload your driving licence or provide its licence number.",
+      "help_text": "Read only from the driving licence or an explicit answer about it. Preserve the printed licence number. Older state formats are allowed for review.",
+      "sensitivity": "sensitive",
+      "validation_refs": [
+        "required"
+      ],
+      "render_targets": [
+        "driving_licence_document_number"
+      ],
+      "conditions": {
+        "depends_on": "applicant.include_driving_licence",
+        "equals": true
+      },
+      "document_source": {
+        "country": "IN",
+        "document_type": "driving_licence",
+        "field": "document_number"
+      }
+    },
+    {
+      "path": "driving_licence.expiry_date",
+      "label": "Driving licence expiry date",
+      "type": "date",
+      "required": true,
+      "default_question": "Upload the validity side of your driving licence or provide its expiry date.",
+      "clarification_question": "Upload the validity side of your driving licence or provide its expiry date.",
+      "help_text": "Read only from the driving licence or an explicit answer about it. Use the printed non-transport validity end date if multiple validity categories appear. Do not confuse an issue date with an expiry date.",
+      "sensitivity": "sensitive",
+      "validation_refs": [
+        "required"
+      ],
+      "render_targets": [
+        "driving_licence_expiry_date"
+      ],
+      "conditions": {
+        "depends_on": "applicant.include_driving_licence",
+        "equals": true
+      },
+      "document_source": {
+        "country": "IN",
+        "document_type": "driving_licence",
+        "field": "expiry_date"
+      }
+    },
+    {
+      "path": "driving_licence.date_of_birth",
+      "label": "Date of birth on driving licence",
+      "type": "date",
+      "required": false,
+      "default_question": "What full date of birth is printed on your driving licence?",
+      "clarification_question": "What full date of birth is printed on your driving licence?",
+      "help_text": "Read only from the driving licence or an explicit answer about it. Extract only a complete printed date.",
+      "sensitivity": "sensitive",
+      "validation_refs": [],
+      "render_targets": [
+        "driving_licence_date_of_birth"
+      ],
+      "conditions": {
+        "depends_on": "applicant.include_driving_licence",
+        "equals": true
+      },
+      "document_source": {
+        "country": "IN",
+        "document_type": "driving_licence",
+        "field": "date_of_birth"
+      }
+    },
+    {
+      "path": "driving_licence.address",
+      "label": "Address on driving licence",
+      "type": "string",
+      "required": false,
+      "default_question": "What address is printed on your driving licence?",
+      "clarification_question": "What address is printed on your driving licence?",
+      "help_text": "Read only from the driving licence or an explicit answer about it. Do not copy the address from Aadhaar.",
+      "sensitivity": "sensitive",
+      "validation_refs": [],
+      "render_targets": [
+        "driving_licence_address"
+      ],
+      "conditions": {
+        "depends_on": "applicant.include_driving_licence",
+        "equals": true
+      },
+      "document_source": {
+        "country": "IN",
+        "document_type": "driving_licence",
+        "field": "address"
+      }
+    },
+    {
+      "path": "driving_licence.vehicle_classes",
+      "label": "Vehicle classes on driving licence",
+      "type": "string",
+      "required": false,
+      "default_question": "Which vehicle classes are printed on your driving licence?",
+      "clarification_question": "Which vehicle classes are printed on your driving licence?",
+      "help_text": "Read only from the driving licence or an explicit answer about it. Preserve printed categories such as LMV and MCWG. Do not infer permission for other categories.",
+      "sensitivity": "sensitive",
+      "validation_refs": [],
+      "render_targets": [
+        "driving_licence_vehicle_classes"
+      ],
+      "conditions": {
+        "depends_on": "applicant.include_driving_licence",
+        "equals": true
+      },
+      "document_source": {
+        "country": "IN",
+        "document_type": "driving_licence",
+        "field": "vehicle_classes"
+      }
+    }
+  ],
+  "field_groups": [
+    {
+      "group_id": "aadhaar",
+      "label": "Aadhaar details",
+      "description": "Name and address from Aadhaar. Masked numbers and year-only birth information are supported.",
+      "field_paths": [
+        "aadhaar.full_name",
+        "aadhaar.document_number",
+        "aadhaar.address",
+        "aadhaar.date_of_birth",
+        "aadhaar.year_of_birth"
+      ]
+    },
+    {
+      "group_id": "pan",
+      "label": "PAN details",
+      "description": "Name, PAN number, and full date of birth from PAN.",
+      "field_paths": [
+        "pan.full_name",
+        "pan.document_number",
+        "pan.date_of_birth"
+      ]
+    },
+    {
+      "group_id": "applicant",
+      "label": "Optional driving licence",
+      "description": "Choose whether to include a driving licence.",
+      "field_paths": [
+        "applicant.include_driving_licence"
+      ]
+    },
+    {
+      "group_id": "driving_licence",
+      "label": "Driving licence details",
+      "description": "Licence details are requested only when the applicant opts in.",
+      "field_paths": [
+        "driving_licence.full_name",
+        "driving_licence.document_number",
+        "driving_licence.expiry_date",
+        "driving_licence.date_of_birth",
+        "driving_licence.address",
+        "driving_licence.vehicle_classes"
+      ]
+    }
+  ],
+  "validation_rules": [
+    {
+      "rule_id": "required",
+      "type": "requiredness"
+    },
+    {
+      "rule_id": "document_number_format",
+      "type": "format"
+    }
+  ],
+  "conversation_config": {
+    "tone": "clear and helpful",
+    "explanation_style": "Ask for uploads first; accept explicit typed answers for missing fields. Never claim authenticity or KYC approval.",
+    "reask_cooldown_turns": 1,
+    "max_grouped_fields": 2,
+    "title_pattern": "Document intake - {aadhaar.full_name}"
+  },
+  "supported_artifacts": [
+    "pdf",
+    "json_export"
+  ],
+  "renderer_config": {
+    "artifact_type": "pdf",
+    "pdf_title": "Indian document intake summary"
+  }
+}

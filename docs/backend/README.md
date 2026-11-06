@@ -12,6 +12,8 @@ The FormFoundry backend is a high-performance, asynchronous Python API built wit
 - **[Services](services.md)**: Business logic implementation details.
 - **[Database](database.md)**: PostgreSQL, migrations, and session management.
 
+- [Document upload and basic checks](documents.md): Supported Indian documents, API results, and processing adapters.
+
 ## Tech Stack Deep Dive
 
 For more details on the tools we use, see the **[Architecture Overview](../architecture/overview.md)**.

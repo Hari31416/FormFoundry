@@ -62,6 +62,7 @@ nav:
     - Models: backend/models.md
     - Schemas: backend/schemas.md
     - Services: backend/services.md
+    - Documents: backend/documents.md
     - Database: backend/database.md
   - Frontend:
     - Overview: frontend/README.md
