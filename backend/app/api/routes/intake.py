@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.service import CurrentUser
 from app.db import get_db_session
 from app.intake.models import (
     EvidenceIntakeResponse,
@@ -31,9 +32,12 @@ CreatedByForm = Annotated[str, Form()]
 async def create_text_evidence_route(
     case_id: str,
     payload: TextEvidenceRequest,
+    user: CurrentUser,
     session: DBSession,
 ) -> EvidenceIntakeResponse:
-    return await create_text_evidence(session, case_id, payload)
+    return await create_text_evidence(
+        session, case_id, payload.model_copy(update={"created_by": user.id})
+    )
 
 
 @router.post(
@@ -45,9 +49,10 @@ async def create_upload_evidence_route(
     case_id: str,
     session: DBSession,
     file: UploadFileParam,
+    user: CurrentUser,
     created_by: CreatedByForm = "local-user",
 ) -> EvidenceIntakeResponse:
-    return await create_upload_evidence(session, case_id, file, created_by=created_by)
+    return await create_upload_evidence(session, case_id, file, created_by=user.id)
 
 
 @router.get("/cases/{case_id}/evidence", response_model=list[EvidencePayload])

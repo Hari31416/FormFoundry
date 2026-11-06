@@ -3,10 +3,17 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.models import SchemaAccessRecord
+from app.auth.service import CurrentUser
 from app.db import get_db_session
-from app.templates.models import TemplateDefinition, TemplateDefinitionCreate
+from app.templates.models import (
+    TemplateDefinition,
+    TemplateDefinitionCreate,
+    TemplateDefinitionRecord,
+)
 from app.templates.service import (
     create_template,
     get_template,
@@ -29,8 +36,22 @@ async def create_template_route(
 
 
 @router.get("", response_model=list[TemplateDefinition])
-async def list_templates_route(session: DBSession) -> list[TemplateDefinition]:
-    return await list_templates(session)
+async def list_templates_route(
+    session: DBSession, user: CurrentUser
+) -> list[TemplateDefinition]:
+    templates = await list_templates(session)
+    if user.role == "admin":
+        return templates
+    allowed = set(
+        (
+            await session.scalars(
+                select(SchemaAccessRecord.template_id).where(
+                    SchemaAccessRecord.user_id == user.id
+                )
+            )
+        ).all()
+    )
+    return [template for template in templates if template.template_id in allowed]
 
 
 @router.get("/{template_id}", response_model=TemplateDefinition)
@@ -120,6 +141,18 @@ async def delete_template_route(
         )
 
     await session.delete(record)
+    await session.flush()
+    remaining = await session.scalar(
+        select(TemplateDefinitionRecord.template_id)
+        .where(TemplateDefinitionRecord.template_id == template_id)
+        .limit(1)
+    )
+    if remaining is None:
+        await session.execute(
+            delete(SchemaAccessRecord).where(
+                SchemaAccessRecord.template_id == template_id
+            )
+        )
     await session.commit()
 
     try:

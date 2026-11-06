@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.service import CurrentUser, require_schema_access
 from app.cases.models import (
     CaseCreateRequest,
     CaseDetail,
@@ -32,19 +33,22 @@ StatusFilter = Annotated[list[str] | None, Query(alias="status")]
 @router.get("", response_model=list[CaseFilePayload])
 async def list_cases_route(
     session: DBSession,
+    user: CurrentUser,
     template_id: str | None = Query(None, alias="template_id"),
     limit: int = Query(100, ge=1, le=100),
     offset: int = Query(0, ge=0),
 ) -> list[CaseFilePayload]:
     return await list_cases(
-        session, template_id=template_id, limit=limit, offset=offset
+        session, template_id=template_id, limit=limit, offset=offset, user=user
     )
 
 
 @router.post("", response_model=CaseDetail, status_code=status.HTTP_201_CREATED)
 async def create_case_route(
-    payload: CaseCreateRequest, session: DBSession
+    payload: CaseCreateRequest, session: DBSession, user: CurrentUser
 ) -> CaseDetail:
+    await require_schema_access(session, user, payload.template_id)
+    payload = payload.model_copy(update={"created_by": user.id})
     case_detail = await create_case(session, payload)
     await record_active_question_turn(session, case_detail.case_id)
     return case_detail

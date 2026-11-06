@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
+from app.auth.service import bootstrap_admin
 from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.core.request_id import RequestIdMiddleware
@@ -22,6 +23,7 @@ async def lifespan(_: FastAPI):
     session_maker = get_session_maker()
     async with session_maker() as session:
         await ensure_seed_templates(session)
+        await bootstrap_admin(session)
     try:
         yield
     finally:

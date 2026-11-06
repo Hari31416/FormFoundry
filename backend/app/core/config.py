@@ -4,7 +4,7 @@ from functools import lru_cache
 from pathlib import Path
 from urllib.parse import quote_plus, unquote
 
-from pydantic import Field
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,6 +15,21 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    jwt_secret: SecretStr | None = None
+    jwt_issuer: str = "formfoundry"
+    jwt_lifetime_minutes: int = Field(default=60, ge=1, le=1440)
+    bootstrap_admin_username: str | None = Field(
+        default=None, min_length=3, max_length=80, pattern=r"^[A-Za-z0-9_.@-]+$"
+    )
+    bootstrap_admin_password: SecretStr | None = None
+
+    @field_validator("jwt_secret")
+    @classmethod
+    def validate_jwt_secret(cls, value: SecretStr | None) -> SecretStr | None:
+        if value is not None and len(value.get_secret_value()) < 32:
+            raise ValueError("JWT_SECRET must contain at least 32 characters")
+        return value
 
     project_name: str = "FormFoundry"
     environment: str = "local"

@@ -19,7 +19,7 @@ def test_case_creation_persists_empty_field_states(client: TestClient) -> None:
     case_payload = create_response.json()
     assert case_payload["template_id"] == "fir-report-intake"
     assert case_payload["status"] == "collecting_input"
-    assert case_payload["created_by"] == "test-user"
+    assert case_payload["created_by"] == client.get("/api/v1/auth/me").json()["id"]
     assert case_payload["metadata"] == {"intake_channel": "manual"}
     assert all(field["status"] == "missing" for field in case_payload["field_states"])
     assert case_payload["completion_pct"] == 0.0

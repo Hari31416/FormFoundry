@@ -9,6 +9,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.models import SchemaAccessRecord, UserRecord
 from app.cases.models import (
     CaseCreateRequest,
     CaseDetail,
@@ -262,6 +263,7 @@ async def list_cases(
     template_id: str | None = None,
     limit: int = 100,
     offset: int = 0,
+    user: UserRecord | None = None,
 ) -> list[CaseFilePayload]:
     logger.info(
         "cases.list.started",
@@ -271,6 +273,16 @@ async def list_cases(
     if template_id:
         stmt = stmt.where(CaseFileRecord.template_id == template_id)
 
+    if user is not None:
+        stmt = stmt.where(CaseFileRecord.created_by == user.id)
+        if user.role != "admin":
+            stmt = stmt.where(
+                CaseFileRecord.template_id.in_(
+                    select(SchemaAccessRecord.template_id).where(
+                        SchemaAccessRecord.user_id == user.id
+                    )
+                )
+            )
     stmt = stmt.limit(limit).offset(offset)
     records = (await session.execute(stmt)).scalars().all()
     logger.info(

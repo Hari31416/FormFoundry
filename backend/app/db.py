@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from app.auth.models import SchemaAccessRecord, UserRecord  # noqa: F401
 from app.core.config import get_settings
 from app.models.base import Base
 

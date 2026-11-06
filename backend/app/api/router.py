@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
 from app.api.routes.artifacts import router as artifacts_router
 from app.api.routes.cases import router as cases_router
@@ -9,14 +9,22 @@ from app.api.routes.intake import router as intake_router
 from app.api.routes.languages import router as languages_router
 from app.api.routes.templates import router as templates_router
 from app.api.routes.validation import router as validation_router
+from app.auth.routes import router as auth_router
+from app.auth.service import authorize_resource
 
 api_router = APIRouter()
 api_router.include_router(health_router, tags=["health"])
-api_router.include_router(templates_router, prefix="/templates", tags=["templates"])
-api_router.include_router(cases_router, prefix="/cases", tags=["cases"])
-api_router.include_router(intake_router, tags=["intake"])
-api_router.include_router(extraction_router, tags=["extraction"])
-api_router.include_router(conversation_router, tags=["conversation"])
-api_router.include_router(validation_router, tags=["validation"])
-api_router.include_router(artifacts_router, tags=["artifacts"])
-api_router.include_router(languages_router, tags=["languages"])
+protected_router = APIRouter(dependencies=[Depends(authorize_resource)])
+api_router.include_router(auth_router)
+protected_router.include_router(
+    templates_router, prefix="/templates", tags=["templates"]
+)
+protected_router.include_router(cases_router, prefix="/cases", tags=["cases"])
+protected_router.include_router(intake_router, tags=["intake"])
+protected_router.include_router(extraction_router, tags=["extraction"])
+protected_router.include_router(conversation_router, tags=["conversation"])
+protected_router.include_router(validation_router, tags=["validation"])
+protected_router.include_router(artifacts_router, tags=["artifacts"])
+protected_router.include_router(languages_router, tags=["languages"])
+
+api_router.include_router(protected_router)

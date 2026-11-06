@@ -290,6 +290,9 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     os.environ["ENVIRONMENT"] = "test"
     os.environ["LOCAL_STORAGE_PATH"] = str(tmp_path / ".storage")
     os.environ["STORAGE_BACKEND"] = "local"
+    monkeypatch.setenv("JWT_SECRET", "test-secret-with-at-least-32-characters")
+    monkeypatch.setenv("BOOTSTRAP_ADMIN_USERNAME", "admin")
+    monkeypatch.setenv("BOOTSTRAP_ADMIN_PASSWORD", "test-admin-password")
     get_settings.cache_clear()
 
     import app.cases.titles as titles_service
@@ -306,6 +309,11 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     )
 
     with TestClient(create_app()) as test_client:
+        token = test_client.post(
+            "/api/v1/auth/token",
+            data={"username": "admin", "password": "test-admin-password"},
+        ).json()["access_token"]
+        test_client.headers["Authorization"] = f"Bearer {token}"
         yield test_client
 
     asyncio.run(dispose_engine())
