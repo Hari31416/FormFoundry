@@ -55,7 +55,7 @@ test('renames a case and shows its saved title after navigation and reload', asy
   await page.screenshot({ path: '/tmp/formfiller-title.png' })
   await page.reload()
   await expect(page.locator('header')).toContainText('Kitchen tap repair')
-  await page.getByRole('button', { name: 'Back to intake hub' }).click()
+  await page.getByRole('link', { name: 'Overview' }).click()
   await expect(page.locator(`a[href="/cases/${caseId}"]`)).toContainText('Kitchen tap repair')
 })
 

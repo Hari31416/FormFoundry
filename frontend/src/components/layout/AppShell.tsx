@@ -18,6 +18,7 @@ interface AppShellProps {
   newSchemaActive?: boolean
   headerBefore?: React.ReactNode
   headerEnd?: React.ReactNode
+  fill?: boolean
 }
 
 export default function AppShell({
@@ -29,6 +30,7 @@ export default function AppShell({
   newSchemaActive = false,
   headerBefore,
   headerEnd,
+  fill = false,
 }: AppShellProps) {
   const { user } = useAuth()
   const isAdmin = user?.role === 'admin'
@@ -62,7 +64,7 @@ export default function AppShell({
         newSchemaActive={newSchemaActive}
       />
 
-      <div className="flex-1 min-w-0 flex flex-col min-h-screen overflow-x-hidden">
+      <div className={fill ? 'flex-1 min-w-0 flex flex-col h-dvh overflow-hidden' : 'flex-1 min-w-0 flex flex-col min-h-screen overflow-x-hidden'}>
         <header className="min-h-11 shrink-0 border-b border-line bg-card-warm/80 backdrop-blur-sm flex flex-wrap items-center gap-2 px-3 sm:px-4 py-1.5 sticky top-0 z-30">
           <Button
             variant="ghost"
@@ -78,12 +80,12 @@ export default function AppShell({
             <span className="font-serif font-semibold text-sm">FormFoundry</span>
           </Link>
           {headerBefore}
-          <div className="ml-auto flex items-center gap-2 min-w-0 flex-1 sm:flex-none justify-end">
+          <div className="ml-auto flex flex-wrap items-center gap-2 min-w-0 flex-1 sm:flex-none justify-end">
             {headerEnd ?? <LanguageSelector />}
           </div>
         </header>
 
-        <main className="flex-1 px-3 sm:px-5 py-4 sm:py-5 overflow-y-auto">
+        <main className={fill ? 'flex-1 min-h-0 overflow-hidden' : 'flex-1 px-3 sm:px-5 py-4 sm:py-5 overflow-y-auto'}>
           {children}
         </main>
 

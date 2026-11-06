@@ -1,14 +1,10 @@
-import { useAuth } from '@/lib/auth'
 import React, { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   Loader2,
-  Plus,
-  ArrowLeft,
   MessageSquare,
-  Layout,
-  LogOut
+  Layout
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
@@ -50,6 +46,7 @@ import type { DocumentUploadProgress } from '@/components/case/DocumentSupport'
 import { DetailedWorkspaceView } from '@/components/case/DetailedWorkspaceView'
 import { CaseTitleEditor } from '@/components/case/CaseTitleEditor'
 import { LanguageSelector } from '@/components/case/LanguageSelector'
+import AppShell from '@/components/layout/AppShell'
 
 function getValueByPath(payload: Record<string, unknown>, path: string): unknown {
   let cursor: unknown = payload
@@ -172,7 +169,6 @@ function isQuestionOutstanding(field: TemplateField, state: FieldState): boolean
 }
 
 export default function CaseWorkspace() {
-  const { logout } = useAuth()
   const { caseId } = useParams<{ caseId: string }>()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -736,7 +732,7 @@ export default function CaseWorkspace() {
       case 'awaiting_user':
         return 'bg-marigold-bright'
       default:
-        return 'bg-primary-foreground/50'
+        return 'bg-ink-faint'
     }
   }
 
@@ -773,118 +769,83 @@ export default function CaseWorkspace() {
   }
 
   return (
-    <div className="h-dvh min-h-screen flex flex-col bg-paper overflow-hidden font-sans">
-      <header className="min-h-14 h-auto shrink-0 bg-pine-deep text-primary-foreground px-4 sm:px-6 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 py-1.5 border-b border-pine-deep z-10">
-        <div className="flex items-center gap-3 min-w-0 max-w-full">
-          <button
-            className="w-9 h-9 rounded-md bg-primary-foreground/10 border border-primary-foreground/15 flex items-center justify-center hover:bg-primary-foreground/20 transition-colors cursor-pointer shrink-0"
-            onClick={() => navigate('/')}
-            aria-label={t('back_to_hub')}
-            title={t('back_to_hub')}
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <div className="min-w-0">
-                {caseDetail && <CaseTitleEditor caseFile={caseDetail} />}
-                <span className="block text-[10px] text-primary-foreground/60 truncate">{caseDetail?.template.name}</span>
-              </div>
-              <span className="font-mono text-[11px] text-primary-foreground/60 bg-primary-foreground/10 px-1.5 py-0.5 rounded leading-none shrink-0">#{caseId?.slice(0, 8)}</span>
-            </div>
+    <AppShell
+      fill
+      onArchitect={() => navigate('/', { state: { architect: 'design' } })}
+      onNewSchema={() => navigate('/', { state: { architect: 'new' } })}
+      headerBefore={(
+        <div className="min-w-0 flex-1 basis-full sm:basis-auto">
+          <div className="flex items-center gap-2 min-w-0">
+            {caseDetail && <CaseTitleEditor caseFile={caseDetail} />}
+            <span className="font-mono text-[10px] text-ink-faint bg-paper border border-line px-1.5 py-0.5 rounded leading-none shrink-0">#{caseId?.slice(0, 8)}</span>
           </div>
+          <span className="block text-[10px] text-ink-faint truncate mt-0.5">{caseDetail?.template.name}</span>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0 max-w-full">
-          <button onClick={logout} title={t('auth_sign_out')} aria-label={t('auth_sign_out')} className="flex items-center gap-1.5 h-10 px-2.5 rounded-md border border-primary-foreground/15 bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60">
-            <LogOut className="w-4 h-4" />
-            <span className="hidden xl:inline text-[11px] font-semibold">{t('auth_sign_out')}</span>
-          </button>
-          <LanguageSelector onLanguageChange={(code) => updateLanguageMutation.mutate(code)} className="border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 hover:border-primary-foreground/30 shadow-none [&_svg]:text-primary-foreground/70" />
-
-          <div className="hidden sm:block h-5 w-px bg-primary-foreground/15 mx-1" />
-
-          {/* Toggle View Mode */}
-          <div className="flex items-center bg-pine/60 p-0.5 rounded-md border border-primary-foreground/10 select-none" role="group" aria-label={t('view_mode')}>
-            <button
-              onClick={() => setIsSimplifiedView(true)}
-              aria-pressed={isSimplifiedView}
-              aria-label={t('chat_view')}
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-[5px] text-[11px] font-semibold uppercase tracking-[0.14em] transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 min-h-[40px]",
-                isSimplifiedView
-                  ? "bg-primary-foreground text-pine-deep shadow-sm"
-                  : "text-primary-foreground/60 hover:text-primary-foreground"
-              )}
-            >
-              <MessageSquare className="w-3 h-3" />
-              <span>{t('chat_view')}</span>
-            </button>
-            <button
-              onClick={() => setIsSimplifiedView(false)}
-              aria-pressed={!isSimplifiedView}
-              aria-label={t('detailed_view')}
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-[5px] text-[11px] font-semibold uppercase tracking-[0.14em] transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 min-h-[40px]",
-                !isSimplifiedView
-                  ? "bg-primary-foreground text-pine-deep shadow-sm"
-                  : "text-primary-foreground/60 hover:text-primary-foreground"
-              )}
-            >
-              <Layout className="w-3 h-3" />
-              <span>{t('detailed_view')}</span>
-            </button>
-          </div>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            aria-label={t('new_case')}
-            className="flex h-10 px-2.5 sm:w-9 sm:p-0 rounded-md border border-primary-foreground/15 bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-            onClick={() => navigate('/')}
-          >
-            <Plus className="w-4 h-4" />
-            <span className="sm:hidden ml-1 text-[11px] font-semibold">{t('new_word')}</span>
-          </Button>
-
-          <div className="hidden sm:block h-5 w-px bg-primary-foreground/15 mx-1" />
-
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 font-mono text-[11px] font-medium uppercase tracking-[0.14em] border rounded border-primary-foreground/30 text-primary-foreground/90">
-            <span className={cn('w-1.5 h-1.5 rounded-full', getStatusDot(caseDetail?.status || ''))} />
-            {t('case_status_' + caseDetail?.status)}
-          </span>
-
-          {caseDetail?.metadata?.preferred_language && caseDetail?.metadata?.preferred_language !== 'en' && (
-            <span className="hidden lg:inline-block px-2.5 py-1 font-mono text-[11px] font-medium uppercase tracking-[0.14em] border rounded border-primary-foreground/30 text-primary-foreground/90">
-              {t('language')}: {caseDetail.metadata.preferred_language === 'hi' ? 'हिन्दी' : 'English'}
+      )}
+      headerEnd={(
+        <>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em] border border-line rounded bg-white text-ink-soft">
+              <span className={cn('w-1.5 h-1.5 rounded-full', getStatusDot(caseDetail?.status || ''))} />
+              {t('case_status_' + caseDetail?.status)}
             </span>
-          )}
 
-          {caseDetail?.status === 'ready_for_review' && (
-            <>
-              <div className="hidden sm:block h-5 w-px bg-primary-foreground/15 mx-1" />
+            <div className="flex items-center bg-paper border border-line p-0.5 rounded-md select-none" role="group" aria-label={t('view_mode')}>
+              <button
+                onClick={() => setIsSimplifiedView(true)}
+                aria-pressed={isSimplifiedView}
+                aria-label={t('chat_view')}
+                title={t('chat_view')}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-[5px] text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.14em] transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine/50 min-h-[38px]",
+                  isSimplifiedView
+                    ? "bg-pine text-paper shadow-sm"
+                    : "text-ink-soft hover:text-ink"
+                )}
+              >
+                <MessageSquare className="w-3 h-3" />
+                <span>{t('chat_view')}</span>
+              </button>
+              <button
+                onClick={() => setIsSimplifiedView(false)}
+                aria-pressed={!isSimplifiedView}
+                aria-label={t('detailed_view')}
+                title={t('detailed_view')}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-[5px] text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.14em] transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pine/50 min-h-[38px]",
+                  !isSimplifiedView
+                    ? "bg-pine text-paper shadow-sm"
+                    : "text-ink-soft hover:text-ink"
+                )}
+              >
+                <Layout className="w-3 h-3" />
+                <span>{t('detailed_view')}</span>
+              </button>
+            </div>
+
+            {caseDetail?.status === 'ready_for_review' && (
               <Button
                 size="sm"
-                className="bg-leaf hover:bg-leaf/85 text-primary-foreground font-semibold h-9 rounded-md px-4 text-[11px] uppercase tracking-[0.1em] transition-all cursor-pointer border border-leaf/40"
+                className="bg-leaf hover:bg-leaf/85 text-paper font-semibold h-9 rounded-md px-4 text-[10px] sm:text-[11px] uppercase tracking-[0.1em] transition-all cursor-pointer border border-leaf/40"
                 onClick={() => approveMutation.mutate()}
                 disabled={approveMutation.isPending || validation?.some((v) => v.blocking) || !allFieldsConfirmed}
               >
                 {t('approve_and_close')}
               </Button>
-            </>
-          )}
+            )}
 
-          {caseDetail?.status === 'approved' && caseDetail.template.supported_artifacts.length > 0 && (
-            <DropdownMenuComponent
-              options={caseDetail.template.supported_artifacts}
-              onSelect={(type) => generateMutation.mutate(type)}
-              isLoading={generateMutation.isPending}
-            />
-          )}
-        </div>
-      </header>
-
-      <main className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
+            {caseDetail?.status === 'approved' && caseDetail.template.supported_artifacts.length > 0 && (
+              <DropdownMenuComponent
+                options={caseDetail.template.supported_artifacts}
+                onSelect={(type) => generateMutation.mutate(type)}
+                isLoading={generateMutation.isPending}
+              />
+            )}
+            <LanguageSelector onLanguageChange={(code) => updateLanguageMutation.mutate(code)} />
+        </>
+      )}
+    >
+      <div className="h-full min-h-0 flex flex-col bg-paper font-sans">
+        <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
         {isSimplifiedView ? (
           <SimplifiedChatView
             caseDetail={caseDetail}
@@ -976,7 +937,8 @@ export default function CaseWorkspace() {
             handleStopAudio={handleStopAudio}
           />
         )}
-      </main>
-    </div>
+        </div>
+      </div>
+    </AppShell>
   )
 }

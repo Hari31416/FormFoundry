@@ -31,7 +31,7 @@ export function DropdownMenuComponent({
         render={
           <Button
             size="sm"
-            className="bg-primary-foreground text-pine-deep hover:bg-paper font-semibold rounded-md shadow-none cursor-pointer"
+            className="bg-pine text-paper hover:bg-pine-deep font-semibold rounded-md shadow-none cursor-pointer h-9 px-4"
           />
         }
       >
