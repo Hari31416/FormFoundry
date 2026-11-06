@@ -187,7 +187,8 @@
       ],
       "render_targets": [
         "applicant_include_driving_licence"
-      ]
+      ],
+      "allow_document_extraction": false
     },
     {
       "path": "driving_licence.full_name",

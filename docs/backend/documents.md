@@ -205,3 +205,18 @@ Question caching includes document analysis results, so processing an existing u
 can advance the question even if no case field value changes. Ordinary field questions
 retain the text composer and existing attachments. Upload prompts use the existing
 outgoing translation path; inline labels and status text use frontend i18n.
+
+## User choices and upload progress
+
+Set `allow_document_extraction` to false for fields that must come from the user's
+answers, rather than an uploaded document. The Indian document schema uses this for
+`applicant.include_driving_licence`. An ID cannot express that choice. Upload processing
+skips these fields, so the standard identity upload has no unrelated free-form extraction
+call after mapping its document fields. These fields remain available to text questions
+and manual edits. A document binding cannot be combined with this setting.
+
+The form extractor explicitly requests `{"candidates": []}` when nothing is supported.
+A malformed extraction envelope receives one bounded retry with the contract restated;
+a second malformed response still fails rather than masquerading as no extracted data.
+Grounded candidates from successful stages are persisted and resolved even when a
+later extraction stage fails. The job still reports failure for that stage.

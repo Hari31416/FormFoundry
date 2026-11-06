@@ -51,6 +51,7 @@ export interface TemplateField {
   default_question: string
   clarification_question: string
   help_text: string
+  allow_document_extraction?: boolean
   document_source?: { country: string; document_type: string; field: string } | null
   conditions?: Record<string, any>
   validation_refs?: string[]

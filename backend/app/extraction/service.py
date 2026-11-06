@@ -339,16 +339,23 @@ async def extract_candidates_with_llm(
         "source_text_chars": len(text),
     }
     logger.info("extraction.llm_candidates.started", extra=log_context)
-    response = await generate_json(
-        system_prompt=render_prompt("extraction_system.jinja2"),
-        user_prompt=render_prompt(
-            "extraction_user.jinja2",
-            template_name=template.name,
-            field_catalog=format_field_catalog(template),
-            source_text=text,
-            conversation_context=conversation_context,
-        ),
+    system_prompt = render_prompt("extraction_system.jinja2")
+    user_prompt = render_prompt(
+        "extraction_user.jinja2",
+        template_name=template.name,
+        field_catalog=format_field_catalog(template),
+        source_text=text,
+        conversation_context=conversation_context,
     )
+    response = await generate_json(system_prompt=system_prompt, user_prompt=user_prompt)
+    if response is not None and not isinstance(response.get("candidates"), list):
+        logger.warning("extraction.llm_candidates.retry_schema", extra=log_context)
+        response = await generate_json(
+            system_prompt=system_prompt
+            + "\n"
+            + render_prompt("extraction_retry.jinja2"),
+            user_prompt=user_prompt,
+        )
     if response is None:
         logger.error(
             "extraction.llm_candidates.failed",
@@ -933,6 +940,7 @@ async def run_extraction_job(
                             field
                             for field in template.template_schema
                             if field.document_source is None
+                            and field.allow_document_extraction
                         ]
                     }
                 )
@@ -985,6 +993,10 @@ async def run_extraction_job(
             "extraction.job.failed_runtime",
             extra={"case_id": case_id, "job_id": job_id, "error_summary": str(exc)},
         )
+        if candidates:
+            session.add_all(candidates)
+            await session.flush()
+            await resolve_case_fields(session, case_id)
         job_record.status = JobStatus.FAILED
         job_record.error_summary = str(exc)
         await session.commit()
@@ -994,6 +1006,10 @@ async def run_extraction_job(
             "extraction.job.failed_unexpected",
             extra={"case_id": case_id, "job_id": job_id},
         )
+        if candidates:
+            session.add_all(candidates)
+            await session.flush()
+            await resolve_case_fields(session, case_id)
         job_record.status = JobStatus.FAILED
         job_record.error_summary = (
             f"Unexpected extraction error: {type(exc).__name__}: {exc}"

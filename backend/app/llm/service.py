@@ -13,7 +13,7 @@ from app.core.config import get_settings
 logger = logging.getLogger(__name__)
 
 
-def _extract_message_payload(content: str) -> list[dict[str, str]]:
+def _extract_message_payload(content: str) -> list[dict[str, Any]]:
     return [{"type": "text", "text": content}]
 
 
@@ -184,6 +184,9 @@ async def generate_json(
         )
         return None
 
+    if not isinstance(parsed, dict):
+        logger.warning("llm.call.invalid_object", extra=log_context)
+        return None
     return parsed
 
 

@@ -40,6 +40,7 @@ class TemplateField(BaseModel):
     validation_refs: list[str] = Field(default_factory=list)
     render_targets: list[str] = Field(default_factory=list)
     conditions: dict[str, Any] = Field(default_factory=dict)
+    allow_document_extraction: bool = True
     document_source: DocumentFieldSource | None = None
     calculation: str | None = None
     nested_schema: list[TemplateField] | None = Field(
@@ -53,6 +54,8 @@ class TemplateField(BaseModel):
                 "Document sources are supported only on top-level scalar fields"
             )
         if self.document_source is not None:
+            if not self.allow_document_extraction:
+                raise ValueError("Document-bound fields must allow document extraction")
             definition = get_definition(self.document_source)
             if (
                 definition is None
