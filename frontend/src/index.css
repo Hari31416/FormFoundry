@@ -3,77 +3,339 @@
 
 @plugin "tailwindcss-animate";
 
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-sans-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-sans-500.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-sans-600.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-sans-700.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Serif';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-serif-500.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Serif';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-serif-600.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Serif';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-serif-700.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-mono-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-mono-500.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./assets/fonts/ibm-plex-mono-600.woff2') format('woff2');
+}
+
+/* Indic scripts (app is multilingual: English, हिन्दी, तமிழ், తెలుగు) */
+@font-face {
+  font-family: 'IBM Plex Sans Devanagari';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+0900-097F, U+A8E0-A8FF, U+11B00-11B5F;
+  src: url('./assets/fonts/ibm-plex-sans-devanagari-devanagari-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans Devanagari';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  unicode-range: U+0900-097F, U+A8E0-A8FF, U+11B00-11B5F;
+  src: url('./assets/fonts/ibm-plex-sans-devanagari-devanagari-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans Devanagari';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  unicode-range: U+0900-097F, U+A8E0-A8FF, U+11B00-11B5F;
+  src: url('./assets/fonts/ibm-plex-sans-devanagari-devanagari-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans Devanagari';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  unicode-range: U+0900-097F, U+A8E0-A8FF, U+11B00-11B5F;
+  src: url('./assets/fonts/ibm-plex-sans-devanagari-devanagari-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Serif Devanagari';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  unicode-range: U+0900-097F, U+A8E0-A8FF, U+11B00-11B5F;
+  src: url('./assets/fonts/noto-serif-devanagari-devanagari-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Serif Devanagari';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  unicode-range: U+0900-097F, U+A8E0-A8FF, U+11B00-11B5F;
+  src: url('./assets/fonts/noto-serif-devanagari-devanagari-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Serif Devanagari';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  unicode-range: U+0900-097F, U+A8E0-A8FF, U+11B00-11B5F;
+  src: url('./assets/fonts/noto-serif-devanagari-devanagari-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Sans Tamil';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+0B80-0BFF;
+  src: url('./assets/fonts/noto-sans-tamil-tamil-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Sans Tamil';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  unicode-range: U+0B80-0BFF;
+  src: url('./assets/fonts/noto-sans-tamil-tamil-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Sans Tamil';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  unicode-range: U+0B80-0BFF;
+  src: url('./assets/fonts/noto-sans-tamil-tamil-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Sans Tamil';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  unicode-range: U+0B80-0BFF;
+  src: url('./assets/fonts/noto-sans-tamil-tamil-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Serif Tamil';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  unicode-range: U+0B80-0BFF;
+  src: url('./assets/fonts/noto-serif-tamil-tamil-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Serif Tamil';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  unicode-range: U+0B80-0BFF;
+  src: url('./assets/fonts/noto-serif-tamil-tamil-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Sans Telugu';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+0C00-0C7F;
+  src: url('./assets/fonts/noto-sans-telugu-telugu-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Sans Telugu';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  unicode-range: U+0C00-0C7F;
+  src: url('./assets/fonts/noto-sans-telugu-telugu-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Sans Telugu';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  unicode-range: U+0C00-0C7F;
+  src: url('./assets/fonts/noto-sans-telugu-telugu-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Sans Telugu';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  unicode-range: U+0C00-0C7F;
+  src: url('./assets/fonts/noto-sans-telugu-telugu-700.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Serif Telugu';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  unicode-range: U+0C00-0C7F;
+  src: url('./assets/fonts/noto-serif-telugu-telugu-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Noto Serif Telugu';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  unicode-range: U+0C00-0C7F;
+  src: url('./assets/fonts/noto-serif-telugu-telugu-700.woff2') format('woff2');
+}
+
+/*
+  FormFoundry design system — "Administrative dossier"
+  Warm paper ground, deep pine ink, marigold accent.
+  Type: IBM Plex Serif (display) / IBM Plex Sans (body) / IBM Plex Mono (data).
+  Indic scripts render in matching Plex/Noto cuts of the same superfamily.
+*/
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --background: #f4f2ea;
+    --foreground: #1f2a28;
+    --card: #fdfdfa;
+    --card-foreground: #1f2a28;
+    --popover: #fdfdfa;
+    --popover-foreground: #1f2a28;
+    --primary: #123f33;
+    --primary-foreground: #f6f4ea;
+    --secondary: #eae8dd;
+    --secondary-foreground: #123f33;
+    --muted: #eae8dd;
+    --muted-foreground: #5f6b66;
+    --accent: #eceade;
+    --accent-foreground: #123f33;
+    --destructive: #b3412f;
+    --border: #e0ded0;
+    --input: #e0ded0;
+    --ring: #123f33;
+    --chart-1: #123f33;
+    --chart-2: #b45309;
+    --chart-3: #2f6f4f;
+    --chart-4: #5f6b66;
+    --chart-5: #8a8574;
+    --radius: 0.5rem;
+    --sidebar: #eceade;
+    --sidebar-foreground: #1f2a28;
+    --sidebar-primary: #123f33;
+    --sidebar-primary-foreground: #f6f4ea;
+    --sidebar-accent: #f4f2ea;
+    --sidebar-accent-foreground: #123f33;
+    --sidebar-border: #e0ded0;
+    --sidebar-ring: #123f33;
+
+    --paper: #f4f2ea;
+    --card-warm: #fdfdfa;
+    --ink: #1f2a28;
+    --ink-soft: #46534f;
+    --ink-faint: #5f6b66;
+    --line: #e0ded0;
+    --line-strong: #cfccc0;
+    --pine: #123f33;
+    --pine-deep: #0c2b23;
+    --pine-soft: #e4ece6;
+    --marigold: #b45309;
+    --marigold-bright: #d97706;
+    --marigold-soft: #f7ead1;
+    --leaf: #2f6f4f;
+    --leaf-soft: #e2ece2;
+    --terracotta: #b3412f;
+    --terracotta-soft: #f6e2dc;
+    --inkblue: #1d4e6b;
+    --inkblue-soft: #e1e9ee;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #161d1b;
+    --foreground: #eceade;
+    --card: #1e2624;
+    --card-foreground: #eceade;
+    --popover: #1e2624;
+    --popover-foreground: #eceade;
+    --primary: #d8d4c4;
+    --primary-foreground: #161d1b;
+    --secondary: #262f2c;
+    --secondary-foreground: #eceade;
+    --muted: #262f2c;
+    --muted-foreground: #a8b0a6;
+    --accent: #262f2c;
+    --accent-foreground: #eceade;
+    --destructive: #d97757;
+    --border: #2e3835;
+    --input: #2e3835;
+    --ring: #a8b0a6;
+    --chart-1: #d8d4c4;
+    --chart-2: #e0a32e;
+    --chart-3: #6ea88a;
+    --chart-4: #a8b0a6;
+    --chart-5: #6b7366;
+    --sidebar: #1e2624;
+    --sidebar-foreground: #eceade;
+    --sidebar-primary: #d8d4c4;
+    --sidebar-primary-foreground: #161d1b;
+    --sidebar-accent: #262f2c;
+    --sidebar-accent-foreground: #eceade;
+    --sidebar-border: #2e3835;
+    --sidebar-ring: #a8b0a6;
 }
 
 @theme inline {
-  --font-sans: 'Inter', sans-serif;
+  --font-sans: 'IBM Plex Sans', 'IBM Plex Sans Devanagari', 'Noto Sans Tamil', 'Noto Sans Telugu', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'IBM Plex Serif', 'Noto Serif Devanagari', 'Noto Serif Tamil', 'Noto Serif Telugu', Georgia, serif;
+  --font-mono: 'IBM Plex Mono', 'IBM Plex Sans Devanagari', ui-monospace, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -105,6 +367,25 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+  --color-paper: var(--paper);
+  --color-card-warm: var(--card-warm);
+  --color-ink: var(--ink);
+    --color-ink-soft: var(--ink-soft);
+    --color-ink-faint: var(--ink-faint);
+    --color-line: var(--line);
+    --color-line-strong: var(--line-strong);
+    --color-pine: var(--pine);
+    --color-pine-deep: var(--pine-deep);
+    --color-pine-soft: var(--pine-soft);
+    --color-marigold: var(--marigold);
+    --color-marigold-bright: var(--marigold-bright);
+    --color-marigold-soft: var(--marigold-soft);
+    --color-leaf: var(--leaf);
+    --color-leaf-soft: var(--leaf-soft);
+    --color-terracotta: var(--terracotta);
+    --color-terracotta-soft: var(--terracotta-soft);
+    --color-inkblue: var(--inkblue);
+    --color-inkblue-soft: var(--inkblue-soft);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -124,24 +405,82 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground m-0 antialiased;
   }
 
+  /* Indic scripts: tracking and synthetic uppercase mangle matra/conjunct shaping */
+  html:lang(hi) *,
+  html:lang(ta) *,
+  html:lang(te) *,
+  html:lang(bn) *,
+  html:lang(mr) * {
+    letter-spacing: normal !important;
+    text-transform: none !important;
+  }
+  html:lang(hi) .font-mono,
+  html:lang(ta) .font-mono,
+  html:lang(te) .font-mono,
+  html:lang(bn) .font-mono,
+  html:lang(mr) .font-mono {
+    font-family: 'IBM Plex Sans', 'IBM Plex Sans Devanagari', 'Noto Sans Tamil', 'Noto Sans Telugu', ui-sans-serif, system-ui, sans-serif;
+  }
+
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: 'IBM Plex Serif', 'Noto Serif Devanagari', 'Noto Serif Tamil', 'Noto Serif Telugu', Georgia, serif;
+    letter-spacing: -0.01em;
+  }
+
+    :focus-visible {
+      outline: 2px solid var(--pine);
+      outline-offset: 2px;
+  }
+
   /* Custom Scrollbar */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 8px;
+      height: 8px;
   }
   ::-webkit-scrollbar-track {
     @apply bg-transparent;
   }
   ::-webkit-scrollbar-thumb {
-    @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
+    background: #cfccc0;
+      border-radius: 999px;
+    }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #b8b5a6;
   }
 
-  /* Smooth Selections */
   ::selection {
-    @apply bg-blue-100 text-blue-900;
+    background: #f0ddb6;
+      color: #3a2c07;
+    }
+    }
+
+    @layer utilities {
+      .card-ledger {
+        background: var(--card-warm);
+        border: 1px solid var(--line);
+        box-shadow:
+          0 1px 2px rgba(31, 42, 40, 0.05),
+          0 12px 32px -16px rgba(31, 42, 40, 0.22);
+      }
+
+      .shadow-press {
+        box-shadow: 0 1px 0 rgba(12, 43, 35, 0.9);
+      }
+
+      .texture-hatch {
+        background-image: repeating-linear-gradient(-45deg,
+            rgba(18, 63, 51, 0.07) 0px,
+            rgba(18, 63, 51, 0.07) 1px,
+            transparent 1px,
+            transparent 7px);
   }
 }
