@@ -68,6 +68,7 @@ nav:
     - Project Structure: frontend/project-structure.md
     - API Layer: frontend/api-layer.md
     - No-Code Platform: frontend/no-code-platform.md
+    - Design System: frontend/design-system.md
   - API Reference:
     - Backend Endpoints: api-reference/backend-endpoints.md
   - Development:

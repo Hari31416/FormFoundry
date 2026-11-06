@@ -7,6 +7,7 @@ The FormFoundry frontend is a reactive Single Page Application (SPA) designed to
 - **[Project Structure](project-structure.md)**: Overview of the codebase organization.
 - **[API Layer](api-layer.md)**: How the frontend communicates with the backend service.
 - **[No-Code Platform](no-code-platform.md)**: Details on the custom dynamic template builder, dynamic case forms, and layouts.
+- **[Design System](design-system.md)**: The "administrative dossier" visual language — tokens, type, and per-screen rules.
 
 ## Core Principles
 
