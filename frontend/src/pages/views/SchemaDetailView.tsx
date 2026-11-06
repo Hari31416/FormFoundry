@@ -39,7 +39,7 @@ export default function SchemaDetailView({ template, versions, activeVersion, on
   const [tab, setTab] = React.useState<'cases' | 'schema'>('cases')
   const filtered = cases.filter(c => {
     const q = search.toLowerCase().trim()
-    return !q || (getCaseSubject(c) || '').toLowerCase().includes(q) || c.case_id.toLowerCase().includes(q) || c.status.toLowerCase().includes(q)
+    return !q || getCaseTitle(c).toLowerCase().includes(q) || (getCaseSubject(c) || '').toLowerCase().includes(q) || c.case_id.toLowerCase().includes(q) || c.status.toLowerCase().includes(q)
   }).sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
 
   const awaiting = cases.filter(c => !['approved', 'completed', 'failed'].includes(c.status)).length

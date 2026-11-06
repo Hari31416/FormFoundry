@@ -1,4 +1,12 @@
 {
+  "case_title_pattern_help": "Use field paths in braces. Leave blank for an automatic AI title once answers are captured. Renamed cases keep their title.",
+  "case_title_pattern": "Case title pattern (optional)",
+  "case_title_error": "Could not save the title. Try again.",
+  "case_title_cancel": "Cancel",
+  "case_title_save": "Save",
+  "case_rename": "Rename case",
+  "case_title": "Case title",
+  "case_title_fallback": "Case #{{id}}",
   "case_intake_management": "Case Intake Management",
   "intake_control_center": "Intake Control Center",
   "template_select_desc": "Select a template to launch a new intake process or resume a pre-existing case. Our AI-driven engine dynamically adapts to your selected schema.",

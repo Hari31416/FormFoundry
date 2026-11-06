@@ -43,6 +43,7 @@ import {
 import { DropdownMenuComponent } from '@/components/case/DropdownMenuComponent'
 import { SimplifiedChatView } from '@/components/case/SimplifiedChatView'
 import { DetailedWorkspaceView } from '@/components/case/DetailedWorkspaceView'
+import { CaseTitleEditor } from '@/components/case/CaseTitleEditor'
 import { LanguageSelector } from '@/components/case/LanguageSelector'
 
 function getValueByPath(payload: Record<string, unknown>, path: string): unknown {
@@ -720,8 +721,8 @@ export default function CaseWorkspace() {
 
   return (
     <div className="h-dvh min-h-screen flex flex-col bg-paper overflow-hidden font-sans">
-      <header className="min-h-14 h-auto bg-pine-deep text-primary-foreground px-4 sm:px-6 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 py-1.5 border-b border-pine-deep z-10">
-        <div className="flex items-center gap-3 min-w-0">
+      <header className="min-h-14 h-auto shrink-0 bg-pine-deep text-primary-foreground px-4 sm:px-6 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 py-1.5 border-b border-pine-deep z-10">
+        <div className="flex items-center gap-3 min-w-0 max-w-full">
           <button
             className="w-9 h-9 rounded-md bg-primary-foreground/10 border border-primary-foreground/15 flex items-center justify-center hover:bg-primary-foreground/20 transition-colors cursor-pointer shrink-0"
             onClick={() => navigate('/')}
@@ -732,13 +733,16 @@ export default function CaseWorkspace() {
           </button>
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="text-[13px] font-semibold text-primary-foreground truncate">{caseDetail ? t('template_' + caseDetail.template.template_id + '_name', { defaultValue: caseDetail.template.name }) : ''}</span>
+              <div className="min-w-0">
+                {caseDetail && <CaseTitleEditor caseFile={caseDetail} />}
+                <span className="block text-[10px] text-primary-foreground/60 truncate">{caseDetail?.template.name}</span>
+              </div>
               <span className="font-mono text-[11px] text-primary-foreground/60 bg-primary-foreground/10 px-1.5 py-0.5 rounded leading-none shrink-0">#{caseId?.slice(0, 8)}</span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 shrink-0 max-w-full">
           {/* Language Selector Dropdown */}
           <LanguageSelector onLanguageChange={(code) => updateLanguageMutation.mutate(code)} className="border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 hover:border-primary-foreground/30 shadow-none [&_svg]:text-primary-foreground/70" />
 

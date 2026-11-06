@@ -1,4 +1,5 @@
 import React from 'react'
+import { getCaseTitle, getCaseSubject } from '@/lib/caseLabel'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Trash2, Search, ChevronLeft, ChevronRight, Inbox, Clock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
@@ -38,7 +39,7 @@ export const TemplateCasesDialog: React.FC<TemplateCasesDialogProps> = ({
 
   // Filter cases
   const filteredCases = cases.filter((c) => {
-    const subject = (c.metadata?.subject_name || '').toLowerCase()
+    const subject = `${getCaseTitle(c)} ${getCaseSubject(c) || ''}`.toLowerCase()
     const caseId = c.case_id.toLowerCase()
     const query = searchQuery.toLowerCase()
     return subject.includes(query) || caseId.includes(query)
@@ -97,7 +98,7 @@ export const TemplateCasesDialog: React.FC<TemplateCasesDialogProps> = ({
                     <div className="space-y-1 min-w-0 flex-grow">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-semibold text-ink truncate max-w-[200px]">
-                          {c.metadata?.subject_name || "Untitled Case"}
+                          {getCaseTitle(c)}
                         </span>
                         <Badge variant="outline" className="font-mono text-[11px] font-semibold uppercase text-ink-faint border-line bg-card-warm">
                           {t('case_status_' + c.status)}

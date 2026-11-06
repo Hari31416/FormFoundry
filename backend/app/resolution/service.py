@@ -20,6 +20,7 @@ from app.cases.models import (
     FieldStateStatus,
     ReviewStatus,
 )
+from app.cases.titles import refresh_case_title
 from app.core.config import get_settings
 from app.extraction.models import FieldCandidateRecord
 from app.extraction.provenance import source_refs_are_supported
@@ -456,6 +457,9 @@ async def resolve_case_fields(session: AsyncSession, case_id: str) -> None:
     case_record.review_status = (
         ReviewStatus.NOT_READY if unresolved_required else ReviewStatus.NEEDS_REVIEW
     )
+    await session.flush()
+
+    await refresh_case_title(session, case_record, template_record, field_states)
     await session.flush()
 
     elapsed = time.perf_counter() - start_time

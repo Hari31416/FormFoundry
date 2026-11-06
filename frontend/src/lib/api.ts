@@ -67,7 +67,8 @@ export interface TemplateDefinition {
   field_groups: TemplateFieldGroup[]
   supported_artifacts: string[]
   conversation_config?: {
-    tone: string
+    tone?: string
+    title_pattern?: string
     explanation_style?: string
     reask_cooldown_turns?: number
     max_grouped_fields?: number
@@ -176,6 +177,8 @@ export const getCases = (params?: { template_id?: string; limit?: number; offset
 export const createCase = (data: { template_id: string; template_version?: number; metadata?: Record<string, any> }) =>
   api.post<CaseFile>('/cases', data).then((res) => res.data)
 export const getCase = (id: string) => api.get<CaseDetail>(`/cases/${id}`).then((res) => res.data)
+export const updateCaseTitle = (caseId: string, title: string) =>
+  api.put<CaseDetail>(`/cases/${caseId}/title`, { title }).then((res) => res.data)
 export const deleteCase = (id: string) => api.delete(`/cases/${id}`).then((res) => res.data)
 export const updateCaseLanguage = (caseId: string, language: string) =>
   api.put<CaseDetail>(`/cases/${caseId}/language`, { language }).then((res) => res.data)

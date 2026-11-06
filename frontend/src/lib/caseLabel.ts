@@ -1,3 +1,4 @@
+import i18next from 'i18next'
 import type { CaseFile } from './api'
 
 function findFullName(value: unknown): string | null {
@@ -13,14 +14,17 @@ function findFullName(value: unknown): string | null {
 }
 
 export function getCaseSubject(c: CaseFile): string | null {
-  const meta = (c.metadata?.subject_name as string) || (c.metadata?.display_name as string)
-  if (meta && meta.trim()) return meta.trim()
+  for (const value of [c.metadata?.subject_name, c.metadata?.display_name]) {
+    if (typeof value === 'string' && value.trim()) return value.trim()
+  }
   const fromState = findFullName(c.current_schema_state)
   return fromState
 }
 
 export function getCaseTitle(c: CaseFile): string {
-  return getCaseSubject(c) || 'Untitled Case'
+  const title = c.metadata?.title
+  if (typeof title === 'string' && title.trim()) return title.trim()
+  return i18next.t('case_title_fallback', { id: getShortId(c) })
 }
 
 export function formatCaseDate(iso: string): string {

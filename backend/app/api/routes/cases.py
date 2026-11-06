@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +10,8 @@ from app.cases.models import (
     CaseCreateRequest,
     CaseDetail,
     CaseFilePayload,
+    CaseFileRecord,
+    CaseTitleUpdate,
     SchemaStateResponse,
 )
 from app.cases.service import (
@@ -18,6 +20,7 @@ from app.cases.service import (
     get_filtered_schema_state,
     list_cases,
 )
+from app.conversation.context import case_lock
 from app.conversation.service import record_active_question_turn
 from app.db import get_db_session
 
@@ -50,6 +53,23 @@ async def create_case_route(
 @router.get("/{case_id}", response_model=CaseDetail)
 async def get_case_route(case_id: str, session: DBSession) -> CaseDetail:
     return await get_case_detail(session, case_id)
+
+
+@router.put("/{case_id}/title", response_model=CaseDetail)
+async def update_case_title_route(
+    case_id: str, payload: CaseTitleUpdate, session: DBSession
+) -> CaseDetail:
+    async with case_lock(case_id):
+        record = await session.get(CaseFileRecord, case_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="Case not found")
+        record.case_metadata = {
+            **(record.case_metadata or {}),
+            "title": payload.title,
+            "title_source": "manual",
+        }
+        await session.commit()
+        return await get_case_detail(session, case_id)
 
 
 @router.get("/{case_id}/schema-state", response_model=SchemaStateResponse)

@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Database, Layers, Workflow, Sparkles, FileJson, X, Check, Plus, Trash2, Edit,
   HelpCircle, RefreshCw, FileText
@@ -27,6 +28,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
   onSave,
   isPending
 }) => {
+  const { t } = useTranslation()
   const [builderTab, setBuilderTab] = React.useState<'metadata' | 'fields' | 'groups' | 'ai' | 'json'>('metadata')
   const [jsonText, setJsonText] = React.useState<string>('')
   const [isAddingGroup, setIsAddingGroup] = React.useState<boolean>(false)
@@ -392,6 +394,15 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                 placeholder="e.g. Employee HR Intake"
                 className="h-11 rounded-md bg-card-warm border-line focus-visible:ring-pine/25"
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="case-title-pattern" className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-faint">{t('case_title_pattern')}</label>
+              <Input id="case-title-pattern" value={draftTemplate.conversation_config?.title_pattern || ''} maxLength={200}
+                onChange={e => setDraftTemplate(prev => ({ ...prev, conversation_config: { ...prev.conversation_config, title_pattern: e.target.value } }))}
+                placeholder={draftTemplate.schema.slice(0, 2).map(field => `{${field.path}}`).join(' · ')}
+                aria-describedby="case-title-pattern-help" className="h-11 rounded-md bg-card-warm border-line focus-visible:ring-pine/25" />
+              <p id="case-title-pattern-help" className="text-xs text-ink-soft">{t('case_title_pattern_help')}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-6">
@@ -1143,6 +1154,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                 onChange={e => setDraftTemplate(prev => ({
                   ...prev,
                   conversation_config: {
+                    ...prev.conversation_config,
                     tone: e.target.value,
                     explanation_style: prev.conversation_config?.explanation_style || 'clear',
                     reask_cooldown_turns: prev.conversation_config?.reask_cooldown_turns || 1,
@@ -1162,6 +1174,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                 onChange={e => setDraftTemplate(prev => ({
                   ...prev,
                   conversation_config: {
+                    ...prev.conversation_config,
                     tone: prev.conversation_config?.tone || 'professional',
                     explanation_style: prev.conversation_config?.explanation_style || 'clear',
                     reask_cooldown_turns: prev.conversation_config?.reask_cooldown_turns || 1,
@@ -1180,6 +1193,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                 onChange={e => setDraftTemplate(prev => ({
                   ...prev,
                   conversation_config: {
+                    ...prev.conversation_config,
                     tone: prev.conversation_config?.tone || 'professional',
                     explanation_style: e.target.value,
                     reask_cooldown_turns: prev.conversation_config?.reask_cooldown_turns || 1,

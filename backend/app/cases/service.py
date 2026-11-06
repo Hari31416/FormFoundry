@@ -20,6 +20,7 @@ from app.cases.models import (
     ReviewStatus,
     SchemaStateResponse,
 )
+from app.cases.titles import clean_title
 from app.templates.service import get_template, serialize_template
 
 logger = logging.getLogger(__name__)
@@ -120,6 +121,13 @@ async def create_case(session: AsyncSession, payload: CaseCreateRequest) -> Case
         )
 
     field_paths = [field["path"] for field in template_record.schema]
+    metadata = dict(payload.metadata)
+    title = clean_title(metadata.get("title"))
+    metadata.pop("title_source", None)
+    if title:
+        metadata.update(title=title, title_source="manual")
+    else:
+        metadata.pop("title", None)
     case_record = CaseFileRecord(
         template_id=template_record.template_id,
         template_version=template_record.template_version,
@@ -127,7 +135,7 @@ async def create_case(session: AsyncSession, payload: CaseCreateRequest) -> Case
         created_by=payload.created_by,
         current_schema_state=build_empty_schema_state(field_paths),
         review_status=ReviewStatus.NOT_READY,
-        case_metadata=payload.metadata,
+        case_metadata=metadata,
     )
     session.add(case_record)
     await session.flush()

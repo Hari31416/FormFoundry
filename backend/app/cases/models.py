@@ -5,7 +5,7 @@ from enum import StrEnum
 from typing import Any
 from uuid import uuid4
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import JSON, DateTime, Float, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -63,6 +63,18 @@ class CaseCreateRequest(BaseModel):
     template_version: int | None = None
     created_by: str = "local-user"
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class CaseTitleUpdate(BaseModel):
+    title: str = Field(min_length=1, max_length=160)
+
+    @field_validator("title")
+    @classmethod
+    def normalize_title(cls, value: str) -> str:
+        title = " ".join(value.split())
+        if not title:
+            raise ValueError("Title cannot be blank")
+        return title
 
 
 class CaseFilePayload(BaseModel):

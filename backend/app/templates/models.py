@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from string import Formatter
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import JSON, DateTime, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -66,6 +67,25 @@ class TemplateDefinitionBase(BaseModel):
     conversation_config: dict[str, Any] = Field(default_factory=dict)
     supported_artifacts: list[str] = Field(default_factory=list)
     renderer_config: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_title_pattern(self) -> TemplateDefinitionBase:
+        pattern = self.conversation_config.get("title_pattern", "")
+        if not isinstance(pattern, str) or len(pattern) > 200:
+            raise ValueError("Title pattern must be a string of at most 200 characters")
+        fields = {field.path: field for field in self.template_schema}
+        for _, path, spec, conversion in Formatter().parse(pattern):
+            if path is None:
+                continue
+            if path not in fields or spec or conversion:
+                raise ValueError(
+                    "Title placeholders must use schema field paths without formatting"
+                )
+            if fields[path].type in ("object", "list_of_objects"):
+                raise ValueError("Title placeholders must reference scalar fields")
+        if "{{" in pattern or "}}" in pattern:
+            raise ValueError("Use single braces around title field paths")
+        return self
 
 
 class TemplateDefinitionCreate(TemplateDefinitionBase):

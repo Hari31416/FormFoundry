@@ -40,6 +40,7 @@ export default function OverviewView({ templates, cases, filter, search = '', t 
   const nameById = Object.fromEntries(templates.map(x => [x.template_id, x.name]))
   const q = search.trim().toLowerCase()
   const matches = (c: CaseFile) => !q
+    || getCaseTitle(c).toLowerCase().includes(q)
     || (getCaseSubject(c) || '').toLowerCase().includes(q)
     || c.case_id.toLowerCase().includes(q)
     || (nameById[c.template_id] || '').toLowerCase().includes(q)
