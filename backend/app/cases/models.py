@@ -93,6 +93,8 @@ class CaseFilePayload(BaseModel):
     updated_at: datetime
     completion_pct: float = 0.0
     fields_confirmed: int = 0
+    fields_collected: int = 0
+    fields_waived: int = 0
     fields_total: int = 0
 
 

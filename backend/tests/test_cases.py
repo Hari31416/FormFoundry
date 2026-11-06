@@ -1,5 +1,8 @@
 from fastapi.testclient import TestClient
 
+from app.templates.models import TemplateField
+from app.templates.runtime import is_field_active
+
 
 def test_case_creation_persists_empty_field_states(client: TestClient) -> None:
     create_response = client.post(
@@ -21,7 +24,12 @@ def test_case_creation_persists_empty_field_states(client: TestClient) -> None:
     assert all(field["status"] == "missing" for field in case_payload["field_states"])
     assert case_payload["completion_pct"] == 0.0
     assert case_payload["fields_confirmed"] == 0
-    assert case_payload["fields_total"] == len(case_payload["field_states"])
+    assert case_payload["fields_total"] == sum(
+        is_field_active(
+            TemplateField.model_validate(field), case_payload["current_schema_state"]
+        )
+        for field in case_payload["template"]["schema"]
+    )
 
     case_id = case_payload["case_id"]
     schema_state_response = client.get(f"/api/v1/cases/{case_id}/schema-state")

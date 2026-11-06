@@ -28,3 +28,11 @@ Schema authors can set an optional **Case title pattern** in the Architect's met
 AI titles are generated after resolution captures at least two eligible fields, or one for a one-field schema. Generation uses up to 12 captured scalar fields marked with standard sensitivity, with bounded values and a 10-second timeout. A successful title is persisted once. Failure leaves the ID fallback in place and can retry on the next resolution. Reads never trigger AI calls, so existing cases receive titles when their fields are next resolved.
 
 Use the pencil beside the workspace title to rename a case. `PUT /api/v1/cases/{case_id}/title` accepts a nonblank title of up to 160 characters. Renaming sets the source to `manual`, preserves other metadata, and prevents subsequent automatic changes.
+
+## Case progress
+
+The percentage measures field coverage, independently of review or approval:
+
+`completion_pct = (fields_collected + fields_waived) / fields_total × 100`
+
+`fields_total` includes active schema fields, including optional fields. Inactive conditional fields are excluded. `fields_collected` counts nonempty proposed and confirmed values, including `false` and `0`. Missing, invalid, and conflicted fields do not count. `fields_confirmed` counts confirmations separately. The list shows “fields addressed” because waived fields also count toward coverage. Reaching 100% does not approve a case. The initial workflow status is displayed as “In progress”; “Awaiting user” still means that another answer is needed.

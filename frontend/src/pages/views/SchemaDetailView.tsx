@@ -103,8 +103,8 @@ export default function SchemaDetailView({ template, versions, activeVersion, on
                         <span className="block text-[10px] text-ink-faint truncate">{formatCaseDate(c.created_at)} · {formatCompactTime(c.created_at)} ago · {formatProgress(c)} · <span className="font-mono">#{getShortId(c)}</span></span>
                       </span>
                       <span className="hidden sm:block w-20 shrink-0">
-                        <span className="block h-1 rounded bg-[#eee6d3] overflow-hidden"><span className="block h-full bg-pine" style={{ width: `${c.completion_pct ?? 0}%` }} /></span>
-                        <span className="block text-[10px] text-ink-faint mt-0.5 text-right">{formatProgress(c)}</span>
+                        <span role="progressbar" aria-label={t('case_progress_label')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={c.completion_pct ?? 0} className="block h-1 rounded bg-[#eee6d3] overflow-hidden"><span className="block h-full bg-pine" style={{ width: `${c.completion_pct ?? 0}%` }} /></span>
+                        <span className="block text-[10px] text-ink-faint mt-0.5 text-right">{Math.round(c.completion_pct ?? 0)}%</span>
                       </span>
                       <ArrowRight className="w-3.5 h-3.5 text-ink-faint group-hover:text-pine shrink-0" />
                     </Link>

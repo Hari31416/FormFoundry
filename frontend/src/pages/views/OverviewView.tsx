@@ -101,11 +101,11 @@ export default function OverviewView({ templates, cases, filter, search = '', t 
                 <span className="w-20 shrink-0 hidden sm:block">
                   {(c.completion_pct ?? 0) > 0 ? (
                     <>
-                      <span className="block h-1 rounded bg-paper overflow-hidden"><span className="block h-full bg-pine" style={{ width: `${c.completion_pct ?? 0}%` }} /></span>
-                      <span className="block text-[10px] text-ink-faint mt-0.5 text-right">{formatProgress(c)}</span>
+                      <span role="progressbar" aria-label={t('case_progress_label')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={c.completion_pct ?? 0} className="block h-1 rounded bg-paper overflow-hidden"><span className="block h-full bg-pine" style={{ width: `${c.completion_pct ?? 0}%` }} /></span>
+                      <span className="block text-[10px] text-ink-faint mt-0.5 text-right">{Math.round(c.completion_pct ?? 0)}%</span>
                     </>
                   ) : (
-                    <span className="block text-[10px] text-ink-faint text-right">Not started</span>
+                    <span className="block text-[10px] text-ink-faint text-right">{formatProgress(c)}</span>
                   )}
                 </span>
                 <span className="text-[11px] text-ink-faint shrink-0 tabular-nums">{formatCompactTime(c.created_at)}</span>

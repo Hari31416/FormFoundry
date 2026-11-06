@@ -669,13 +669,16 @@ async def approve_case(session: AsyncSession, case_id: str) -> CaseFilePayload:
 
     case_record.status = CaseStatus.APPROVED
     case_record.review_status = ReviewStatus.APPROVED
-    case_record.approved_at = datetime.now(UTC)
+    approved_at = datetime.now(UTC)
+    case_record.approved_at = approved_at
     await session.commit()
     logger.info(
         "validation.case.approved",
         extra={
             "case_id": case_id,
-            "approved_at": case_record.approved_at.isoformat(),
+            "approved_at": approved_at.isoformat(),
         },
     )
-    return serialize_case(case_record)
+    return serialize_case(
+        case_record, field_states=field_states, template=template_record
+    )

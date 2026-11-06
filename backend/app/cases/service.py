@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Any
 
@@ -21,6 +22,8 @@ from app.cases.models import (
     SchemaStateResponse,
 )
 from app.cases.titles import clean_title
+from app.templates.models import TemplateDefinitionRecord, TemplateField
+from app.templates.runtime import is_field_active
 from app.templates.service import get_template, serialize_template
 
 logger = logging.getLogger(__name__)
@@ -42,29 +45,39 @@ def build_empty_schema_state(field_paths: list[str]) -> dict[str, Any]:
 
 
 def _completion_from_states(
-    field_states: list[FieldStateRecord | FieldStatePayload],
-) -> tuple[float, int, int]:
+    field_states: Sequence[FieldStateRecord | FieldStatePayload],
+) -> tuple[float, int, int, int, int]:
     total = len(field_states)
-    if total == 0:
-        return 0.0, 0, 0
-    confirmed = 0
-    for fs in field_states:
-        val = getattr(fs.status, "value", fs.status)
-        if val in ("confirmed", "waived"):
-            confirmed += 1
-    return round(confirmed / total * 100, 1), confirmed, total
+    confirmed = sum(fs.status == FieldStateStatus.CONFIRMED for fs in field_states)
+    waived = sum(fs.status == FieldStateStatus.WAIVED for fs in field_states)
+    collected = sum(
+        fs.status in (FieldStateStatus.PROPOSED, FieldStateStatus.CONFIRMED)
+        and fs.resolved_value is not None
+        and fs.resolved_value != ""
+        and fs.resolved_value != []
+        and fs.resolved_value != {}
+        for fs in field_states
+    )
+    pct = round((collected + waived) / total * 100, 1) if total else 0.0
+    return pct, confirmed, total, collected, waived
 
 
 def serialize_case(
-    record: CaseFileRecord, field_states: list[FieldStateRecord] | None = None
+    record: CaseFileRecord,
+    field_states: Sequence[FieldStateRecord] | None = None,
+    template: TemplateDefinitionRecord | None = None,
 ) -> CaseFilePayload:
-    if field_states is not None:
-        pct, confirmed, total = _completion_from_states(field_states)
-    else:
-        # Fallback for callers without field states: derive from status only.
-        pct, confirmed, total = (
-            (100.0, 0, 0) if record.status in ("approved", "completed") else (0.0, 0, 0)
-        )
+    active_states = list(field_states or [])
+    if template is not None:
+        active_paths = {
+            field.path
+            for item in template.schema
+            if is_field_active(
+                field := TemplateField.model_validate(item), record.current_schema_state
+            )
+        }
+        active_states = [fs for fs in active_states if fs.field_path in active_paths]
+    pct, confirmed, total, collected, waived = _completion_from_states(active_states)
     return CaseFilePayload(
         case_id=record.case_id,
         template_id=record.template_id,
@@ -79,6 +92,8 @@ def serialize_case(
         updated_at=record.updated_at,
         completion_pct=pct,
         fields_confirmed=confirmed,
+        fields_collected=collected,
+        fields_waived=waived,
         fields_total=total,
     )
 
@@ -170,7 +185,9 @@ async def create_case(session: AsyncSession, payload: CaseCreateRequest) -> Case
     )
 
     return CaseDetail(
-        **serialize_case(case_record, field_states=field_state_records).model_dump(),
+        **serialize_case(
+            case_record, field_states=field_state_records, template=template_record
+        ).model_dump(),
         template=serialize_template(template_record),
         field_states=[serialize_field_state(record) for record in field_state_records],
     )
@@ -232,7 +249,9 @@ async def get_case_detail(session: AsyncSession, case_id: str) -> CaseDetail:
     )
 
     return CaseDetail(
-        **serialize_case(case_record, field_states=field_states).model_dump(),
+        **serialize_case(
+            case_record, field_states=field_states, template=template_record
+        ).model_dump(),
         template=serialize_template(template_record),
         field_states=[serialize_field_state(record) for record in field_states],
     )
@@ -278,8 +297,26 @@ async def list_cases(
     by_case: dict[str, list[FieldStateRecord]] = {cid: [] for cid in case_ids}
     for fs in fs_rows:
         by_case[fs.case_id].append(fs)
+    templates = (
+        (
+            await session.execute(
+                select(TemplateDefinitionRecord).where(
+                    TemplateDefinitionRecord.template_id.in_(
+                        {r.template_id for r in records}
+                    )
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    by_template = {(t.template_id, t.template_version): t for t in templates}
     return [
-        serialize_case(record, field_states=by_case.get(record.case_id, []))
+        serialize_case(
+            record,
+            field_states=by_case.get(record.case_id, []),
+            template=by_template.get((record.template_id, record.template_version)),
+        )
         for record in records
     ]
 

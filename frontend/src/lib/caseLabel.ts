@@ -50,7 +50,12 @@ export function formatCompactTime(iso: string): string {
 }
 
 export function formatProgress(c: CaseFile): string {
-  if ((c.completion_pct ?? 0) === 0) return 'Not started'
-  if (c.fields_total) return `${c.fields_confirmed}/${c.fields_total} · ${Math.round(c.completion_pct ?? 0)}%`
-  return `${Math.round(c.completion_pct ?? 0)}%`
+  if (!c.fields_total) return i18next.t('case_progress_unavailable')
+  const addressed = (c.fields_collected ?? c.fields_confirmed) + (c.fields_waived ?? 0)
+  if (!addressed) return i18next.t('case_progress_empty')
+  return i18next.t('case_progress_fields', {
+    addressed,
+    total: c.fields_total,
+    percent: Math.round(c.completion_pct ?? 0),
+  })
 }

@@ -1,4 +1,8 @@
 {
+  "case_progress_label": "Case field coverage",
+  "case_progress_fields": "{{addressed}}/{{total}} fields addressed · {{percent}}%",
+  "case_progress_unavailable": "No active fields",
+  "case_progress_empty": "No fields captured",
   "case_title_pattern_help": "Use field paths in braces. Leave blank for an automatic AI title once answers are captured. Renamed cases keep their title.",
   "case_title_pattern": "Case title pattern (optional)",
   "case_title_error": "Could not save the title. Try again.",
@@ -93,7 +97,7 @@
   "field_status_conflicted": "Conflicted",
   "field_status_missing": "Missing",
   "case_status_draft": "Draft",
-  "case_status_collecting_input": "Collecting Input",
+  "case_status_collecting_input": "In progress",
   "case_status_extracting": "Extracting",
   "case_status_resolving": "Resolving",
   "case_status_awaiting_user": "Awaiting User",

@@ -102,6 +102,8 @@ export interface CaseFile {
   created_at: string
   updated_at: string
   completion_pct: number
+  fields_collected: number
+  fields_waived: number
   fields_confirmed: number
   fields_total: number
 }
