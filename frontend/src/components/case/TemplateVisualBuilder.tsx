@@ -1,4 +1,5 @@
 import React from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import {
   Database, Layers, Workflow, Sparkles, FileJson, X, Check, Plus, Trash2, Edit,
@@ -9,7 +10,10 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { TemplateDefinition, TemplateField, TemplateFieldGroup } from '@/lib/api'
+import { TemplateDefinition, TemplateField, TemplateFieldGroup, DocumentDefinition, DocumentExtraction, getDocumentTypes } from '@/lib/api'
+
+import { DocumentNodeEditor } from './DocumentNodeEditor'
+import { buildDocumentNode, documentPathsConflict, titleFieldPaths } from '@/lib/documentNodes'
 
 interface TemplateVisualBuilderProps {
   draftTemplate: TemplateDefinition
@@ -49,6 +53,16 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
     calculation: '',
     conditions: {}
   })
+  const { data: documentTypes } = useQuery({ queryKey: ['document-types'], queryFn: getDocumentTypes, staleTime: 300_000 })
+  const [documentMode, setDocumentMode] = React.useState(false)
+  const [documentDefinition, setDocumentDefinition] = React.useState<DocumentDefinition | null>(null)
+  const [documentFields, setDocumentFields] = React.useState<DocumentExtraction[]>([])
+  const [documentError, setDocumentError] = React.useState<string | null>(null)
+  React.useEffect(() => {
+    if (documentMode && !documentDefinition && fieldForm.document && documentTypes) {
+      setDocumentDefinition(documentTypes.find((item) => item.country === fieldForm.document?.country && item.document_type === fieldForm.document.document_type) ?? null)
+    }
+  }, [documentMode, documentDefinition, fieldForm.document, documentTypes])
   const [newEnumOption, setNewEnumOption] = React.useState<string>('')
   const [newValidationRef, setNewValidationRef] = React.useState<string>('')
 
@@ -76,8 +90,12 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
 
   // Field Schema Visual Builder Helpers
   const startFieldEdit = (idx: number) => {
-    setEditingFieldIdx(idx)
     const field = draftTemplate.schema[idx]
+    setDocumentMode(field.type === 'document')
+    setDocumentDefinition(documentTypes?.find((item) => item.country === field.document?.country && item.document_type === field.document.document_type) ?? null)
+    setDocumentFields(field.document?.extractions ?? [])
+    setDocumentError(null)
+    setEditingFieldIdx(idx)
     setFieldForm({
       ...field,
       validation_refs: field.validation_refs || [],
@@ -87,6 +105,41 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
   }
 
   const saveFieldForm = () => {
+    if (documentMode) {
+      if (!documentDefinition || !fieldForm.label.trim()) {
+        setDocumentError(t('document_builder.missing_selection'))
+        return
+      }
+      try {
+        const node = buildDocumentNode(documentDefinition, documentFields, {
+          ...fieldForm,
+          default_question: fieldForm.default_question || t('document_builder.upload_question', { document: fieldForm.label }),
+          clarification_question: fieldForm.clarification_question || t('document_builder.upload_question', { document: fieldForm.label }),
+        })
+        if (documentPathsConflict([node], draftTemplate.schema.filter((_, index) => index !== editingFieldIdx))) {
+          setDocumentError(t('document_builder.path_conflict'))
+          return
+        }
+        setDraftTemplate((previous) => {
+          const schema = [...previous.schema]
+          const oldPath = schema[editingFieldIdx!]?.path
+          schema[editingFieldIdx!] = node
+          const groups = previous.field_groups.map((group) => ({ ...group, field_paths: group.field_paths.map((path) => path === oldPath ? node.path : path) }))
+          if (!groups.some((group) => group.field_paths.includes(node.path))) {
+            let groupId = `${node.path.replace(/\./g, '_')}_document`
+            while (groups.some((group) => group.group_id === groupId)) groupId += '_new'
+            groups.push({ group_id: groupId, label: node.label, description: '', field_paths: [node.path] })
+          }
+          return { ...previous, schema, field_groups: groups }
+        })
+        setEditingFieldIdx(null)
+        setDocumentMode(false)
+      } catch (error) {
+        const code = error instanceof Error && ['duplicate_keys', 'invalid_keys'].includes(error.message) ? error.message : 'invalid_fields'
+        setDocumentError(t(`document_builder.${code}`))
+      }
+      return
+    }
     if (!fieldForm.path || !fieldForm.label) {
       alert(t('alert_field_json_label_required'))
       return
@@ -131,6 +184,10 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
   }
 
   const startFieldAdd = () => {
+    setDocumentMode(false)
+    setDocumentDefinition(null)
+    setDocumentFields([])
+    setDocumentError(null)
     const newField: TemplateField = {
       path: '',
       label: '',
@@ -324,7 +381,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
           <Button variant="outline" className="border-line-strong text-ink-soft hover:bg-card-warm hover:text-ink" onClick={onCancel}>
             <X className="w-4 h-4 mr-2" /> {t('cancel')}
           </Button>
-          <Button className="bg-pine hover:bg-pine-deep font-semibold shadow-none text-primary-foreground" onClick={onSave} disabled={isPending}>
+          <Button className="bg-pine hover:bg-pine-deep font-semibold shadow-none text-primary-foreground" onClick={onSave} disabled={isPending || editingFieldIdx !== null} title={editingFieldIdx !== null ? t('document_builder.save_field_first') : undefined}>
             <Check className="w-4 h-4 mr-2" /> {isPending ? t('saving') : t('save_template_config')}
           </Button>
         </div>
@@ -400,9 +457,10 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
               <label htmlFor="case-title-pattern" className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-faint">{t('case_title_pattern')}</label>
               <Input id="case-title-pattern" value={draftTemplate.conversation_config?.title_pattern || ''} maxLength={200}
                 onChange={e => setDraftTemplate(prev => ({ ...prev, conversation_config: { ...prev.conversation_config, title_pattern: e.target.value } }))}
-                placeholder={draftTemplate.schema.slice(0, 2).map(field => `{${field.path}}`).join(' · ')}
+                placeholder={titleFieldPaths(draftTemplate.schema).slice(0, 2).map(path => `{${path}}`).join(' · ')}
                 aria-describedby="case-title-pattern-help" className="h-11 rounded-md bg-card-warm border-line focus-visible:ring-pine/25" />
               <p id="case-title-pattern-help" className="text-xs text-ink-soft">{t('case_title_pattern_help')}</p>
+              <p className="mt-1 text-xs text-ink-soft">{t('document_builder.title_fields', { paths: titleFieldPaths(draftTemplate.schema).map((path) => `{${path}}`).join(', ') })}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-6">
@@ -524,10 +582,12 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                         )}
                       </div>
                       <code className="text-[11px] font-mono text-ink-soft bg-paper border border-line px-1.5 py-0.5 rounded inline-block mb-2">{field.path}</code>
+                      {field.document && <p className="mb-1 text-xs text-pine">{t(`documents.types.${field.document.document_type}`, { defaultValue: field.document.document_type })} · {t('document_builder.mapping_count', { count: field.document.extractions.length })}</p>}
+                      {field.document_source && <p className="mb-1 text-xs text-pine">{t('document_builder.bound_to', { document: t(`documents.types.${field.document_source.document_type}`, { defaultValue: field.document_source.document_type }), field: t(`documents.fields.${field.document_source.field}`, { defaultValue: field.document_source.field }) })}</p>}
                       <p className="text-xs text-ink-soft">{field.help_text || t('no_description_help')}</p>
                     </div>
                     <div className="flex items-center gap-1">
-                      <button onClick={() => startFieldEdit(idx)} className="p-2 text-ink-faint hover:text-pine hover:bg-paper rounded-md cursor-pointer border-none">
+                      <button aria-label={t('document_builder.edit_field', { field: field.label })} onClick={() => startFieldEdit(idx)} className="p-2 text-ink-faint hover:text-pine hover:bg-paper rounded-md cursor-pointer border-none">
                         <Edit className="w-4 h-4" />
                       </button>
                       <button onClick={() => deleteField(idx)} className="p-2 text-ink-faint hover:text-terracotta hover:bg-terracotta-soft rounded-md cursor-pointer border-none">
@@ -556,6 +616,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                     <div className="space-y-1">
                       <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.16em]">{t('json_path_label')}</label>
                       <Input
+                        aria-label={t('json_path_label')}
                         value={fieldForm.path}
                         onChange={e => setFieldForm(prev => ({ ...prev, path: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, '') }))}
                         placeholder={t('ph_json_path')}
@@ -565,6 +626,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                     <div className="space-y-1">
                       <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.16em]">{t('field_label_label')}</label>
                       <Input
+                        aria-label={t('field_label_label')}
                         value={fieldForm.label}
                         onChange={e => setFieldForm(prev => ({ ...prev, label: e.target.value }))}
                         placeholder={t('ph_field_label')}
@@ -577,15 +639,25 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                     <div className="space-y-1">
                       <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.16em]">{t('field_data_type_label')}</label>
                       <select
-                        value={fieldForm.type}
-                        onChange={e => setFieldForm(prev => {
-                          const type = e.target.value as any
+                        aria-label={t('field_data_type_label')}
+                        value={documentMode ? 'document' : fieldForm.type}
+                        onChange={e => {
+                          setDocumentError(null)
+                          if (e.target.value === 'document') {
+                            setDocumentMode(true)
+                            setFieldForm(prev => ({ ...prev, required: true, repeated: false, type: 'document', document: undefined, schema: undefined, document_source: null, calculation: null }))
+                            return
+                          }
+                          setDocumentMode(false)
+                          setFieldForm(prev => {
+                          const type = e.target.value as TemplateField['type']
                           const schema = (type === 'object' || type === 'list_of_objects') ? (prev.schema || []) : undefined
                           const enum_options = type === 'enum' ? (prev.enum_options || []) : []
-                          return { ...prev, type, schema, enum_options }
-                        })}
+                          return { ...prev, type, schema, enum_options, document: undefined, document_source: type === 'object' || type === 'list_of_objects' ? null : prev.document_source }
+                        })}}
                         className="w-full h-10 px-3 bg-card-warm border border-line rounded-md text-ink focus:outline-none focus:ring-1 focus:ring-pine/25"
                       >
+                        <option value="document">{t('document_builder.node_type')}</option>
                         <option value="string">{t('type_string')}</option>
                         <option value="date">{t('type_date')}</option>
                         <option value="enum">{t('type_enum')}</option>
@@ -604,9 +676,9 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                           onChange={e => setFieldForm(prev => ({ ...prev, required: e.target.checked }))}
                           className="rounded border-line text-pine focus:ring-pine/40"
                         />
-                        {t('required_badge')}
+                        {t(documentMode ? 'document_builder.require_upload' : 'required_badge')}
                       </label>
-                      <label className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-soft cursor-pointer">
+                      {!documentMode && <label className="flex items-center gap-2 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-soft cursor-pointer">
                         <input
                           type="checkbox"
                           checked={fieldForm.repeated}
@@ -614,10 +686,21 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                           className="rounded border-line text-pine focus:ring-pine/40"
                         />
                         {t('is_list')}
-                      </label>
+                      </label>}
                     </div>
                   </div>
 
+                  {documentError && <p role="alert" className="text-xs text-terracotta">{documentError}</p>}
+                  {documentMode && <DocumentNodeEditor definition={documentDefinition} extractions={documentFields} onExtractions={setDocumentFields} onDefinition={(definition) => {
+                    setDocumentDefinition(definition)
+                    setDocumentFields(definition.fields.map((field) => ({ field, key: field })))
+                    setDocumentError(null)
+                    setFieldForm((previous) => ({ ...previous,
+                      path: !previous.path || previous.path === documentDefinition?.document_type ? definition.document_type : previous.path,
+                      label: !previous.label || previous.label === t(`documents.types.${documentDefinition?.document_type}`) ? t(`documents.types.${definition.document_type}`, { defaultValue: definition.document_type }) : previous.label,
+                    }))
+                  }} />}
+                  {!documentMode && <>
                   {fieldForm.type === 'enum' && (
                     <div className="p-3 bg-paper border border-line rounded-md space-y-2">
                       <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.16em] block">{t('enum_options_label')}</label>
@@ -883,6 +966,7 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                   <div className="space-y-1">
                     <label className="font-mono text-[11px] font-semibold text-ink-faint uppercase tracking-[0.16em] block">{t('calculated_formula_label')}</label>
                     <Input
+                      disabled={!!fieldForm.document_source}
                       value={fieldForm.calculation || ''}
                       onChange={e => setFieldForm(prev => ({ ...prev, calculation: e.target.value }))}
                       placeholder={t('ph_calculation')}
@@ -1056,8 +1140,9 @@ export const TemplateVisualBuilder: React.FC<TemplateVisualBuilderProps> = ({
                     />
                   </div>
 
+                  </>}
                   <Button className="w-full h-11 bg-pine hover:bg-pine-deep font-semibold rounded-md shadow-none cursor-pointer text-primary-foreground" onClick={saveFieldForm}>
-                    {t('save_field_node')}
+                    {t(documentMode ? 'document_builder.save' : 'save_field_node')}
                   </Button>
                 </div>
               ) : (

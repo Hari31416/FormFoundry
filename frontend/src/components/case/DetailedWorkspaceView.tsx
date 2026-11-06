@@ -223,6 +223,7 @@ export function DetailedWorkspaceView({
                               state={fieldState}
                               issues={fieldIssues}
                               allEvidence={evidence || []}
+                              uploadFileMutation={uploadFileMutation}
                               onConfirm={(p) => confirmFieldMutation.mutate(p)}
                               onReject={(p) => onLocalReject(p)}
                               onEdit={onEditField}

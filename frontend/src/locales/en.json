@@ -463,5 +463,37 @@
       "failed": "Processing failed",
       "queued": "Waiting for processing"
     }
+  },
+  "document_builder": {
+    "node_type": "Document (File upload)",
+    "description": "Choose one document type. Select the values to extract and give each value a dictionary key. This field accepts an uploaded file and stores the extracted dictionary with it.",
+    "document_type": "Document type",
+    "loading": "Loading document types...",
+    "select_type": "Select a document type",
+    "catalog_error": "Could not load document types.",
+    "retry": "Retry",
+    "extracted_fields": "Information to capture",
+    "path_prefix": "Document path prefix",
+    "require_upload": "Require upload",
+    "save": "Save Document Field",
+    "missing_selection": "Choose a document type and a section label.",
+    "invalid_fields": "Enter a valid field path and field label.",
+    "path_conflict": "These paths overlap existing fields. Choose a different prefix or fewer fields.",
+    "question": "Please provide {{field}} as printed on {{document}}.",
+    "group_description": "Information extracted from {{document}}.",
+    "field_source": "Document source",
+    "no_binding": "No document binding",
+    "source_field": "Extracted document field",
+    "bound_to": "{{document}} → {{field}}",
+    "edit_field": "Edit {{field}}",
+    "dictionary_key": "Dictionary key",
+    "key_for": "Dictionary key for {{field}}",
+    "invalid_keys": "Keys must start with a letter and contain only letters, digits, or underscores.",
+    "duplicate_keys": "Each extracted value needs a unique dictionary key.",
+    "mapping_count_one": "{{count}} extraction mapping",
+    "mapping_count_other": "{{count}} extraction mappings",
+    "upload_question": "Please upload {{document}}.",
+    "title_fields": "Available title fields: {{paths}}",
+    "save_field_first": "Save or close the field editor before saving the schema."
   }
 }

@@ -155,6 +155,7 @@ function isFieldActive(field: TemplateField, schemaState: Record<string, unknown
 }
 
 function isQuestionOutstanding(field: TemplateField, state: FieldState): boolean {
+  if (field.type === 'document') return field.required && !state.resolved_value?._file?.evidence_id
   if (field.required && state.status === 'missing') {
     return true
   }
@@ -741,6 +742,8 @@ export default function CaseWorkspace() {
 
   const allFieldsConfirmed = Array.from(activeFieldPaths).every((path) => {
     const state = fieldStatesByPath.get(path)
+    const field = templateFields.find((item) => item.path === path)
+    if (field?.type === 'document' && !field.required && state?.status === 'missing') return true
     return state?.status === 'confirmed'
   })
 

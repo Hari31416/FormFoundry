@@ -41,17 +41,24 @@ export type FieldStatus =
 
 export type JobStatus = 'queued' | 'running' | 'completed' | 'failed'
 
+export interface DocumentExtraction {
+  field: string
+  key: string
+}
+
 export interface TemplateField {
   path: string
   label: string
-  type: 'string' | 'date' | 'enum' | 'boolean' | 'integer' | 'number' | 'object' | 'list_of_objects'
+  type: 'string' | 'date' | 'enum' | 'boolean' | 'integer' | 'number' | 'object' | 'list_of_objects' | 'document'
   required: boolean
   repeated: boolean
   enum_options: string[]
   default_question: string
   clarification_question: string
   help_text: string
+  sensitivity?: string
   allow_document_extraction?: boolean
+  document?: { country: string; document_type: string; extractions: DocumentExtraction[] } | null
   document_source?: { country: string; document_type: string; field: string } | null
   conditions?: Record<string, any>
   validation_refs?: string[]

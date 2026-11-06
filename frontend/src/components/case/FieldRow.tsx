@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import type { DocumentUploadMutation } from './DocumentSupport'
 
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
@@ -215,6 +216,7 @@ interface FieldRowProps {
   validationRules?: ValidationRule[]
   isLocallyRejected?: boolean
   onUndoReject?: (path: string) => void
+  uploadFileMutation?: DocumentUploadMutation
 }
 
 export function FieldRow({
@@ -227,7 +229,8 @@ export function FieldRow({
   onEdit,
   validationRules = [],
   isLocallyRejected = false,
-  onUndoReject
+  onUndoReject,
+  uploadFileMutation,
 }: FieldRowProps) {
   const { t } = useTranslation()
   if (!field) return null
@@ -240,7 +243,7 @@ export function FieldRow({
   )
   const [editError, setEditError] = useState<string | null>(null)
   const [isSaving, setIsSaving] = useState(false)
-  const canEdit = !field.calculation
+  const canEdit = !field.calculation && field.type !== 'document'
 
   const validationRuleMap = React.useMemo(() => {
     const map = new Map<string, ValidationRule>()
@@ -518,7 +521,12 @@ export function FieldRow({
               </div>
               <div className="text-[15px] font-semibold text-ink tabular-nums">
                 {hasResolvedValue(state?.resolved_value) ? (
-                  field.type === 'object' ? (
+                  field.type === 'document' ? (
+                    <div>
+                      <p className="mb-2 text-sm text-pine">{state?.resolved_value?._file?.filename}</p>
+                      <RenderNestedObject value={state?.resolved_value} schema={field.schema} />
+                    </div>
+                  ) : field.type === 'object' ? (
                     <RenderNestedObject value={state?.resolved_value} schema={field.schema} />
                   ) : field.type === 'list_of_objects' ? (
                     <RenderListOfObjects value={state?.resolved_value} schema={field.schema} />
@@ -538,6 +546,18 @@ export function FieldRow({
                 )}
               </div>
 
+              {field.type === 'document' && field.document && uploadFileMutation && (
+                <label className="mt-3 block text-xs font-normal text-ink-soft">
+                  <span className="mb-1 block">{t('documents.upload_named', { type: field.label })}</span>
+                  <input type="file" accept="image/*,.pdf,application/pdf" disabled={uploadFileMutation.isPending}
+                    className="block max-w-full text-xs file:mr-2 file:rounded-md file:border-0 file:bg-pine file:px-3 file:py-2 file:text-primary-foreground"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0]
+                      if (file) uploadFileMutation.mutate({ file, documentType: field.document!.document_type })
+                      event.target.value = ''
+                    }} />
+                </label>
+              )}
               {isEditing && (
                 <div className="mt-3 space-y-2">
                   {field.type === 'object' || field.type === 'list_of_objects' ? (
