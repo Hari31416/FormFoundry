@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import JSON, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.documents.models import DocumentAnalysis
 from app.jobs.models import JobPayload
 from app.models.base import Base
 
@@ -32,6 +33,7 @@ class EvidencePayload(BaseModel):
     raw_text: str | None = None
     parsed_payload: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
+    document_analysis: DocumentAnalysis | None = None
     source_refs: list[dict[str, Any]] = Field(default_factory=list)
     created_by: str
     created_at: datetime

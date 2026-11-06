@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import JSON, DateTime, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.documents.models import DocumentKind
 from app.models.base import Base
 
 
@@ -30,6 +31,8 @@ class ConversationTurnRequest(BaseModel):
 
 
 class NextQuestionPayload(BaseModel):
+    kind: Literal["field", "document_upload"] = "field"
+    documents: list[DocumentKind] = Field(default_factory=list)
     field_path: str
     field_paths: list[str] = Field(default_factory=list)
     field_labels: list[str] = Field(default_factory=list)

@@ -21,6 +21,7 @@ from app.cases.models import (
     ReviewStatus,
 )
 from app.cases.service import get_case_detail, serialize_case
+from app.conversation.documents import choose_document_upload_question
 from app.extraction.models import FieldCandidateRecord
 from app.intake.models import EvidenceRecord, EvidenceSourceType
 from app.intake.service import list_case_evidence
@@ -607,6 +608,10 @@ async def reject_field(
 
 
 async def approve_case(session: AsyncSession, case_id: str) -> CaseFilePayload:
+    if await choose_document_upload_question(
+        session, await get_case_detail(session, case_id)
+    ):
+        raise HTTPException(409, "Required documents must be uploaded before approval.")
     issues = await refresh_validation_issues(session, case_id)
     if any(issue.blocking for issue in issues):
         raise HTTPException(

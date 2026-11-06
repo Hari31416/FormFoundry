@@ -11,6 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.cases.models import CaseFileRecord
 from app.core.config import get_settings
+from app.documents.models import DocumentKind
+from app.documents.registry import get_definition
 from app.extraction.parsers.pdf import PdfValidationError, validate_pdf_page_limit
 from app.extraction.service import run_extraction_job
 from app.intake.models import (
@@ -35,6 +37,7 @@ def serialize_evidence(record: EvidenceRecord) -> EvidencePayload:
         storage_uri=record.storage_uri,
         raw_text=record.raw_text,
         parsed_payload=record.parsed_payload,
+        document_analysis=(record.parsed_payload or {}).get("document_analysis"),
         metadata=record.evidence_metadata,
         source_refs=record.source_refs,
         created_by=record.created_by,
@@ -220,6 +223,8 @@ async def create_upload_evidence(
     *,
     created_by: str,
     metadata: dict[str, Any] | None = None,
+    document_type: str | None = None,
+    document_country: str = "IN",
 ) -> EvidenceIntakeResponse:
     logger.info(
         "intake.upload.started",
@@ -231,7 +236,22 @@ async def create_upload_evidence(
         },
     )
     await ensure_case_exists(session, case_id)
-    payload = await upload.read()
+    declared = None
+    if document_type is not None:
+        try:
+            declared = DocumentKind(
+                country=document_country, document_type=document_type
+            )
+        except ValueError as exc:
+            raise HTTPException(422, "Invalid document country or type") from exc
+        if get_definition(declared) is None:
+            raise HTTPException(422, "Unsupported document country or type")
+    elif document_country != "IN":
+        raise HTTPException(422, "Unsupported document country")
+    settings = get_settings()
+    payload = await upload.read(settings.upload_max_bytes + 1)
+    if len(payload) > settings.upload_max_bytes:
+        raise HTTPException(413, "Uploaded file exceeds the configured size limit.")
     if not payload:
         logger.warning(
             "intake.upload.empty_file",
@@ -244,7 +264,6 @@ async def create_upload_evidence(
 
     content_type = upload.content_type or "application/octet-stream"
     suffix = Path(upload.filename or "upload.bin").suffix or ".bin"
-    settings = get_settings()
     is_pdf = content_type == "application/pdf" or suffix.lower() == ".pdf"
     is_image = content_type.startswith("image/")
     if not is_pdf and not is_image:
@@ -305,7 +324,11 @@ async def create_upload_evidence(
         storage_uri=stored.storage_uri,
         raw_text=None,
         parsed_payload={**parsed_payload, "size_bytes": stored.size_bytes},
-        evidence_metadata={**(metadata or {}), "content_type": stored.content_type},
+        evidence_metadata={
+            **(metadata or {}),
+            "content_type": "application/pdf" if is_pdf else stored.content_type,
+            "declared_document": declared.model_dump() if declared else None,
+        },
         source_refs=[],
         created_by=created_by,
     )

@@ -8,6 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import JSON, DateTime, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.documents.models import DocumentFieldSource
+from app.documents.registry import get_definition
 from app.models.base import Base
 
 FieldType = Literal[
@@ -38,10 +40,32 @@ class TemplateField(BaseModel):
     validation_refs: list[str] = Field(default_factory=list)
     render_targets: list[str] = Field(default_factory=list)
     conditions: dict[str, Any] = Field(default_factory=dict)
+    document_source: DocumentFieldSource | None = None
     calculation: str | None = None
     nested_schema: list[TemplateField] | None = Field(
         default=None, alias="schema", serialization_alias="schema"
     )
+
+    @model_validator(mode="after")
+    def validate_document_source(self) -> TemplateField:
+        if any(child.document_source is not None for child in self.nested_schema or []):
+            raise ValueError(
+                "Document sources are supported only on top-level scalar fields"
+            )
+        if self.document_source is not None:
+            definition = get_definition(self.document_source)
+            if (
+                definition is None
+                or self.document_source.field not in definition.fields
+            ):
+                raise ValueError(
+                    "Document source must reference a supported document field"
+                )
+            if self.type in {"object", "list_of_objects"} or self.calculation:
+                raise ValueError(
+                    "Document sources require a scalar field without a calculation"
+                )
+        return self
 
 
 class TemplateFieldGroup(BaseModel):

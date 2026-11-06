@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 from app.api.routes.artifacts import router as artifacts_router
 from app.api.routes.cases import router as cases_router
 from app.api.routes.conversation import router as conversation_router
+from app.api.routes.documents import router as documents_router
 from app.api.routes.extraction import router as extraction_router
 from app.api.routes.health import router as health_router
 from app.api.routes.intake import router as intake_router
@@ -21,6 +22,7 @@ protected_router.include_router(
 )
 protected_router.include_router(cases_router, prefix="/cases", tags=["cases"])
 protected_router.include_router(intake_router, tags=["intake"])
+protected_router.include_router(documents_router, tags=["documents"])
 protected_router.include_router(extraction_router, tags=["extraction"])
 protected_router.include_router(conversation_router, tags=["conversation"])
 protected_router.include_router(validation_router, tags=["validation"])

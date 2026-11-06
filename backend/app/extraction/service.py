@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
+from functools import partial
 from time import perf_counter
 from typing import Any
 
@@ -12,6 +13,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.cases.models import CaseFileRecord
 from app.conversation.context import load_conversation_context
 from app.core.config import get_settings
+from app.documents.models import (
+    DocumentAnalysis,
+    DocumentCheck,
+    DocumentKind,
+    StageResult,
+)
+from app.documents.pipeline import DocumentContext
+from app.documents.service import analyze_document
 from app.extraction.contracts import FieldCandidate
 from app.extraction.models import FieldCandidateRecord
 from app.extraction.ocr.adapter import extract_text_from_image_bytes
@@ -299,6 +308,11 @@ def format_field_catalog_item(field: TemplateField, indent: int = 0) -> str:
             sub_lines.append(format_field_catalog_item(sub_field, indent + 2))
         return "\n".join(sub_lines)
 
+    if field.document_source:
+        source = field.document_source
+        line += (
+            f" Document source: {source.country}/{source.document_type}/{source.field}."
+        )
     return line
 
 
@@ -768,7 +782,73 @@ async def run_extraction_job(
     try:
         for record in evidence_records:
             evidence_started_at = perf_counter()
-            text = await extract_evidence_text(record)
+            try:
+                text = await extract_evidence_text(record)
+            except Exception:
+                if record.source_type in {
+                    EvidenceSourceType.PDF_UPLOAD,
+                    EvidenceSourceType.IMAGE_UPLOAD,
+                }:
+                    declared_payload = (record.evidence_metadata or {}).get(
+                        "declared_document"
+                    )
+                    failed_analysis = DocumentAnalysis(
+                        declared=(
+                            DocumentKind.model_validate(declared_payload)
+                            if declared_payload
+                            else None
+                        ),
+                        status="error",
+                        stages=[
+                            StageResult(
+                                stage="ocr_text",
+                                version="1",
+                                status="error",
+                                error_code="ocr_failed",
+                            )
+                        ],
+                        checks=[
+                            DocumentCheck(
+                                code="authenticity_not_checked",
+                                scope="authenticity",
+                                outcome="skipped",
+                            )
+                        ],
+                    )
+                    record.parsed_payload = {
+                        **(record.parsed_payload or {}),
+                        "document_analysis": failed_analysis.model_dump(mode="json"),
+                    }
+                raise
+            document_analysis = None
+            if record.source_type in {
+                EvidenceSourceType.PDF_UPLOAD,
+                EvidenceSourceType.IMAGE_UPLOAD,
+            }:
+                metadata = record.evidence_metadata or {}
+                declared_payload = metadata.get("declared_document")
+                storage = get_storage_service()
+
+                document_analysis = await analyze_document(
+                    DocumentContext(
+                        evidence_id=record.evidence_id,
+                        text=text,
+                        declared=(
+                            DocumentKind.model_validate(declared_payload)
+                            if declared_payload
+                            else None
+                        ),
+                        content_type=str(
+                            metadata.get("content_type", "application/octet-stream")
+                        ),
+                        load_bytes=partial(storage.read_bytes, record.storage_uri),
+                        max_pages=get_settings().pdf_ocr_max_pages,
+                    )
+                )
+                record.parsed_payload = {
+                    **(record.parsed_payload or {}),
+                    "document_analysis": document_analysis.model_dump(mode="json"),
+                }
             # A chat answer is one unit; history must not multiply extraction calls.
             chunks = (
                 [text]
@@ -794,10 +874,74 @@ async def run_extraction_job(
                     ),
                 },
             )
+            # Declared document mismatches and incomplete analyses remain reviewable,
+            # but must not silently populate the case as the claimed document.
+            if (
+                document_analysis
+                and document_analysis.declared
+                and document_analysis.status != "matched"
+            ):
+                continue
+            extraction_template = template
+            if document_analysis:
+                # Bind only grounded fields from the detected document. Exclude all
+                # bound paths from free-form upload extraction, including other types.
+                if document_analysis.status in {"matched", "detected"}:
+                    for field in template.template_schema:
+                        source = field.document_source
+                        detected = document_analysis.detected
+                        if (
+                            source is None
+                            or detected is None
+                            or source.country != detected.country
+                            or source.document_type != detected.document_type
+                        ):
+                            continue
+                        extracted_field = document_analysis.fields.get(source.field)
+                        if extracted_field is None:
+                            continue
+                        raw_value = extracted_field.value
+                        if (
+                            source.document_type == "pan"
+                            and source.field == "document_number"
+                        ):
+                            raw_value = re.sub(r"[\s-]", "", raw_value).upper()
+                        value = coerce_candidate_value(field, raw_value)
+                        if value is None:
+                            continue
+                        candidates.append(
+                            FieldCandidateRecord(
+                                case_id=case_id,
+                                field_path=field.path,
+                                candidate_value=value,
+                                confidence=extracted_field.confidence,
+                                source_evidence_ids=[record.evidence_id],
+                                source_refs=[
+                                    {
+                                        "source_quote": extracted_field.source_quote,
+                                        "document_source": source.model_dump(),
+                                        "analysis_id": document_analysis.analysis_id,
+                                    }
+                                ],
+                                extractor_type="document_field",
+                                rationale="Mapped a grounded field from its document type.",
+                            )
+                        )
+                extraction_template = template.model_copy(
+                    update={
+                        "template_schema": [
+                            field
+                            for field in template.template_schema
+                            if field.document_source is None
+                        ]
+                    }
+                )
+                if not extraction_template.template_schema:
+                    continue
             for chunk_index, chunk in enumerate(chunks):
                 chunk_started_at = perf_counter()
                 proposals = await extract_candidates_with_llm(
-                    template,
+                    extraction_template,
                     chunk,
                     conversation_context,
                     evidence_text=(

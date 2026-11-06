@@ -14,6 +14,8 @@ from app.main import create_app
 
 
 async def fake_generate_json(*, system_prompt: str, user_prompt: str) -> dict:
+    if "Supported document definitions:" in user_prompt:
+        return {"detected": None, "confidence": 0, "type_quote": "", "fields": {}}
     if "Captured fields (JSON data):" in user_prompt:
         return {"title": "Reported incident details"}
     lowered_prompt = user_prompt.lower()
@@ -297,8 +299,10 @@ def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
 
     import app.cases.titles as titles_service
     import app.conversation.service as conversation_service
+    import app.documents.ocr as document_ocr
     import app.extraction.service as extraction_service
 
+    monkeypatch.setattr(document_ocr, "generate_json", fake_generate_json)
     monkeypatch.setattr(titles_service, "generate_json", fake_generate_json)
     monkeypatch.setattr(conversation_service, "generate_json", fake_generate_json)
     monkeypatch.setattr(extraction_service, "generate_json", fake_generate_json)

@@ -78,6 +78,9 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = 30.0
     llm_temperature: float = 0.1
     pdf_ocr_max_pages: int = 10
+    upload_max_bytes: int = Field(default=20 * 1024 * 1024, ge=1)
+    document_stage_timeout_seconds: float = Field(default=60, gt=0)
+    document_text_max_chars: int = Field(default=60_000, ge=1)
 
     @property
     def decoded_postgres_password(self) -> str:

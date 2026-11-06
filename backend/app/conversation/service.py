@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.cases.models import CaseDetail, CaseFileRecord, FieldStateStatus
 from app.cases.service import get_case_detail
 from app.conversation.context import case_lock, load_conversation_context
+from app.conversation.documents import choose_document_upload_question
 from app.conversation.models import (
     ConversationTurnPayload,
     ConversationTurnRecord,
@@ -21,6 +22,7 @@ from app.conversation.models import (
     ConversationTurnResponse,
     NextQuestionPayload,
 )
+from app.intake.models import EvidenceRecord, EvidenceSourceType
 from app.intake.service import create_chat_answer_evidence
 from app.languages.manager import get_language_manager
 from app.languages.utils import process_incoming_text, process_outgoing_text
@@ -274,6 +276,33 @@ async def question_state(session: AsyncSession, detail: CaseDetail) -> str:
         "schema_state": detail.current_schema_state,
         "user_turn": latest_user_id,
     }
+    if any(field.document_source for field in detail.template.template_schema):
+        records = (
+            (
+                await session.execute(
+                    select(EvidenceRecord)
+                    .where(
+                        EvidenceRecord.case_id == detail.case_id,
+                        EvidenceRecord.source_type.in_(
+                            [
+                                EvidenceSourceType.PDF_UPLOAD,
+                                EvidenceSourceType.IMAGE_UPLOAD,
+                            ]
+                        ),
+                    )
+                    .order_by(EvidenceRecord.evidence_id)
+                )
+            )
+            .scalars()
+            .all()
+        )
+        state["documents"] = [
+            {
+                "evidence_id": record.evidence_id,
+                "analysis": (record.parsed_payload or {}).get("document_analysis"),
+            }
+            for record in records
+        ]
     return sha256(json.dumps(state, sort_keys=True).encode()).hexdigest()
 
 
@@ -366,9 +395,11 @@ async def _record_active_question_turn(
         )
     else:
         try:
-            question_en = await choose_next_question(
-                detail, await load_conversation_context(session, case_id)
-            )
+            question_en = await choose_document_upload_question(session, detail)
+            if question_en is None:
+                question_en = await choose_next_question(
+                    detail, await load_conversation_context(session, case_id)
+                )
         except QuestionGenerationError as exc:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -435,6 +466,17 @@ async def _submit_conversation_turn(
     if case_record is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Case not found"
+        )
+
+    active_question = await _record_active_question_turn(session, case_id)
+    if (
+        active_question
+        and active_question.metadata.get("question_payload", {}).get("kind")
+        == "document_upload"
+    ):
+        raise HTTPException(
+            409,
+            "This question requires a document upload. Text replies are not accepted.",
         )
 
     preferred_lang = case_record.case_metadata.get("preferred_language", "en")
